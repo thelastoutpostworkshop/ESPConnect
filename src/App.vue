@@ -368,6 +368,48 @@ const JEDEC_MANUFACTURERS = {
   0xff: 'XTX Technology',
 };
 
+const JEDEC_FLASH_PARTS = {
+  0xef: {
+    0x4014: 'Winbond W25Q80 (8 Mbit)',
+    0x4015: 'Winbond W25Q16 (16 Mbit)',
+    0x4016: 'Winbond W25Q32 (32 Mbit)',
+    0x4017: 'Winbond W25Q64 (64 Mbit)',
+    0x4018: 'Winbond W25Q128 (128 Mbit)',
+    0x4019: 'Winbond W25Q256 (256 Mbit)',
+  },
+  0xc2: {
+    0x4014: 'Macronix MX25L8006 (8 Mbit)',
+    0x4015: 'Macronix MX25L1606 (16 Mbit)',
+    0x4016: 'Macronix MX25L3206 (32 Mbit)',
+    0x4017: 'Macronix MX25L6406 (64 Mbit)',
+    0x4018: 'Macronix MX25L12835 (128 Mbit)',
+  },
+  0xc8: {
+    0x4014: 'GigaDevice GD25Q80 (8 Mbit)',
+    0x4015: 'GigaDevice GD25Q16 (16 Mbit)',
+    0x4016: 'GigaDevice GD25Q32 (32 Mbit)',
+    0x4017: 'GigaDevice GD25Q64 (64 Mbit)',
+    0x4018: 'GigaDevice GD25Q128 (128 Mbit)',
+    0x4019: 'GigaDevice GD25Q256 (256 Mbit)',
+  },
+  0xbf: {
+    0x2541: 'Microchip SST26VF016B (16 Mbit)',
+  },
+};
+
+function formatBytes(bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return null;
+  const units = ['bytes', 'KB', 'MB', 'GB'];
+  let idx = 0;
+  let value = bytes;
+  while (value >= 1024 && idx < units.length - 1) {
+    value /= 1024;
+    idx += 1;
+  }
+  const formatted = value % 1 === 0 ? value.toFixed(0) : value.toFixed(1);
+  return `${formatted} ${units[idx]}`;
+}
+
 function resolvePackageLabel(chipKey, pkgVersion, chipRevision) {
   const mapper = PACKAGE_LABELS[chipKey];
   if (!mapper || typeof pkgVersion !== 'number' || Number.isNaN(pkgVersion)) {
@@ -629,16 +671,33 @@ async function connect() {
       facts.push({ label: 'Embedded Flash', value: embeddedFlash });
     }
 
+    const embeddedPsram = resolveEmbeddedPsram(chipKey, psramCap, psramVendor, featureList);
+    if (embeddedPsram) {
+      facts.push({ label: 'Embedded PSRAM', value: embeddedPsram });
+    }
+
+    if (flashVendor && !embeddedFlash) {
+      facts.push({ label: 'Flash Vendor (eFuse)', value: flashVendor });
+    }
+    if (psramVendor && !embeddedPsram) {
+      facts.push({ label: 'PSRAM Vendor (eFuse)', value: psramVendor });
+    }
+
     if (typeof flashId === 'number' && !Number.isNaN(flashId)) {
       const manufacturerCode = flashId & 0xff;
       const manufacturerHex = `0x${manufacturerCode.toString(16).padStart(2, '0').toUpperCase()}`;
       const memoryType = (flashId >> 8) & 0xff;
       const capacityCode = (flashId >> 16) & 0xff;
+      const deviceCode = (memoryType << 8) | capacityCode;
       const deviceHex = `0x${memoryType.toString(16).padStart(2, '0').toUpperCase()}${capacityCode
         .toString(16)
         .padStart(2, '0')
         .toUpperCase()}`;
       const manufacturerName = JEDEC_MANUFACTURERS[manufacturerCode];
+      const deviceName = JEDEC_FLASH_PARTS[manufacturerCode]?.[deviceCode];
+      const capacityBytes = Number.isInteger(capacityCode) ? 2 ** capacityCode : null;
+      const formattedCapacity = capacityBytes ? formatBytes(capacityBytes) : null;
+
       facts.push({
         label: 'Flash ID',
         value: `0x${flashId.toString(16).padStart(6, '0').toUpperCase()}`,
@@ -647,10 +706,20 @@ async function connect() {
         label: 'Flash Manufacturer',
         value: manufacturerName ? `${manufacturerName} (${manufacturerHex})` : manufacturerHex,
       });
-      facts.push({
-        label: 'Flash Device',
-        value: deviceHex,
-      });
+      if (deviceName || formattedCapacity) {
+        const detail = formattedCapacity
+          ? `${formattedCapacity}${deviceName ? ` — ${deviceName}` : ''}`
+          : deviceName;
+        facts.push({
+          label: 'Flash Device',
+          value: detail || deviceHex,
+        });
+      } else {
+        facts.push({
+          label: 'Flash Device',
+          value: deviceHex,
+        });
+      }
     }
 
     chipDetails.value = {
