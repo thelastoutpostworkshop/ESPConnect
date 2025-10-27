@@ -18,26 +18,26 @@
             </v-btn>
           </v-card-title>
 
-          <v-system-bar class="status-bar mb-4" color="surface-variant" :height="64" window>
+          <v-system-bar class="status-bar mb-4" color="primary" :height="64" dark window>
             <div class="status-actions">
               <v-btn
+                :class="['status-button', { 'status-button--active': !connected && !busy }]"
                 color="primary"
-                variant="tonal"
+                variant="outlined"
                 density="comfortable"
                 :disabled="!serialSupported || connected || busy"
                 @click="connect"
-                class="status-button"
               >
                 <v-icon start>mdi-usb-flash-drive</v-icon>
                 Connect
               </v-btn>
               <v-btn
+                :class="['status-button', { 'status-button--active': connected }]"
                 color="error"
-                variant="tonal"
+                variant="outlined"
                 density="comfortable"
                 :disabled="!connected || busy"
                 @click="disconnect"
-                class="status-button"
               >
                 <v-icon start>mdi-close-circle</v-icon>
                 Disconnect
@@ -1152,7 +1152,7 @@ onBeforeUnmount(() => {
 .status-bar {
   border-radius: 12px;
   padding-inline: 12px;
-  border: 1px solid color-mix(in srgb, var(--v-theme-on-surface) 8%, transparent);
+  border: 1px solid color-mix(in srgb, #ffffff 15%, transparent);
 }
 
 .status-actions {
@@ -1164,11 +1164,20 @@ onBeforeUnmount(() => {
 
 .status-button {
   min-width: 140px;
+  border-width: 2px;
+  transition: background-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+}
+
+.status-button--active {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
 }
 
 .status-button.v-btn--disabled {
-  opacity: 0.45;
-  filter: grayscale(0.35);
+  opacity: 0.6;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 .status-select {
@@ -1177,7 +1186,7 @@ onBeforeUnmount(() => {
 }
 
 .status-bar .v-divider {
-  height: 32px;
+  height: 36px;
 }
 
 .partition-view {
