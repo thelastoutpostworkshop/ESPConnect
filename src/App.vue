@@ -5,17 +5,6 @@
         <v-card elevation="8" class="pa-6">
           <v-card-title class="d-flex align-center pa-0 mb-2">
             <div class="text-h5 font-weight-semibold">ESPConnect</div>
-            <v-spacer />
-            <v-btn
-              :title="`Switch to ${isDarkTheme ? 'light' : 'dark'} theme`"
-              variant="text"
-              icon
-              color="primary"
-              size="small"
-              @click="toggleTheme"
-            >
-              <v-icon>{{ themeIcon }}</v-icon>
-            </v-btn>
           </v-card-title>
 
           <v-system-bar class="status-bar mb-4" color="primary" :height="64" dark window>
@@ -54,6 +43,17 @@
               />
             </div>
             <v-spacer />
+            <v-btn
+              :title="`Switch to ${isDarkTheme ? 'light' : 'dark'} theme`"
+              variant="text"
+              icon
+              color="surface"
+              size="small"
+              class="status-theme-toggle"
+              @click="toggleTheme"
+            >
+              <v-icon>{{ themeIcon }}</v-icon>
+            </v-btn>
           <v-chip
             :color="connected ? 'success' : 'grey-darken-1'"
             class="text-capitalize"
