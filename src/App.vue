@@ -90,14 +90,13 @@
             <v-tab value="info">Device Info</v-tab>
             <v-tab value="partitions">Partitions</v-tab>
             <v-tab value="flash">Flash Firmware</v-tab>
+            <v-tab value="log">Session Log</v-tab>
           </v-tabs>
 
           <v-window v-model="activeTab">
             <v-window-item value="info">
               <DeviceInfoTab
                 :chip-details="chipDetails"
-                :log-text="logText"
-                @clear-log="clearLog"
               />
             </v-window-item>
 
@@ -122,6 +121,13 @@
                 @firmware-input="handleFirmwareInput"
                 @flash="flashFirmware"
                 @apply-preset="applyOffsetPreset"
+              />
+            </v-window-item>
+
+            <v-window-item value="log">
+              <SessionLogTab
+                :log-text="logText"
+                @clear-log="clearLog"
               />
             </v-window-item>
           </v-window>
@@ -168,6 +174,7 @@ import disconnectedLogo from './assets/disconnected-logo.svg';
 import DeviceInfoTab from './components/DeviceInfoTab.vue';
 import FlashFirmwareTab from './components/FlashFirmwareTab.vue';
 import PartitionsTab from './components/PartitionsTab.vue';
+import SessionLogTab from './components/SessionLogTab.vue';
 
 const SUPPORTED_VENDORS = [
   { usbVendorId: 0x303a },
