@@ -41,7 +41,7 @@
             Stop
           </v-btn>
           <v-btn
-            color="surface"
+            color="secondary"
             variant="text"
             size="small"
             prepend-icon="mdi-eraser"
