@@ -1,149 +1,99 @@
 <template>
-  <v-expand-transition v-if="details">
-    <div class="device-info-wrapper">
+  <v-expand-transition>
+    <div v-if="chipDetails" class="device-info-wrapper">
       <v-card class="device-card" elevation="0" variant="flat">
         <v-card-text class="device-card__body">
           <div class="device-header">
-            <v-avatar class="device-avatar" size="60">
-              <v-icon size="38">mdi-chip</v-icon>
+            <v-avatar class="device-avatar" size="64">
+              <v-icon size="36">mdi-chip</v-icon>
             </v-avatar>
             <div class="device-header__text">
-              <div class="device-chip-name">{{ details.description || details.name }}</div>
-              <div v-if="hasDistinctDescription" class="device-chip-alias">
-                {{ details.name }}
-              </div>
-              <div
-                v-if="revisionLabel || details.mac"
-                class="device-chip-subline"
-              >
-                <span v-if="revisionLabel" class="device-chip-subline-item">
-                  <v-icon size="20">mdi-update</v-icon>
-                  {{ revisionLabel }}
-                </span>
-                <span v-if="details.mac" class="device-chip-subline-item">
-                  <v-icon size="20">mdi-wifi</v-icon>
-                  {{ details.mac }}
-                </span>
+              <div class="device-title">{{ chipDetails.description || chipDetails.name }}</div>
+              <div class="device-subtitle">{{ chipDetails.name }}</div>
+              <div v-if="chipDetails.mac" class="device-meta">
+                <v-icon size="16" class="me-1">mdi-identifier</v-icon>
+                {{ chipDetails.mac }}
               </div>
             </div>
           </div>
-        <v-card class="device-summary-card" elevation="0" variant="flat">
-          <v-card-text class="device-summary-card__content">
-            <div class="device-summary">
-            <div class="summary-block">
-              <div class="summary-label">
-                <v-icon size="20" class="me-2">mdi-memory</v-icon>
-                Flash & Clock
-              </div>
-              <div class="summary-value">{{ details.flashSize || 'Unknown' }}</div>
-              <div v-if="details.crystal" class="summary-meta">
-                Crystal {{ details.crystal }}
-              </div>
-              <div v-if="primaryFacts.length" class="summary-list">
-                <div
-                  v-for="fact in primaryFacts"
-                  :key="fact.label"
-                  class="summary-list__item"
-                >
-                  <v-icon size="16" class="me-1">{{ fact.icon || 'mdi-information-outline' }}</v-icon>
-                  <span>{{ fact.value }}</span>
-                </div>
-              </div>
-            </div>
-            <div class="summary-divider" role="presentation" />
-            <div class="summary-block">
-              <div class="summary-label">
-                <v-icon size="20" class="me-2">mdi-lightning-bolt-outline</v-icon>
-                Feature Set
-              </div>
-              <div class="summary-value">
-                {{ hasFeatures ? `${details.features.length} capabilities` : 'No features reported' }}
-              </div>
-              <div v-if="details.mac" class="summary-meta">
-                MAC {{ details.mac }}
-              </div>
-              <div class="summary-chips">
-                <template v-if="hasFeatures">
-                  <v-chip
-                    v-for="feature in featurePreview"
-                    :key="feature"
-                    class="summary-chip"
-                    size="small"
-                    variant="flat"
-                  >
-                    <v-icon size="14" start>mdi-check-circle</v-icon>
-                    {{ feature }}
-                  </v-chip>
-                  <v-chip
-                    v-if="details.features.length > featurePreview.length"
-                    class="summary-chip summary-chip--more"
-                    size="small"
-                    variant="outlined"
-                  >
-                    +{{ details.features.length - featurePreview.length }} more
-                  </v-chip>
-                </template>
-                <div v-else class="summary-empty">
-                  <v-icon size="16">mdi-eye-off-outline</v-icon>
-                  <span>No optional capabilities.</span>
-                </div>
-              </div>
-            </div>
-            </div>
-          </v-card-text>
-        </v-card>
 
-          <div v-if="details.factGroups?.length" class="detail-groups">
-            <div class="section-title mb-3">
-              <v-icon size="18" class="me-2">mdi-chip</v-icon>
-              Hardware Details
+          <v-row class="device-metrics" dense>
+            <v-col cols="12" sm="4">
+              <div class="metric-card">
+                <v-icon class="metric-icon" size="22">mdi-memory</v-icon>
+                <div class="metric-label">Flash Size</div>
+                <div class="metric-value">{{ chipDetails.flashSize || 'Unknown' }}</div>
+                <div v-if="chipDetails.crystal" class="metric-caption">
+                  Crystal {{ chipDetails.crystal }}
+                </div>
+              </div>
+            </v-col>
+            <v-col cols="12" sm="4">
+              <div class="metric-card">
+                <v-icon class="metric-icon" size="22">mdi-tune-variant</v-icon>
+                <div class="metric-label">Feature Set</div>
+                <div class="metric-value">
+                  {{ chipDetails.features?.length ? `${chipDetails.features.length} enabled` : 'Not reported' }}
+                </div>
+                <div class="metric-caption">See the feature list below</div>
+              </div>
+            </v-col>
+            <v-col cols="12" sm="4">
+              <div class="metric-card">
+                <v-icon class="metric-icon" size="22">mdi-information-slab-circle</v-icon>
+                <div class="metric-label">Status</div>
+                <div class="metric-value">Ready</div>
+                <div class="metric-caption">Device details retrieved</div>
+              </div>
+            </v-col>
+          </v-row>
+
+          <div class="features-block">
+            <div class="section-title">
+              <v-icon size="18" class="me-2">mdi-star-circle-outline</v-icon>
+              Feature Set
             </div>
-            <v-row dense class="detail-group-row">
-              <v-col
-                v-for="group in details.factGroups"
-                :key="group.title"
-                cols="12"
-                md="6"
+            <v-chip-group column class="feature-chip-group">
+              <v-chip
+                v-for="feature in chipDetails.features"
+                :key="feature"
+                class="feature-chip"
+                color="primary"
+                variant="tonal"
+                size="small"
               >
-                <v-card class="detail-card" elevation="0" variant="tonal">
-                  <v-card-title class="detail-card__title">
-                    <v-icon size="18" class="me-2">{{ group.icon }}</v-icon>
-                    {{ group.title }}
-                  </v-card-title>
-                  <v-divider class="detail-card__divider" />
-                  <v-card-text class="detail-card__body">
-                    <div
-                      v-for="fact in group.items"
-                      :key="fact.label"
-                      class="detail-card__item"
-                    >
-                      <div class="detail-card__item-label">
-                        <v-icon v-if="fact.icon" size="16" class="me-2">{{ fact.icon }}</v-icon>
-                        <span>{{ fact.label }}</span>
-                      </div>
-                      <div class="detail-card__item-value">{{ fact.value }}</div>
-                    </div>
-                  </v-card-text>
-                </v-card>
-              </v-col>
-            </v-row>
+                <v-icon size="16" start class="feature-chip__icon">mdi-check-circle-outline</v-icon>
+                {{ feature }}
+              </v-chip>
+              <v-chip
+                v-if="!chipDetails.features?.length"
+                class="feature-chip feature-chip--empty"
+                size="small"
+                variant="outlined"
+              >
+                Not reported
+              </v-chip>
+            </v-chip-group>
           </div>
-        </v-card-text>
-      </v-card>
-    </div>
-  </v-expand-transition>
-  <v-expand-transition v-else>
-    <div class="device-info-empty">
-      <v-card class="device-empty-card device-empty-card--disconnected" variant="tonal">
-        <v-card-text class="device-empty-card__body">
-          <v-avatar class="device-empty-card__avatar" size="70">
-            <v-icon size="34">mdi-usb-port</v-icon>
-          </v-avatar>
-          <div class="device-empty-card__text">
-            <div class="device-empty-card__title">No device connected</div>
-            <div class="device-empty-card__subtitle">
-              Connect to an ESP32 to see device information.
+
+          <div v-if="chipDetails.facts?.length" class="extra-details">
+            <div class="section-title mb-3">
+              <v-icon size="18" class="me-2">mdi-list-box-outline</v-icon>
+              Extra Details
             </div>
+            <v-table density="comfortable" class="extra-details-table">
+              <tbody>
+                <tr v-for="fact in chipDetails.facts" :key="fact.label">
+                  <td class="extra-details-label">
+                    <div class="d-flex align-center gap-2">
+                      <v-icon v-if="fact.icon" size="16">{{ fact.icon }}</v-icon>
+                      <span>{{ fact.label }}</span>
+                    </div>
+                  </td>
+                  <td class="extra-details-value">{{ fact.value }}</td>
+                </tr>
+              </tbody>
+            </v-table>
           </div>
         </v-card-text>
       </v-card>
@@ -160,72 +110,6 @@ const props = defineProps({
     default: null,
   },
 });
-
-const details = computed(() => {
-  const candidate = props.chipDetails;
-  if (candidate && typeof candidate === 'object' && 'value' in candidate && !Array.isArray(candidate)) {
-    return candidate.value ?? null;
-  }
-  return candidate ?? null;
-});
-
-const revisionLabel = computed(() => {
-  const facts = details.value?.facts;
-  if (!Array.isArray(facts)) return null;
-  return facts.find(fact => fact.label === 'Revision')?.value ?? null;
-});
-
-const hasDistinctDescription = computed(() => {
-  if (!details.value) return false;
-  const { name, description } = details.value;
-  return Boolean(description) && description !== name;
-});
-
-const primaryFacts = computed(() => {
-  const facts = Array.isArray(details.value?.facts) ? details.value.facts : [];
-  if (!facts.length) return [];
-  const preferredOrder = [
-    'Embedded Flash',
-    'Embedded PSRAM',
-    'Flash Device',
-    'Connection Baud',
-    'USB Bridge',
-  ];
-  const selected = [];
-  const seen = new Set();
-
-  for (const label of preferredOrder) {
-    const match = facts.find(fact => fact.label === label && fact.value);
-    if (match && !seen.has(match.label)) {
-      selected.push(match);
-      seen.add(match.label);
-    }
-    if (selected.length >= 3) break;
-  }
-
-  if (selected.length < 3) {
-    for (const fact of facts) {
-      if (fact?.value && !seen.has(fact.label)) {
-        selected.push(fact);
-        seen.add(fact.label);
-        if (selected.length >= 3) break;
-      }
-    }
-  }
-
-  return selected;
-});
-
-const hasFeatures = computed(
-  () => Array.isArray(details.value?.features) && details.value.features.length > 0
-);
-
-const featurePreview = computed(() => {
-  if (!hasFeatures.value) return [];
-  const limit = 6;
-  return details.value.features.slice(0, limit);
-});
-
 </script>
 
 <style scoped>
@@ -237,11 +121,146 @@ const featurePreview = computed(() => {
   border-radius: 20px;
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--v-theme-primary) 22%, transparent) 0%,
-    color-mix(in srgb, var(--v-theme-surface) 96%, transparent) 55%,
-    color-mix(in srgb, var(--v-theme-secondary) 14%, transparent) 100%
+    color-mix(in srgb, var(--v-theme-primary) 18%, transparent) 0%,
+    color-mix(in srgb, var(--v-theme-surface) 95%, transparent) 100%
   );
   border: 1px solid color-mix(in srgb, var(--v-theme-primary) 16%, transparent);
+  overflow: hidden;
+}
+
+.device-card__body {
+  padding: clamp(20px, 4vw, 36px);
+}
+
+.device-header {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 28px;
+}
+
+.device-avatar {
+  background: color-mix(in srgb, var(--v-theme-primary) 28%, transparent);
+  color: color-mix(in srgb, white 92%, transparent);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.18);
+}
+
+.device-header__text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.device-title {
+  font-size: clamp(1.2rem, 2.8vw, 1.6rem);
+  font-weight: 600;
+  color: color-mix(in srgb, var(--v-theme-on-surface) 96%, transparent);
+}
+
+.device-subtitle {
+  font-size: 0.95rem;
+  color: color-mix(in srgb, var(--v-theme-on-surface) 70%, transparent);
+}
+
+.device-meta {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--v-theme-primary) 12%, transparent);
+  color: color-mix(in srgb, var(--v-theme-on-surface) 80%, transparent);
+  font-size: 0.8rem;
+  letter-spacing: 0.01em;
+}
+
+.device-metrics {
+  margin-bottom: 24px;
+}
+
+.metric-card {
+  border-radius: 16px;
+  padding: 16px;
+  background: color-mix(in srgb, var(--v-theme-surface) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--v-theme-on-surface) 12%, transparent);
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.metric-icon {
+  color: color-mix(in srgb, var(--v-theme-primary) 80%, transparent);
+}
+
+.metric-label {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--v-theme-on-surface) 60%, transparent);
+}
+
+.metric-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--v-theme-on-surface) 94%, transparent);
+}
+
+.metric-caption {
+  font-size: 0.78rem;
+  color: color-mix(in srgb, var(--v-theme-on-surface) 55%, transparent);
+}
+
+.features-block {
+  margin-bottom: 28px;
+}
+
+.section-title {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--v-theme-on-surface) 80%, transparent);
+  margin-bottom: 12px;
+}
+
+.feature-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.feature-chip {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--v-theme-primary) 12%, var(--v-theme-surface) 88%) !important;
+  color: color-mix(in srgb, var(--v-theme-primary) 65%, var(--v-theme-on-surface) 45%) !important;
+  font-weight: 500;
+  border: 1px solid color-mix(in srgb, var(--v-theme-primary) 18%, transparent) !important;
+}
+
+.feature-chip--empty {
+  background: color-mix(in srgb, var(--v-theme-surface) 96%, transparent) !important;
+  color: color-mix(in srgb, var(--v-theme-on-surface) 70%, transparent) !important;
+  border-style: dashed !important;
+}
+
+.feature-chip :deep(.v-chip__content) {
+  gap: 6px;
+}
+
+.feature-chip__icon {
+  color: color-mix(in srgb, var(--v-theme-primary) 75%, var(--v-theme-on-surface) 35%);
+}
+
+.extra-details {
+  border-radius: 18px;
+  padding: 20px;
+  background: color-mix(in srgb, var(--v-theme-surface) 92%, transparent);
+  border: 1px solid color-mix(in srgb, var(--v-theme-on-surface) 10%, transparent);
+}
+
+.extra-details-table {
+  border-radius: 12px;
   overflow: hidden;
   position: relative;
 }
@@ -293,10 +312,9 @@ const featurePreview = computed(() => {
   max-width: 420px;
 }
 
-.device-empty-card--disconnected {
-  border-style: solid;
-  border-color: color-mix(in srgb, var(--v-theme-error) 40%, transparent);
-  background: color-mix(in srgb, var(--v-theme-error) 14%, var(--v-theme-surface) 92%);
+.extra-details-table :deep(td) {
+  padding: 12px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--v-theme-on-surface) 12%, transparent);
 }
 
 .device-empty-card__body {
@@ -306,53 +324,9 @@ const featurePreview = computed(() => {
   gap: 18px;
 }
 
-.device-empty-card__avatar {
-  background: color-mix(in srgb, var(--v-theme-primary) 18%, transparent);
-  color: color-mix(in srgb, var(--v-theme-primary) 80%, var(--v-theme-on-surface) 30%);
-}
-
-.device-empty-card--disconnected .device-empty-card__avatar {
-  background: color-mix(in srgb, var(--v-theme-error) 26%, transparent);
-  color: color-mix(in srgb, var(--v-theme-error) 85%, var(--v-theme-on-surface) 10%);
-}
-
-.device-empty-card__title {
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: color-mix(in srgb, var(--v-theme-on-surface) 92%, transparent);
-}
-
-.device-empty-card__subtitle {
-  font-size: 0.92rem;
+.extra-details-label {
   color: color-mix(in srgb, var(--v-theme-on-surface) 65%, transparent);
-}
-
-.device-header__text {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.device-chip-name {
-  font-size: clamp(1.6rem, 3.2vw, 2.1rem);
-  font-weight: 670;
-  letter-spacing: 0.01em;
-  color: color-mix(in srgb, var(--v-theme-on-surface) 98%, transparent);
-}
-
-.device-chip-alias {
-  font-size: clamp(0.9rem, 2vw, 1.05rem);
-  color: color-mix(in srgb, var(--v-theme-on-surface) 62%, transparent);
-}
-
-.device-chip-subline {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 14px;
-  margin-top: 6px;
-  font-size: clamp(0.95rem, 2.1vw, 1.15rem);
-  font-weight: 600;
+  font-size: 0.85rem;
   letter-spacing: 0.01em;
   color: color-mix(in srgb, var(--v-theme-on-surface) 84%, transparent);
 }
@@ -564,6 +538,7 @@ const featurePreview = computed(() => {
   font-size: 0.92rem;
   color: color-mix(in srgb, var(--v-theme-on-surface) 98%, transparent);
   text-align: right;
+  color: color-mix(in srgb, var(--v-theme-on-surface) 92%, transparent);
   word-break: break-word;
 }
 
