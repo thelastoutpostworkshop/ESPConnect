@@ -1,65 +1,38 @@
-# ESP32 Web USB Flasher
+# ESPConnect
 
-A browser-based flasher built with Vite and [esptool-js](https://github.com/espressif/esptool-js). It uses the Web Serial API in Chromium browsers to connect directly to an ESP32 board over USB, inspect the chip, and upload firmware binaries—no Python tooling required once it’s running.
+ESPConnect is a browser-based companion for ESP32-series development boards. It runs entirely in Chrome, Edge, and other Chromium browsers that support the Web Serial API, letting you inspect your device, back up or erase flash contents, and upload new firmware without installing desktop flashing tools.
 
-## Features
-
-- Vue 3 + Vuetify interface for connecting, configuring, and flashing ESP targets.
-- Automatic chip summary (flash size, MAC, features) once connected.
-- Translates package/revision codes and embedded flash/PSRAM capacities into friendly labels.
-- Detects USB bridge VID/PID and eFuse block version automatically.
-- Partition explorer tab with visual flash map and detailed table.
-- Recommended flash-offset presets for common ESP-IDF/Arduino layouts.
-- Detects ESP32-class chips via Web Serial and runs the esptool handshake in the browser.
-- Displays chip metadata (type, flash info) and streaming logs from the bootloader.
-- Uploads `.bin` firmware images with optional full-chip erase and on-the-fly compression.
-- Shows flashing progress and automatically resets the device on completion.
-- Boot-mode helper dialog for boards that need manual BOOT/RESET steps.
-- Built-in light/dark theme toggle (persisted per browser).
-
-## Requirements
-
-- Node.js 18+ (tested with Node 20).
-- A Chromium-based browser (Chrome, Edge, or Arc) 89 or newer. `localhost` counts as a secure origin for Web Serial.
-- ESP32 (or ESP8266/C3/S2/S3 variants) attached over USB. Auto-reset requires the board’s DTR/RTS lines; otherwise, press and hold **BOOT** while tapping **RESET** when prompted.
+## What You Need
+- A Chromium browser version 89 or newer (Chrome, Edge, Brave, Arc, etc.).  
+- An ESP32, ESP32-C3, ESP32-S2, ESP32-S3, or ESP8266 board connected with a USB cable.  
+- USB data lines (DTR/RTS) connected if you want automatic boot/reset control—otherwise you can follow on-screen instructions to enter bootloader mode manually.
 
 ## Getting Started
+1. Open the ESPConnect web app (either the hosted version or a local copy served from `https://` or `http://localhost`).  
+2. Click **Connect** and grant permission when the browser asks to access your board.  
+3. Once connected, ESPConnect reads your chip’s details and unlocks all available tools. Use the tabs along the top to explore each feature area.
 
-```bash
-git clone https://github.com/thelastoutpostworkshop/esp32usb.git
-cd esp32usb
-npm install
-npm run dev
-```
+## Firmware Tools at a Glance
+- **Flash Firmware:** Choose a `.bin` file, set the target offset if needed, optionally enable “Erase entire flash,” and press **Flash Firmware**. A progress bar tracks the upload, and the device is reset automatically when finished.  
+- **Flash Backup & Erase:** Read back custom regions, individual partitions, the full partition table, or only the used areas of flash. Downloads save straight to your computer. You can also trigger a full-chip erase from here.  
+- **Flash Integrity (MD5):** Verify regions of flash by supplying an offset and length; ESPConnect computes an MD5 checksum for quick validation.  
+- **Register Access:** Read or write hardware registers by address for low-level debugging.
 
-Open the printed URL in Chrome/Edge. Click **Connect**, grant serial access, then select your firmware `.bin`, set the desired flash offset, and press **Flash Firmware**.
+## Other Tabs
+- **Device Info:** Summaries of chip family, flash size, MAC address, crystal frequency, USB bridge details, and decoded eFuse metadata.  
+- **Partitions:** A visual map of the flash layout plus a detailed table of partition entries. Handy for confirming offsets before flashing or backing up data.  
+- **Serial Monitor:** View live UART output from the device, send commands, clear the console, or reset the board without leaving the browser.  
+- **Session Log:** A running log of ESPConnect’s actions (handshakes, flashes, downloads) that you can clear at any time.
 
-### Bootloader Tips
+## Tips & Troubleshooting
+- If the connection fails, hold the board’s **BOOT** button, tap **RESET**, keep holding **BOOT**, click **Connect**, and release **BOOT** once the ROM banner appears.  
+- Close other serial tools (Arduino IDE, esptool.py, PlatformIO monitor, etc.) before connecting—only one program can own the USB-serial bridge at a time.  
+- You can adjust the baud rate after connecting. Some bridges cannot sustain very high rates; if downloads stall, drop back to 460800 or 115200 bps.  
+- Cancelling a flash download pauses gracefully; simply start the download again when you’re ready.  
+- Web Serial permissions are remembered per site. If you want to revoke access, remove ESPConnect from your browser’s site permissions or unplug and reconnect the board.
 
-- If connection fails, hold **BOOT** and tap **RESET**, then release **BOOT** after clicking **Connect**.
-- Close other serial monitors (Arduino IDE, `esptool.py`, etc.) before using the web flasher—only one app can own the port.
-- If you need a higher download speed, choose a higher baud rate after connecting. Some USB bridges struggle above 921600 baud.
-
-## Building for Production
-
-```bash
-npm run build
-npm run preview
-```
-
-Deploy the contents of `dist/` to any static HTTPS host. Browsers block Web Serial on non-secure origins.
-
-## Repository Structure
-
-```
-├─ index.html        # Vite entry point
-├─ package.json      # Project metadata and scripts
-├─ src/
-│  ├─ App.vue        # Vuetify UI + Web Serial logic
-│  ├─ main.js        # Vue / Vuetify bootstrapping
-│  └─ style.css      # Global background styles
-```
+## Privacy & Security
+USB access is granted solely inside your browser session. ESPConnect does not upload firmware or device data to remote servers; everything stays on your machine unless you choose to share it. Always flash firmware from sources you trust.
 
 ## License
-
-This project is provided under the MIT License. See [LICENSE](LICENSE) for details.
+ESPConnect is released under the MIT License. See [LICENSE](LICENSE) for the full text.

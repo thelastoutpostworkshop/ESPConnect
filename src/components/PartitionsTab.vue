@@ -1,6 +1,18 @@
 <template>
-  <div v-if="!partitionSegments.length" class="text-body-2 text-medium-emphasis">
-    Connect to an ESP32 to load its partition table.
+  <div v-if="!partitionSegments.length" class="partitions-empty">
+    <v-card class="partitions-empty__card partitions-empty__card--disconnected" variant="tonal">
+      <v-card-text class="partitions-empty__body">
+        <v-avatar class="partitions-empty__avatar" size="70">
+          <v-icon size="34">mdi-table-refresh</v-icon>
+        </v-avatar>
+        <div class="partitions-empty__text">
+          <div class="partitions-empty__title">No partition data yet</div>
+          <div class="partitions-empty__subtitle">
+            Connect to an ESP32 to load its partition table.
+          </div>
+        </div>
+      </v-card-text>
+    </v-card>
   </div>
   <div v-else class="partition-view">
     <v-alert
@@ -150,6 +162,56 @@ const unusedBytesDisplay = computed(() =>
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.partitions-empty {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 260px;
+}
+
+.partitions-empty__card {
+  border-radius: 18px;
+  padding: 28px 32px;
+  border: 1px dashed color-mix(in srgb, var(--v-theme-primary) 20%, transparent);
+  background: color-mix(in srgb, var(--v-theme-surface) 94%, transparent);
+  text-align: center;
+  max-width: 420px;
+}
+
+.partitions-empty__card--disconnected {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--v-theme-error) 40%, transparent);
+  background: color-mix(in srgb, var(--v-theme-error) 14%, var(--v-theme-surface) 92%);
+}
+
+.partitions-empty__body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.partitions-empty__avatar {
+  background: color-mix(in srgb, var(--v-theme-primary) 18%, transparent);
+  color: color-mix(in srgb, var(--v-theme-primary) 80%, var(--v-theme-on-surface) 30%);
+}
+
+.partitions-empty__card--disconnected .partitions-empty__avatar {
+  background: color-mix(in srgb, var(--v-theme-error) 26%, transparent);
+  color: color-mix(in srgb, var(--v-theme-error) 85%, var(--v-theme-on-surface) 10%);
+}
+
+.partitions-empty__title {
+  font-size: 1.02rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--v-theme-on-surface) 92%, transparent);
+}
+
+.partitions-empty__subtitle {
+  font-size: 0.92rem;
+  color: color-mix(in srgb, var(--v-theme-on-surface) 65%, transparent);
 }
 
 .partition-map {

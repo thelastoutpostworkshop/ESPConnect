@@ -1,22 +1,17 @@
-<template>
+﻿<template>
   <v-app>
     <v-main>
       <v-container class="py-10" max-width="1100">
         <v-card elevation="8" class="pa-6">
-          <v-card-title class="d-flex align-center pa-0 mb-2">
-            <div class="text-h5 font-weight-semibold">ESPConnect</div>
-            <v-spacer />
-            <v-btn
-              :title="`Switch to ${isDarkTheme ? 'light' : 'dark'} theme`"
-              variant="text"
-              icon
-              color="primary"
-              size="small"
-              @click="toggleTheme"
-            >
-              <v-icon>{{ themeIcon }}</v-icon>
-            </v-btn>
+          <v-card-title class="d-flex align-center pa-0 mb-1">
+            <div class="app-title text-h5 font-weight-semibold">
+              ESPConnect
+              <span class="app-version">v{{ APP_VERSION }}</span>
+            </div>
           </v-card-title>
+          <v-card-subtitle class="pa-0 text-body-2 text-medium-emphasis mb-3">
+            {{ APP_TAGLINE }}
+          </v-card-subtitle>
 
           <v-system-bar class="status-bar mb-4" color="primary" :height="64" dark window>
             <div class="status-actions">
@@ -50,29 +45,84 @@
                 variant="outlined"
                 hide-details
                 class="status-select"
-                :disabled="busy"
-              />
-            </div>
-            <v-spacer />
-            <v-chip
-              :color="connected ? 'success' : 'grey-darken-1'"
-              class="text-capitalize"
-              variant="elevated"
-              density="comfortable"
+                :disabled="busy || flashInProgress || maintenanceBusy || baudChangeBusy || monitorActive"
+          />
+        </div>
+        <v-spacer />
+        <div class="status-links">
+          <v-btn
+            class="status-link"
+            color="surface"
+            variant="text"
+            density="comfortable"
+            href="https://www.youtube.com/channel/UCnnU_HGvTr8ewpqvHe2llDw"
+            target="_blank"
+            rel="noopener"
+          >
+            <v-icon start>mdi-youtube</v-icon>
+            Tutorial
+          </v-btn>
+          <v-btn
+            class="status-link"
+            color="surface"
+            variant="text"
+            density="comfortable"
+            href="https://buymeacoffee.com/thelastoutpostworkshop"
+            target="_blank"
+            rel="noopener"
+          >
+            <v-icon start>mdi-coffee</v-icon>
+            Buy Me a Coffee
+          </v-btn>
+          <v-btn
+            class="status-link"
+            color="surface"
+            variant="text"
+            density="comfortable"
+            href="https://github.com/thelastoutpostworkshop/ESP32PartitionBuilder"
+            target="_blank"
+            rel="noopener"
+          >
+            <v-icon start>mdi-lifebuoy</v-icon>
+            Get Help
+          </v-btn>
+        </div>
+        <v-btn
+          :title="`Switch to ${isDarkTheme ? 'light' : 'dark'} theme`"
+          variant="text"
+          icon
+          color="surface"
+          size="small"
+          class="status-theme-toggle"
+          @click="toggleTheme"
+        >
+          <v-icon>{{ themeIcon }}</v-icon>
+        </v-btn>
+        <v-chip
+          :color="connected ? 'success' : 'grey-darken-1'"
+          class="text-capitalize"
+          variant="elevated"
+          density="comfortable"
+        >
+          <template #prepend>
+            <v-icon
+              v-if="connected"
+              start
+              class="status-chip-icon status-chip-icon--connected"
             >
-              <template #prepend>
-                <v-icon v-if="connected">mdi-usb-port</v-icon>
-                <v-avatar
-                  v-else
-                  size="22"
-                  class="status-logo-avatar"
-                >
-                  <v-img :src="disconnectedLogo" alt="Disconnected status logo" />
-                </v-avatar>
-              </template>
-              {{ connectionChipLabel }}
-            </v-chip>
-          </v-system-bar>
+              mdi-usb-port
+            </v-icon>
+            <v-icon
+              v-else
+              start
+              class="status-chip-icon status-chip-icon--disconnected"
+            >
+              mdi-usb-c-port
+            </v-icon>
+          </template>
+          {{ connectionChipLabel }}
+        </v-chip>
+      </v-system-bar>
 
           <v-alert
             v-if="!serialSupported"
@@ -118,9 +168,73 @@
                 :can-flash="canFlash"
                 :flash-in-progress="flashInProgress"
                 :flash-progress="flashProgress"
+                :flash-progress-dialog="flashProgressDialog"
+                :maintenance-busy="maintenanceBusy"
+                :register-address="registerAddress"
+                :register-value="registerValue"
+                :register-read-result="registerReadResult"
+                :register-status="registerStatus"
+                :register-status-type="registerStatusType"
+                :register-options="registerOptions"
+                :register-reference="registerReference"
+                :md5-offset="md5Offset"
+                :md5-length="md5Length"
+                :md5-result="md5Result"
+                :md5-status="md5Status"
+                :md5-status-type="md5StatusType"
+                :flash-read-offset="flashReadOffset"
+                :flash-read-length="flashReadLength"
+                :flash-read-status="flashReadStatus"
+                :flash-read-status-type="flashReadStatusType"
+                :partition-options="partitionDownloadOptions"
+                :selected-partition="selectedPartitionDownload"
+                :integrity-partition="integrityPartition"
+                :spiffs-agent-status="spiffsAgent"
+                :download-progress="downloadProgress"
                 @firmware-input="handleFirmwareInput"
                 @flash="flashFirmware"
                 @apply-preset="applyOffsetPreset"
+                @update:register-address="value => (registerAddress.value = value)"
+                @update:register-value="value => (registerValue.value = value)"
+                @read-register="handleReadRegister"
+                @write-register="handleWriteRegister"
+                @update:md5-offset="value => (md5Offset.value = value)"
+                @update:md5-length="value => (md5Length.value = value)"
+                @compute-md5="handleComputeMd5"
+                @update:flash-read-offset="value => (flashReadOffset.value = value)"
+                @update:flash-read-length="value => (flashReadLength.value = value)"
+                @update:selected-partition="handleSelectPartition"
+                @update:integrity-partition="handleSelectIntegrityPartition"
+                @load-spiffs-agent="handleLoadSpiffsAgent"
+                @download-flash="handleDownloadFlash"
+                @download-partition="handleDownloadPartition"
+                @download-all-partitions="handleDownloadAllPartitions"
+                @download-used-flash="handleDownloadUsedFlash"
+                @cancel-flash="handleCancelFlash"
+                @erase-flash="handleEraseFlash"
+                @cancel-download="handleCancelDownload"
+                @select-register="handleSelectRegister"
+              />
+            </v-window-item>
+
+            <v-window-item value="console">
+              <SerialMonitorTab
+                :monitor-text="monitorText"
+                :monitor-active="monitorActive"
+                :monitor-error="monitorError"
+                :can-start="canStartMonitor"
+                :can-command="canIssueMonitorCommands"
+                @start-monitor="startMonitor"
+                @stop-monitor="stopMonitor"
+                @clear-monitor="clearMonitorOutput"
+                @reset-board="resetBoard"
+              />
+            </v-window-item>
+
+            <v-window-item value="log">
+              <SessionLogTab
+                :log-text="logText"
+                @clear-log="clearLog"
               />
               <SpiffsAgentCard
                 class="mt-6"
@@ -153,6 +267,45 @@
           </v-window>
         </v-card>
 
+        <v-dialog
+          :model-value="confirmationDialog.visible"
+          max-width="420"
+          @update:model-value="value => {
+            if (!value) resolveConfirmation(false);
+          }"
+        >
+          <v-card>
+            <v-card-title class="text-h6">
+              <v-icon
+                start
+                :color="confirmationDialog.destructive ? 'error' : 'warning'"
+              >mdi-alert-circle-outline</v-icon>
+              {{ confirmationDialog.title || 'Please confirm' }}
+            </v-card-title>
+            <v-card-text class="text-body-2">
+              <div class="confirmation-message">
+                {{ confirmationDialog.message }}
+              </div>
+            </v-card-text>
+            <v-card-actions>
+              <v-spacer />
+              <v-btn
+                variant="text"
+                @click="resolveConfirmation(false)"
+              >
+                {{ confirmationDialog.cancelText || 'Cancel' }}
+              </v-btn>
+              <v-btn
+                :color="confirmationDialog.destructive ? 'error' : 'primary'"
+                variant="tonal"
+                @click="resolveConfirmation(true)"
+              >
+                {{ confirmationDialog.confirmText || 'Continue' }}
+              </v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
+
         <v-dialog v-model="showBootDialog" width="420">
           <v-card>
             <v-card-title class="text-h6">
@@ -164,10 +317,10 @@
                 We couldn't communicate with the board. Try putting your ESP32 into bootloader mode:
               </p>
               <ol class="text-body-2 ps-4">
-                <li>Hold the <strong>BOOT</strong> (GPIO0) button.</li>
-                <li>Tap <strong>RESET</strong>, then release it.</li>
-                <li>Release the BOOT button after one second.</li>
-                <li>Click <strong>Connect</strong> again.</li>
+                <li>Press and hold the <strong>BOOT</strong> (GPIO0) button and keep it held down.</li>
+                <li>Tap <strong>RESET</strong>, then release only the RESET button.</li>
+                <li>While still holding BOOT, click <strong>Connect</strong>.</li>
+                <li>Release the BOOT button once the log shows the ESP-ROM banner or the connection completes.</li>
               </ol>
               <p class="text-caption text-medium-emphasis" v-if="lastErrorMessage">
                 Last error: {{ lastErrorMessage }}
@@ -190,7 +343,6 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { ESPLoader, Transport } from 'esptool-js';
 import { useTheme } from 'vuetify';
-import disconnectedLogo from './assets/disconnected-logo.svg';
 import DeviceInfoTab from './components/DeviceInfoTab.vue';
 import FlashFirmwareTab from './components/FlashFirmwareTab.vue';
 import PartitionsTab from './components/PartitionsTab.vue';
@@ -327,8 +479,8 @@ const JEDEC_FLASH_PARTS = {
 };
 
 const VENDOR_ALIASES = {
-  AP_3v3: 'AP Memory (3.3 V)',
-  AP_1v8: 'AP Memory (1.8 V)',
+  AP_3v3: 'AP Memory 3.3 V',
+  AP_1v8: 'AP Memory 1.8 V',
 };
 
 const USB_VENDOR_NAMES = {
@@ -372,6 +524,105 @@ const FACT_ICONS = {
   'Connection Baud': 'mdi-speedometer',
   'eFuse Block Version': 'mdi-shield-key',
 };
+
+const FACT_DISPLAY_ORDER = [
+  'Chip Variant',
+  'Package Form Factor',
+  'Revision',
+  'Embedded Flash',
+  'Embedded PSRAM',
+  'Flash ID',
+  'Flash Manufacturer',
+  'Flash Device',
+  'Flash Vendor (eFuse)',
+  'PSRAM Vendor (eFuse)',
+  'eFuse Block Version',
+  'USB Bridge',
+  'Connection Baud',
+];
+
+const FACT_GROUP_CONFIG = [
+  {
+    title: 'Package & Revision',
+    icon: 'mdi-chip',
+    labels: ['Chip Variant', 'Package Form Factor', 'Revision'],
+  },
+  {
+    title: 'Embedded Memory',
+    icon: 'mdi-memory',
+    labels: [
+      'Embedded Flash',
+      'Embedded PSRAM',
+      'Flash ID',
+      'Flash Manufacturer',
+      'Flash Device',
+      'Flash Vendor (eFuse)',
+      'PSRAM Vendor (eFuse)',
+    ],
+  },
+  {
+    title: 'Security',
+    icon: 'mdi-shield-key-outline',
+    labels: ['eFuse Block Version'],
+  },
+  {
+    title: 'Connection',
+    icon: 'mdi-usb-port',
+    labels: ['USB Bridge', 'Connection Baud'],
+  },
+];
+
+function sortFacts(facts) {
+  return [...facts].sort((a, b) => {
+    const orderA = FACT_DISPLAY_ORDER.indexOf(a.label);
+    const orderB = FACT_DISPLAY_ORDER.indexOf(b.label);
+    const hasOrderA = orderA !== -1;
+    const hasOrderB = orderB !== -1;
+
+    if (hasOrderA && hasOrderB) {
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+      return a.label.localeCompare(b.label);
+    }
+
+    if (hasOrderA) return -1;
+    if (hasOrderB) return 1;
+
+    return a.label.localeCompare(b.label);
+  });
+}
+
+function buildFactGroups(facts) {
+  const groups = [];
+  const assigned = new Set();
+
+  for (const config of FACT_GROUP_CONFIG) {
+    const items = facts.filter(fact => {
+      if (assigned.has(fact.label)) return false;
+      return config.labels.includes(fact.label);
+    });
+    if (items.length) {
+      items.forEach(item => assigned.add(item.label));
+      groups.push({
+        title: config.title,
+        icon: config.icon,
+        items,
+      });
+    }
+  }
+
+  const remaining = facts.filter(fact => !assigned.has(fact.label));
+  if (remaining.length) {
+    groups.push({
+      title: 'Additional Details',
+      icon: 'mdi-clipboard-text-outline',
+      items: remaining,
+    });
+  }
+
+  return groups;
+}
 
 function formatBytes(bytes) {
   if (!Number.isFinite(bytes) || bytes <= 0) return null;
@@ -521,12 +772,74 @@ const connected = ref(false);
 const busy = ref(false);
 const flashInProgress = ref(false);
 const flashProgress = ref(0);
-const selectedBaud = ref('921600');
+const flashProgressDialog = reactive({ visible: false, value: 0, label: '' });
+const flashCancelRequested = ref(false);
+const selectedBaud = ref('115200');
 const baudrateOptions = ['115200', '230400', '460800', '921600'];
 const flashOffset = ref('0x0');
 const eraseFlash = ref(false);
 const selectedPreset = ref(null);
+const selectedPartitionDownload = ref(null);
+const integrityPartition = ref(null);
+const currentBaud = ref(DEFAULT_ROM_BAUD);
+const baudChangeBusy = ref(false);
+const maintenanceBusy = ref(false);
+const downloadProgress = reactive({ visible: false, value: 0, label: '' });
+const downloadCancelRequested = ref(false);
+const registerAddress = ref('0x0');
+const registerValue = ref('');
+const registerReadResult = ref(null);
+const registerStatus = ref(null);
+const registerStatusType = ref('info');
+const registerOptions = ref([]);
+const registerReference = ref(null);
+const registerOptionLookup = computed(() => {
+  const map = new Map();
+  for (const option of registerOptions.value) {
+    const normalized = normalizeRegisterAddressValue(option.address);
+    if (normalized && !map.has(normalized)) {
+      map.set(normalized, {
+        ...option,
+        address: normalized,
+      });
+    }
+  }
+  return map;
+});
+const md5Offset = ref('0x0');
+const md5Length = ref('');
+const md5Result = ref(null);
+const md5Status = ref(null);
+const md5StatusType = ref('info');
+const flashReadOffset = ref('0x0');
+const flashReadLength = ref('');
+const flashReadStatus = ref(null);
+const flashReadStatusType = ref('info');
+const spiffsAgent = reactive({
+  loading: false,
+  loaded: false,
+  size: 0,
+  error: null,
+  binary: null,
+});
 const logBuffer = ref('');
+const monitorText = ref('');
+const monitorActive = ref(false);
+const monitorError = ref(null);
+const monitorAbortController = ref(null);
+const MONITOR_BUFFER_LIMIT = 20000;
+let monitorPendingText = '';
+let monitorFlushHandle = null;
+let monitorFlushUsingAnimationFrame = false;
+const confirmationDialog = reactive({
+  visible: false,
+  title: '',
+  message: '',
+  confirmText: 'Confirm',
+  cancelText: 'Cancel',
+  destructive: false,
+});
+let confirmationResolver = null;
 const currentPort = ref(null);
 const transport = ref(null);
 const loader = ref(null);
@@ -889,6 +1202,9 @@ const RESERVED_SEGMENTS = [
 ];
 
 const partitionSegments = computed(() => {
+  if (!connected.value) {
+    return [];
+  }
   const sortedPartitions = [...partitionTable.value].sort((a, b) => a.offset - b.offset);
   const totalFlash = flashSizeBytes.value && flashSizeBytes.value > 0 ? flashSizeBytes.value : null;
   const segments = [];
@@ -1115,7 +1431,25 @@ const formattedPartitions = computed(() => {
     }
   }
 
-  return partitionTable.value.map((entry, index) => {
+  const reservedRows = RESERVED_SEGMENTS.map(segment => {
+    const offsetHex = `0x${segment.offset.toString(16).toUpperCase()}`;
+    const sizeText = formatBytes(segment.size) ?? `${segment.size} bytes`;
+    return {
+      label: segment.label,
+      typeLabel: 'Reserved',
+      subtypeLabel: 'Reserved',
+      typeHex: 'N/A',
+      subtypeHex: 'N/A',
+      offset: segment.offset,
+      offsetHex,
+      size: segment.size,
+      sizeText,
+      color: segment.color,
+      backgroundImage: null,
+    };
+  });
+
+  const partitionRows = partitionTable.value.map((entry, index) => {
     const segment = segmentByOffset.get(entry.offset);
     const typeHex = toPaddedHex(entry.type);
     const subtypeHex = toPaddedHex(entry.subtype);
@@ -1146,6 +1480,65 @@ const formattedPartitions = computed(() => {
       backgroundImage: segment?.backgroundImage ?? null,
     };
   });
+
+  return [...reservedRows, ...partitionRows].sort((a, b) => a.offset - b.offset);
+});
+
+const partitionDownloadOptions = computed(() => {
+  return formattedPartitions.value
+    .filter(row => !row.isUnused && row.size > 0)
+    .map(row => {
+      const baseLabel = row.label && row.label.trim() ? row.label.trim() : 'Partition ' + row.typeHex;
+      const displayLabel = baseLabel + ' • ' + row.offsetHex + ' • ' + row.sizeText;
+      return {
+        label: displayLabel,
+        value: row.offset,
+        offset: row.offset,
+        size: row.size,
+        offsetHex: row.offsetHex,
+        sizeText: row.sizeText,
+        baseLabel,
+        typeHex: row.typeHex,
+        subtypeHex: row.subtypeHex,
+      };
+    });
+});
+
+const partitionOptionLookup = computed(() => {
+  const map = new Map();
+  for (const option of partitionDownloadOptions.value) {
+    map.set(option.value, option);
+  }
+  return map;
+});
+
+watch(partitionDownloadOptions, options => {
+  if (!options.some(option => option.value === selectedPartitionDownload.value)) {
+    selectedPartitionDownload.value = null;
+    flashReadOffset.value = '0x0';
+    flashReadLength.value = '';
+  }
+  if (!options.some(option => option.value === integrityPartition.value)) {
+    integrityPartition.value = null;
+  }
+});
+
+watch([md5Offset, md5Length], ([offsetValue, lengthValue]) => {
+  if (integrityPartition.value == null) {
+    return;
+  }
+  const option = partitionOptionLookup.value.get(integrityPartition.value);
+  if (!option) {
+    integrityPartition.value = null;
+    return;
+  }
+  const normalizedOffset = normalizeRegisterAddressValue(offsetValue);
+  const expectedOffset = normalizeRegisterAddressValue(option.offsetHex);
+  const normalizedLength = normalizeRegisterAddressValue(lengthValue);
+  const expectedLength = normalizeRegisterAddressValue('0x' + option.size.toString(16).toUpperCase());
+  if (normalizedOffset !== expectedOffset || normalizedLength !== expectedLength) {
+    integrityPartition.value = null;
+  }
 });
 
 const connectionChipLabel = computed(() => {
@@ -1154,7 +1547,7 @@ const connectionChipLabel = computed(() => {
   }
 
   const name = chipDetails.value?.name?.trim();
-  return name ? `Connected: ${name}` : 'Connected';
+  return name ? `${name}` : 'Connected';
 });
 
 const canFlash = computed(
@@ -1172,6 +1565,11 @@ function logSpiffsError(action, error) {
 }
 
 const logText = computed(() => logBuffer.value);
+
+const canStartMonitor = computed(
+  () => connected.value && !busy.value && !flashInProgress.value && Boolean(transport.value)
+);
+const canIssueMonitorCommands = computed(() => connected.value && Boolean(transport.value));
 
 const terminal = {
   clean() {
@@ -1596,6 +1994,16 @@ function handleSpiffsUpload(file) {
 
 async function disconnectTransport() {
   try {
+    if (monitorActive.value) {
+      await stopMonitor();
+    } else {
+      monitorAbortController.value?.abort();
+      monitorAbortController.value = null;
+      monitorActive.value = false;
+    }
+    cancelMonitorFlush();
+    flushPendingMonitorText();
+    monitorPendingText = '';
     if (transport.value) {
       await transport.value.disconnect();
     } else if (currentPort.value) {
@@ -1622,6 +2030,8 @@ async function connect() {
   if (busy.value) return;
   busy.value = true;
   flashProgress.value = 0;
+  monitorAutoResetPerformed = false;
+  resetMaintenanceState();
 
   logBuffer.value = '';
   partitionTable.value = [];
@@ -1641,9 +2051,20 @@ async function connect() {
       terminal,
       enableTracing: DEBUG_SERIAL,
     });
+    currentBaud.value = baudrate;
+    transport.value.baudrate = baudrate;
 
     const chipName = await loader.value.main('default_reset');
     const chip = loader.value.chip;
+    connected.value = true;
+    appendLog(`Handshake complete with ${chipName}. Collecting device details...`, '[debug]');
+    if (chip?.CHIP_NAME === 'ESP32-C6' && chip.SPI_REG_BASE === 0x60002000) {
+      chip.SPI_REG_BASE = 0x60003000;
+      appendLog(
+        'Applied ESP32-C6 SPI register base workaround (0x60002000 → 0x60003000).',
+        '[debug]'
+      );
+    }
 
     const callChip = async method => {
       const fn = chip?.[method];
@@ -1675,25 +2096,87 @@ async function connect() {
     const blockVersionMinor = await callChip('getBlkVersionMinor');
 
     const flashId = await loader.value.readFlashId().catch(() => undefined);
+    const manufacturerCode =
+      typeof flashId === 'number' && Number.isFinite(flashId) ? flashId & 0xff : null;
+    const memoryTypeCode =
+      typeof flashId === 'number' && Number.isFinite(flashId) ? (flashId >> 8) & 0xff : null;
+    const capacityCodeRaw =
+      typeof flashId === 'number' && Number.isFinite(flashId) ? (flashId >> 16) & 0xff : null;
+    appendLog(
+      `Flash detect raw: getFlashSize=${Number.isFinite(flashSizeKb) ? `${flashSizeKb} KB` : 'n/a'}, flashId=${typeof flashId === 'number' && Number.isFinite(flashId) ? `0x${flashId
+        .toString(16)
+        .padStart(6, '0')
+        .toUpperCase()}` : 'n/a'} (manuf=0x${Number.isInteger(manufacturerCode)
+        ? manufacturerCode.toString(16).toUpperCase().padStart(2, '0')
+        : '??'}, type=0x${Number.isInteger(memoryTypeCode)
+        ? memoryTypeCode.toString(16).toUpperCase().padStart(2, '0')
+        : '??'}, cap=0x${Number.isInteger(capacityCodeRaw)
+        ? capacityCodeRaw.toString(16).toUpperCase().padStart(2, '0')
+        : '??'})`,
+      '[debug]'
+    );
 
     const featureList = Array.isArray(featuresRaw)
       ? featuresRaw
       : typeof featuresRaw === 'string'
       ? featuresRaw.split(/,\s*/)
       : [];
-    const flashBytesValue = typeof flashSizeKb === 'number' ? flashSizeKb * 1024 : null;
+    let flashBytesValue = null;
+    let flashLabelSuffix = '';
+    if (typeof flashSizeKb === 'number' && flashSizeKb > 0) {
+      flashBytesValue = flashSizeKb * 1024;
+    } else {
+      const capacityCandidates = [capacityCodeRaw, memoryTypeCode, manufacturerCode].filter(
+        value =>
+          Number.isInteger(value) &&
+          value >= 0x12 &&
+          value <= 0x26
+      );
+      for (const candidate of capacityCandidates) {
+        const fallbackFlashBytes = Math.pow(2, candidate);
+        if (Number.isFinite(fallbackFlashBytes) && fallbackFlashBytes > 0) {
+          flashBytesValue = fallbackFlashBytes;
+          flashLabelSuffix = ' (via RDID)';
+          appendLog(
+            `Flash size detection fallback: using JEDEC capacity code 0x${candidate
+              .toString(16)
+              .toUpperCase()} from flash ID 0x${flashId
+              ?.toString(16)
+              .padStart(6, '0')
+              .toUpperCase()}.`,
+            '[warn]'
+          );
+          break;
+        }
+      }
+    }
+    const toHexByte = value =>
+      Number.isInteger(value) && value >= 0
+        ? value.toString(16).toUpperCase().padStart(2, '0')
+        : '??';
+    if (!flashBytesValue && typeof flashId === 'number' && !Number.isNaN(flashId)) {
+      appendLog(
+        `Flash size detection fallback unavailable. Flash ID 0x${flashId
+          .toString(16)
+          .padStart(6, '0')
+          .toUpperCase()} (manuf=0x${toHexByte(manufacturerCode)}, type=0x${toHexByte(
+          memoryTypeCode
+        )}, cap=0x${toHexByte(capacityCodeRaw)}).`,
+        '[warn]'
+      );
+    }
+
     flashSizeBytes.value = flashBytesValue;
     const flashLabel =
-      typeof flashSizeKb === 'number'
-        ? flashSizeKb >= 1024
-          ? `${(flashSizeKb / 1024).toFixed(flashSizeKb % 1024 === 0 ? 0 : 1)} MB`
-          : `${flashSizeKb} KB`
+      flashBytesValue && flashBytesValue > 0
+        ? `${formatBytes(flashBytesValue)}${flashLabelSuffix}`
         : null;
     const crystalLabel =
       typeof crystalFreq === 'number' ? `${Number(crystalFreq).toFixed(0)} MHz` : null;
     const macLabel = macAddress || 'Unavailable';
 
     const chipKey = chip?.CHIP_NAME || chipName;
+    applyRegisterGuide(chipKey);
     const facts = [];
     const pushFact = (label, value) => {
       if (!value) return;
@@ -1774,6 +2257,8 @@ async function connect() {
     pushFact('Connection Baud', `${baudrate.toLocaleString()} bps`);
 
     const featuresDisplay = featureList.filter(Boolean).map(humanizeFeature);
+    const orderedFacts = sortFacts(facts);
+    const factGroups = buildFactGroups(orderedFacts);
 
     chipDetails.value = {
       name: chipName,
@@ -1782,11 +2267,18 @@ async function connect() {
       mac: macLabel,
       flashSize: flashLabel,
       crystal: crystalLabel,
-      facts,
+      facts: orderedFacts,
+      factGroups,
     };
+    activeTab.value = 'info';
+    appendLog(
+      `Loaded device details: ${chipDetails.value.name}, ${orderedFacts.length} facts.`,
+      '[debug]'
+    );
 
-      connected.value = true;
-      appendLog(`Connection established. Ready to flash.`);
+    connected.value = true;
+    showBootDialog.value = false;
+    appendLog(`Connection established. Ready to flash.`);
   } catch (error) {
     if (error?.name === 'AbortError' || error?.name === 'NotFoundError') {
       appendLog('Port selection was cancelled.');
@@ -1798,6 +2290,7 @@ async function connect() {
     await disconnectTransport();
   } finally {
     busy.value = false;
+    appendLog(`Connect flow finished (busy=${busy.value}).`, '[debug]');
   }
 }
 
@@ -1823,6 +2316,20 @@ function parseOffset(value) {
   return parsed;
 }
 
+function parseNumericInput(value, label) {
+  if (!value || !value.toString().trim()) {
+    throw new Error(`${label} is required.`);
+  }
+  const trimmed = value.toString().trim().toLowerCase();
+  const parsed = trimmed.startsWith('0x')
+    ? Number.parseInt(trimmed, 16)
+    : Number.parseInt(trimmed, 10);
+  if (!Number.isSafeInteger(parsed) || parsed < 0) {
+    throw new Error(`Invalid ${label.toLowerCase()} value.`);
+  }
+  return parsed;
+}
+
 async function flashFirmware() {
   if (!loader.value || !firmwareBuffer.value) {
     appendLog('Select a firmware binary and connect to a device first.', '[warn]');
@@ -1838,11 +2345,37 @@ async function flashFirmware() {
     return;
   }
 
+  const firmwareLabel = firmwareName.value || 'selected firmware';
+  const activeBaudRaw =
+    transport.value?.baudrate ||
+    currentBaud.value ||
+    Number.parseInt(selectedBaud.value, 10) ||
+    DEFAULT_ROM_BAUD;
+  const flashBaud = Number.isFinite(activeBaudRaw) ? activeBaudRaw : DEFAULT_ROM_BAUD;
+  const flashBaudLabel = flashBaud.toLocaleString() + ' bps';
+  const confirmFlash = await showConfirmation({
+    title: 'Confirm Flash',
+    message:
+      `Flash ${firmwareLabel} at 0x${offsetNumber.toString(16).toUpperCase()}?\n` +
+      'This will overwrite the target region and may erase existing data.',
+    confirmText: 'Flash',
+    cancelText: 'Cancel',
+    destructive: true,
+  });
+  if (!confirmFlash) {
+    appendLog('Firmware flash cancelled by user.', '[warn]');
+    return;
+  }
+
   flashInProgress.value = true;
   busy.value = true;
   flashProgress.value = 0;
+  flashCancelRequested.value = false;
+  flashProgressDialog.visible = true;
+  flashProgressDialog.value = 0;
+  flashProgressDialog.label = `Preparing ${firmwareLabel} @ ${flashBaudLabel}...`;
 
-  appendLog(`Flashing ${firmwareName.value} at 0x${offsetNumber.toString(16)}...`);
+  appendLog(`Flashing ${firmwareLabel} at 0x${offsetNumber.toString(16)}...`);
 
   try {
     const bytes = new Uint8Array(firmwareBuffer.value);
@@ -1857,20 +2390,633 @@ async function flashFirmware() {
       eraseAll: eraseFlash.value,
       compress: true,
       reportProgress: (_fileIndex, written, total) => {
+        if (flashCancelRequested.value) {
+          throw new Error('Flash cancelled by user');
+        }
         const pct = total ? Math.floor((written / total) * 100) : 0;
-        flashProgress.value = Math.min(100, Math.max(0, pct));
+        const clamped = Math.min(100, Math.max(0, pct));
+        flashProgress.value = clamped;
+        flashProgressDialog.visible = true;
+        flashProgressDialog.value = clamped;
+        const writtenLabel = written.toLocaleString();
+        const totalLabel = total ? total.toLocaleString() : '';
+        flashProgressDialog.label = total
+          ? `Flashing ${firmwareLabel} — ${writtenLabel} of ${totalLabel} bytes @ ${flashBaudLabel}`
+          : `Flashing ${firmwareLabel} — ${writtenLabel} bytes @ ${flashBaudLabel}`;
       },
     });
 
     await loader.value.after('hard_reset');
     const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
-  appendLog(`Flashing complete in ${elapsed}s. Device rebooted.`);
+    flashProgressDialog.value = 100;
+    flashProgressDialog.label = `Flash complete in ${elapsed}s @ ${flashBaudLabel}. Finalizing...`;
+    appendLog(`Flashing complete in ${elapsed}s. Device rebooted.`);
   } catch (error) {
-    appendLog(`Flashing failed: ${error?.message || error}`, '[error]');
+    if (error?.message === 'Flash cancelled by user') {
+      appendLog('Flash cancelled by user.', '[warn]');
+    } else {
+      appendLog(`Flashing failed: ${error?.message || error}`, '[error]');
+    }
   } finally {
     flashProgress.value = 0;
     flashInProgress.value = false;
     busy.value = false;
+    flashCancelRequested.value = false;
+    flashProgressDialog.visible = false;
+    flashProgressDialog.value = 0;
+    flashProgressDialog.label = '';
+  }
+}
+
+function resetMaintenanceState() {
+  maintenanceBusy.value = false;
+  registerStatus.value = null;
+  registerStatusType.value = 'info';
+  registerReadResult.value = null;
+  registerValue.value = '';
+  registerAddress.value = '0x0';
+  registerOptions.value = [];
+  registerReference.value = null;
+  md5Result.value = null;
+  md5Status.value = null;
+  md5StatusType.value = 'info';
+  md5Offset.value = '0x0';
+  md5Length.value = '';
+  integrityPartition.value = null;
+  flashReadStatus.value = null;
+  flashReadStatusType.value = 'info';
+  flashReadOffset.value = '0x0';
+  flashReadLength.value = '';
+  selectedPartitionDownload.value = null;
+  flashProgressDialog.visible = false;
+  flashProgressDialog.value = 0;
+  flashProgressDialog.label = '';
+  flashCancelRequested.value = false;
+  downloadProgress.visible = false;
+  downloadProgress.value = 0;
+  downloadProgress.label = '';
+}
+
+function handleSelectRegister(address) {
+  if (!address) {
+    return;
+  }
+  const normalized = normalizeRegisterAddressValue(address);
+  if (!normalized) {
+    return;
+  }
+  const guide = registerOptionLookup.value.get(normalized);
+  registerAddress.value = guide?.address ?? normalized;
+  if (guide) {
+    registerReadResult.value = null;
+    registerStatusType.value = 'info';
+    registerStatus.value = guide.description
+      ? `${guide.label}: ${guide.description}`
+      : `${guide.label} selected.`;
+    appendLog(`Quick-selected register ${guide.label} (${guide.address}).`, '[debug]');
+  }
+}
+
+async function handleReadRegister() {
+  if (!loader.value) {
+    registerStatus.value = 'Connect to a device first.';
+    registerStatusType.value = 'warning';
+    return;
+  }
+  try {
+    maintenanceBusy.value = true;
+    registerStatus.value = null;
+    const address = parseNumericInput(registerAddress.value, 'Register address');
+    const value = await loader.value.readReg(address);
+    registerReadResult.value = `0x${value.toString(16).toUpperCase().padStart(8, '0')}`;
+    registerStatusType.value = 'success';
+    registerStatus.value = `Read 0x${address.toString(16).toUpperCase()} = ${registerReadResult.value}`;
+  } catch (error) {
+    registerStatusType.value = 'error';
+    registerStatus.value = `Read failed: ${error?.message || error}`;
+  } finally {
+    maintenanceBusy.value = false;
+    downloadProgress.visible = false;
+  }
+}
+
+async function handleWriteRegister() {
+  if (!loader.value) {
+    registerStatus.value = 'Connect to a device first.';
+    registerStatusType.value = 'warning';
+    return;
+  }
+  try {
+    maintenanceBusy.value = true;
+    registerStatus.value = null;
+    const address = parseNumericInput(registerAddress.value, 'Register address');
+    const value = parseNumericInput(registerValue.value, 'Register value');
+    await loader.value.writeReg(address, value);
+    registerReadResult.value = `0x${value.toString(16).toUpperCase().padStart(8, '0')}`;
+    registerStatusType.value = 'success';
+    registerStatus.value = `Wrote ${registerReadResult.value} to 0x${address
+      .toString(16)
+      .toUpperCase()}.`;
+    appendLog(
+      `Register write completed at 0x${address.toString(16).toUpperCase()} = ${registerReadResult.value}.`,
+      '[debug]'
+    );
+  } catch (error) {
+    registerStatusType.value = 'error';
+    registerStatus.value = `Write failed: ${error?.message || error}`;
+  } finally {
+    maintenanceBusy.value = false;
+  }
+}
+
+async function handleComputeMd5() {
+  if (!loader.value) {
+    md5Status.value = 'Connect to a device first.';
+    md5StatusType.value = 'warning';
+    md5Result.value = null;
+    return;
+  }
+  try {
+    maintenanceBusy.value = true;
+    md5Status.value = null;
+    md5Result.value = null;
+    const offset = parseNumericInput(md5Offset.value, 'MD5 offset');
+    const length = parseNumericInput(md5Length.value, 'MD5 length');
+    if (length <= 0) {
+      throw new Error('MD5 length must be greater than zero.');
+    }
+    md5StatusType.value = 'info';
+    md5Status.value = 'Calculating MD5 checksum...';
+    const result = await loader.value.flashMd5sum(offset, length);
+    md5Status.value = null;
+    md5Result.value = result;
+    appendLog(
+      `Computed MD5 for 0x${offset.toString(16).toUpperCase()} (${length} bytes): ${result}`,
+      '[debug]'
+    );
+  } catch (error) {
+    md5StatusType.value = 'error';
+    md5Status.value = `MD5 calculation failed: ${error?.message || error}`;
+    md5Result.value = null;
+  } finally {
+    maintenanceBusy.value = false;
+  }
+}
+
+function sanitizeFileName(name, fallback) {
+  const base = name && name.trim() ? name.trim() : fallback;
+  return base
+    .replace(/[\/:*?"<>|]+/g, '_')
+    .replace(/\s+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 120);
+}
+
+async function downloadFlashRegion(offset, length, options = {}) {
+  if (!loader.value) {
+    throw new Error('Device not connected.');
+  }
+  if (!Number.isSafeInteger(offset) || offset < 0) {
+    throw new Error('Invalid flash offset.');
+  }
+  if (!Number.isSafeInteger(length) || length <= 0) {
+    throw new Error('Invalid flash length.');
+  }
+  if (flashSizeBytes.value && offset + length > flashSizeBytes.value) {
+    throw new Error('Requested region exceeds detected flash size.');
+  }
+
+  const { label, fileName, suppressStatus = false } = options;
+  const offsetHex = '0x' + offset.toString(16).toUpperCase();
+  const lengthHex = '0x' + length.toString(16).toUpperCase();
+  const displayLabel = label || 'flash region (' + offsetHex + ' / ' + lengthHex + ')';
+  const activeBaudRaw =
+    transport.value?.baudrate ||
+    currentBaud.value ||
+    Number.parseInt(selectedBaud.value, 10) ||
+    DEFAULT_ROM_BAUD;
+  const baudNumber = Number.isFinite(activeBaudRaw) ? activeBaudRaw : DEFAULT_ROM_BAUD;
+  const baudLabel = baudNumber.toLocaleString() + ' bps';
+  appendLog('Downloading ' + displayLabel + ' at ' + baudLabel + '.', '[debug]');
+
+  const CANCEL_ERROR_MESSAGE = 'Download cancelled by user';
+  const MAX_CHUNK_SIZE = 0x10000;
+  if (!suppressStatus) {
+    flashReadStatusType.value = 'info';
+    flashReadStatus.value = 'Downloading ' + displayLabel + ' @ ' + baudLabel + '...';
+    downloadProgress.visible = true;
+    downloadProgress.value = 0;
+    downloadProgress.label = 'Preparing download @ ' + baudLabel + '...';
+  }
+
+  downloadCancelRequested.value = false;
+
+  const chunkBuffers = [];
+  const chunkSize = Math.max(0x1000, Math.min(MAX_CHUNK_SIZE, length));
+  let totalReceived = 0;
+  let buffer = null;
+  let cancelled = false;
+  try {
+    while (totalReceived < length) {
+      if (downloadCancelRequested.value) {
+        cancelled = true;
+        break;
+      }
+      const remaining = length - totalReceived;
+      const currentChunkSize = Math.min(chunkSize, remaining);
+      const chunkOffset = offset + totalReceived;
+      const chunkBase = totalReceived;
+      const chunkBuffer = await loader.value.readFlash(
+        chunkOffset,
+        currentChunkSize,
+        (_packet, received) => {
+          const chunkReceived = Math.min(received, currentChunkSize);
+          const overallReceived = chunkBase + chunkReceived;
+          const progressValue = length
+            ? Math.min(100, Math.floor((overallReceived / length) * 100))
+            : 0;
+          let progressLabel =
+            'Downloading ' +
+            displayLabel +
+            ' @ ' +
+            baudLabel +
+            ' — ' +
+            overallReceived.toLocaleString() +
+            ' of ' +
+            length.toLocaleString() +
+            ' bytes';
+          if (downloadCancelRequested.value) {
+            progressLabel =
+              'Stopping download of ' +
+              displayLabel +
+              ' after current chunk... (' +
+              overallReceived.toLocaleString() +
+              ' of ' +
+              length.toLocaleString() +
+              ' bytes)';
+          }
+          if (!suppressStatus) {
+            downloadProgress.visible = true;
+            downloadProgress.value = progressValue;
+            downloadProgress.label = progressLabel;
+            flashReadStatusType.value = 'info';
+            flashReadStatus.value = progressLabel;
+          }
+        }
+      );
+      if (chunkBuffer.length !== currentChunkSize) {
+        throw new Error(
+          'Incomplete flash chunk (expected ' +
+            currentChunkSize +
+            ' bytes, received ' +
+            chunkBuffer.length +
+            ').'
+        );
+      }
+      chunkBuffers.push(chunkBuffer);
+      totalReceived += chunkBuffer.length;
+      if (downloadCancelRequested.value) {
+        cancelled = true;
+        break;
+      }
+    }
+
+    if (cancelled) {
+      throw new Error(CANCEL_ERROR_MESSAGE);
+    }
+
+    if (totalReceived !== length) {
+      throw new Error(
+        'Incomplete flash read (expected ' +
+          length +
+          ' bytes, received ' +
+          totalReceived +
+          ').'
+      );
+    }
+
+    if (chunkBuffers.length === 1) {
+      buffer = chunkBuffers[0];
+    } else {
+      buffer = new Uint8Array(totalReceived);
+      let writeOffset = 0;
+      for (const chunk of chunkBuffers) {
+        buffer.set(chunk, writeOffset);
+        writeOffset += chunk.length;
+      }
+    }
+  } finally {
+    if (cancelled && !suppressStatus) {
+      downloadProgress.visible = false;
+    }
+    downloadCancelRequested.value = false;
+  }
+
+  const blob = new Blob([buffer], { type: 'application/octet-stream' });
+  const baseName =
+    fileName ||
+    sanitizeFileName((label || 'flash') + '_' + offsetHex + '_' + lengthHex, 'flash_' + offsetHex + '_' + lengthHex);
+  const finalName = baseName.endsWith('.bin') ? baseName : baseName + '.bin';
+
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = finalName;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+  if (!suppressStatus) {
+    downloadProgress.visible = false;
+    downloadProgress.value = 100;
+    downloadProgress.label = 'Download complete @ ' + baudLabel;
+    flashReadStatusType.value = 'success';
+    flashReadStatus.value =
+      'Downloaded ' +
+      finalName +
+      ' (' +
+      length.toLocaleString() +
+      ' bytes) @ ' +
+      baudLabel +
+      '.';
+  }
+  appendLog(
+    'Downloaded ' + displayLabel + ' to ' + finalName + ' @ ' + baudLabel + '.',
+    '[debug]'
+  );
+  return finalName;
+}
+
+async function handleDownloadFlash(payload = { mode: 'manual' }) {
+  if (!loader.value) {
+    flashReadStatus.value = 'Connect to a device first.';
+    flashReadStatusType.value = 'warning';
+    return;
+  }
+  if (maintenanceBusy.value) {
+    return;
+  }
+  const mode = (payload && payload.mode) || 'manual';
+  try {
+    maintenanceBusy.value = true;
+
+    if (mode === 'manual') {
+      const offset = parseNumericInput(flashReadOffset.value, 'Flash offset');
+      const length = parseNumericInput(flashReadLength.value, 'Flash length');
+      await downloadFlashRegion(offset, length, { label: 'manual flash region' });
+      return;
+    }
+
+    if (mode === 'partition') {
+      const option =
+        (payload && payload.partition) ||
+        partitionOptionLookup.value.get(selectedPartitionDownload.value);
+      if (!option) {
+        flashReadStatusType.value = 'warning';
+        flashReadStatus.value = 'Select a partition to download.';
+        return;
+      }
+      await downloadFlashRegion(option.offset, option.size, {
+        label: option.baseLabel,
+        fileName: sanitizeFileName(option.baseLabel + '_' + option.offsetHex, 'partition'),
+      });
+      return;
+    }
+
+    if (mode === 'all-partitions') {
+      const partitions = ((payload && payload.partitions) || partitionDownloadOptions.value).filter(
+        option => option.size > 0
+      );
+      if (!partitions.length) {
+        flashReadStatusType.value = 'warning';
+        flashReadStatus.value = 'No partitions available to download.';
+        return;
+      }
+      let completed = 0;
+      for (const option of partitions) {
+        completed += 1;
+        flashReadStatusType.value = 'info';
+        flashReadStatus.value =
+          'Downloading partition ' + completed + ' of ' + partitions.length + ': ' + option.baseLabel + '...';
+        await downloadFlashRegion(option.offset, option.size, {
+          label: option.baseLabel,
+          fileName: sanitizeFileName(option.baseLabel + '_' + option.offsetHex, 'partition'),
+          suppressStatus: true,
+        });
+      }
+      flashReadStatusType.value = 'success';
+      flashReadStatus.value =
+        'Downloaded ' + partitions.length + ' partition' + (partitions.length === 1 ? '' : 's') + '.';
+      return;
+    }
+
+    if (mode === 'used-flash') {
+      const usedSegments = partitionSegments.value.filter(segment => !segment.isUnused);
+      if (!usedSegments.length) {
+        flashReadStatusType.value = 'warning';
+        flashReadStatus.value = 'No flash usage detected.';
+        return;
+      }
+      const minOffset = usedSegments.reduce(
+        (min, segment) => Math.min(min, segment.offset),
+        usedSegments[0].offset
+      );
+      const maxEnd = usedSegments.reduce(
+        (max, segment) => Math.max(max, segment.offset + segment.size),
+        usedSegments[0].offset + usedSegments[0].size
+      );
+      const length = maxEnd - minOffset;
+      await downloadFlashRegion(minOffset, length, {
+        label: 'used flash',
+        fileName: sanitizeFileName('used_flash_' + ('0x' + minOffset.toString(16).toUpperCase()), 'used_flash'),
+      });
+      return;
+    }
+
+    if (mode === 'custom') {
+      const offset = payload && payload.offset;
+      const length = payload && payload.length;
+      if (!Number.isInteger(offset) || !Number.isInteger(length)) {
+        throw new Error('Custom download requires numeric offset and length.');
+      }
+      await downloadFlashRegion(offset, length, {
+        label: payload && payload.label,
+        fileName: payload && payload.fileName,
+      });
+      return;
+    }
+
+    flashReadStatusType.value = 'warning';
+    flashReadStatus.value = 'Unsupported download mode.';
+  } catch (error) {
+    downloadProgress.visible = false;
+    if (error && error.message === 'Download cancelled by user') {
+      flashReadStatusType.value = 'warning';
+      flashReadStatus.value = 'Download cancelled.';
+    } else {
+      flashReadStatusType.value = 'error';
+      flashReadStatus.value = 'Download failed: ' + (error && error.message ? error.message : error);
+    }
+  } finally {
+    maintenanceBusy.value = false;
+  }
+}
+
+async function handleDownloadPartition() {
+  const option = partitionOptionLookup.value.get(selectedPartitionDownload.value);
+  if (!option) {
+    flashReadStatusType.value = 'warning';
+    flashReadStatus.value = 'Select a partition to download.';
+    return;
+  }
+  await handleDownloadFlash({ mode: 'partition', partition: option });
+}
+
+async function handleDownloadAllPartitions() {
+  const partitions = partitionDownloadOptions.value.filter(option => option.size > 0);
+  if (!partitions.length) {
+    flashReadStatusType.value = 'warning';
+    flashReadStatus.value = 'No partitions available to download.';
+    return;
+  }
+  await handleDownloadFlash({ mode: 'all-partitions', partitions });
+}
+
+async function handleDownloadUsedFlash() {
+  await handleDownloadFlash({ mode: 'used-flash' });
+}
+
+function handleCancelFlash() {
+  if (!flashInProgress.value) {
+    return;
+  }
+  if (!flashCancelRequested.value) {
+    flashCancelRequested.value = true;
+    flashProgressDialog.label = 'Stopping flash...';
+    appendLog('Flash cancellation requested by user.', '[warn]');
+  }
+}
+
+function handleCancelDownload() {
+  if (!downloadProgress.visible) {
+    return;
+  }
+  if (!downloadCancelRequested.value) {
+    downloadCancelRequested.value = true;
+    downloadProgress.label = 'Stopping download...';
+    flashReadStatusType.value = 'info';
+    flashReadStatus.value = 'Stopping download...';
+  }
+}
+
+function handleSelectPartition(value) {
+  selectedPartitionDownload.value = value;
+  const option = partitionOptionLookup.value.get(value);
+  if (option) {
+    flashReadOffset.value = option.offsetHex;
+    flashReadLength.value = '0x' + option.size.toString(16).toUpperCase();
+  } else {
+    flashReadOffset.value = '0x0';
+    flashReadLength.value = '';
+  }
+}
+
+function handleSelectIntegrityPartition(value) {
+  integrityPartition.value = value;
+  const option = partitionOptionLookup.value.get(value);
+  if (option) {
+    md5Offset.value = option.offsetHex;
+    md5Length.value = '0x' + option.size.toString(16).toUpperCase();
+    md5Status.value = null;
+    md5Result.value = null;
+    md5StatusType.value = 'info';
+    appendLog(
+      `Flash integrity region set to ${option.baseLabel} (${option.offsetHex}, ${md5Length.value}).`,
+      '[debug]'
+    );
+  } else if (value == null) {
+    appendLog('Flash integrity partition selection cleared.', '[debug]');
+  } else {
+    md5StatusType.value = 'warning';
+    md5Status.value = 'Selected partition is unavailable.';
+    md5Result.value = null;
+  }
+}
+
+async function handleLoadSpiffsAgent() {
+  if (spiffsAgent.loading) {
+    return;
+  }
+  spiffsAgent.loading = true;
+  spiffsAgent.error = null;
+  try {
+    if (spiffsAgent.loaded && spiffsAgent.binary) {
+      appendLog(`SPIFFS agent stub already loaded (${spiffsAgent.size.toLocaleString()} bytes).`, '[debug]');
+      return;
+    }
+    const response = await fetch('/stubs/spiffs_agent_esp32s3.bin', { cache: 'no-cache' });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const buffer = await response.arrayBuffer();
+    const binary = new Uint8Array(buffer);
+    if (!binary.length) {
+      throw new Error('Stub file is empty.');
+    }
+    spiffsAgent.binary = binary;
+    spiffsAgent.size = binary.length;
+    spiffsAgent.loaded = true;
+    appendLog(`SPIFFS agent stub loaded (${spiffsAgent.size.toLocaleString()} bytes).`, '[debug]');
+  } catch (error) {
+    spiffsAgent.error = error?.message || String(error);
+    appendLog(`SPIFFS agent load failed: ${spiffsAgent.error}`, '[warn]');
+  } finally {
+    spiffsAgent.loading = false;
+  }
+}
+
+
+async function handleEraseFlash(payload = { mode: 'full' }) {
+  if (!loader.value) {
+    flashReadStatus.value = 'Connect to a device first.';
+    flashReadStatusType.value = 'warning';
+    return;
+  }
+  if (payload?.mode !== 'full') {
+    flashReadStatusType.value = 'warning';
+    flashReadStatus.value = 'Selective erase is not yet supported in this interface.';
+    return;
+  }
+
+  const confirmErase = await showConfirmation({
+    title: 'Erase Entire Flash',
+    message: 'Erase the entire flash? This removes all data and cannot be undone.',
+    confirmText: 'Erase Flash',
+    cancelText: 'Cancel',
+    destructive: true,
+  });
+  if (!confirmErase) {
+    flashReadStatusType.value = 'info';
+    flashReadStatus.value = 'Flash erase cancelled.';
+    appendLog('Flash erase cancelled by user.', '[warn]');
+    return;
+  }
+
+  try {
+    maintenanceBusy.value = true;
+    flashReadStatusType.value = 'info';
+    flashReadStatus.value = 'Erasing entire flash...';
+    await loader.value.eraseFlash();
+    flashReadStatusType.value = 'success';
+    flashReadStatus.value = 'Flash erase complete.';
+    appendLog('Entire flash erased.', '[debug]');
+  } catch (error) {
+    flashReadStatusType.value = 'error';
+    flashReadStatus.value = `Erase failed: ${error?.message || error}`;
+  } finally {
+    maintenanceBusy.value = false;
   }
 }
 
@@ -1911,6 +3057,12 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.app-title {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
 .status-bar {
   border-radius: 12px;
   padding-inline: 12px;
@@ -1922,6 +3074,17 @@ onBeforeUnmount(() => {
   align-items: center;
   flex-wrap: wrap;
   gap: 16px;
+}
+
+.status-links {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.status-link {
+  text-transform: none;
 }
 
 .status-button {
@@ -1942,13 +3105,17 @@ onBeforeUnmount(() => {
   background-color: rgba(255, 255, 255, 0.08) !important;
 }
 
-.status-logo-avatar {
-  background: transparent;
-  padding: 2px;
+.status-chip-icon {
+  color: currentColor !important;
+  opacity: 0.92;
 }
 
-.status-logo-avatar :deep(.v-img__img) {
-  object-fit: contain;
+.status-chip-icon--connected {
+  color: color-mix(in srgb, var(--v-theme-on-success) 94%, transparent) !important;
+}
+
+.status-chip-icon--disconnected {
+  color: color-mix(in srgb, var(--v-theme-error) 65%, #ffffff 35%) !important;
 }
 
 .status-select {
@@ -1960,6 +3127,8 @@ onBeforeUnmount(() => {
   height: 36px;
 }
 
+.confirmation-message {
+  white-space: pre-line;
+}
+
 </style>
-
-

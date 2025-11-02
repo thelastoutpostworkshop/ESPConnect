@@ -1,0 +1,80 @@
+{
+  "ESP32": {
+    "reference": {
+      "title": "ESP32 Technical Reference Manual",
+      "url": "https://www.espressif.com/sites/default/files/documentation/esp32_technical_reference_manual_en.pdf"
+    },
+    "registers": [
+      {
+        "name": "GPIO_OUT_REG",
+        "address": "0x3FF44004",
+        "description": "Sets the output level for each GPIO configured as an output.",
+        "url": "https://www.espressif.com/sites/default/files/documentation/esp32_technical_reference_manual_en.pdf#page=132"
+      },
+      {
+        "name": "GPIO_ENABLE_REG",
+        "address": "0x3FF44020",
+        "description": "Enables or disables output mode on individual GPIO pins.",
+        "url": "https://www.espressif.com/sites/default/files/documentation/esp32_technical_reference_manual_en.pdf#page=133"
+      },
+      {
+        "name": "UART0_STATUS_REG",
+        "address": "0x3FF4001C",
+        "description": "Provides FIFO status flags and interrupt state for UART0.",
+        "url": "https://www.espressif.com/sites/default/files/documentation/esp32_technical_reference_manual_en.pdf#page=497"
+      }
+    ]
+  },
+  "ESP32-S3": {
+    "reference": {
+      "title": "ESP32-S3 Technical Reference Manual",
+      "url": "https://www.espressif.com/sites/default/files/documentation/esp32-s3_technical_reference_manual_en.pdf"
+    },
+    "registers": [
+      {
+        "name": "GPIO_OUT_REG",
+        "address": "0x60004004",
+        "description": "Controls the output values for GPIO pins set to output mode.",
+        "url": "https://www.espressif.com/sites/default/files/documentation/esp32-s3_technical_reference_manual_en.pdf#page=154"
+      },
+      {
+        "name": "GPIO_FUNC_OUT_SEL_CFG0_REG",
+        "address": "0x60004130",
+        "description": "Configures the signal routing for GPIO0 output functions.",
+        "url": "https://www.espressif.com/sites/default/files/documentation/esp32-s3_technical_reference_manual_en.pdf#page=166"
+      },
+      {
+        "name": "UART0_INT_RAW_REG",
+        "address": "0x60000034",
+        "description": "Raw interrupt status bits for UART0, prior to masking.",
+        "url": "https://www.espressif.com/sites/default/files/documentation/esp32-s3_technical_reference_manual_en.pdf#page=525"
+      }
+    ]
+  },
+  "ESP32-C3": {
+    "reference": {
+      "title": "ESP32-C3 Technical Reference Manual",
+      "url": "https://www.espressif.com/sites/default/files/documentation/esp32-c3_technical_reference_manual_en.pdf"
+    },
+    "registers": [
+      {
+        "name": "GPIO_OUT_REG",
+        "address": "0x60004004",
+        "description": "Sets output logic levels for GPIO pins in output mode.",
+        "url": "https://www.espressif.com/sites/default/files/documentation/esp32-c3_technical_reference_manual_en.pdf#page=155"
+      },
+      {
+        "name": "GPIO_ENABLE_REG",
+        "address": "0x60004020",
+        "description": "Controls the output enable state for each GPIO pin.",
+        "url": "https://www.espressif.com/sites/default/files/documentation/esp32-c3_technical_reference_manual_en.pdf#page=157"
+      },
+      {
+        "name": "UART0_CLKDIV_REG",
+        "address": "0x60000014",
+        "description": "Sets the clock divider that defines the UART0 baud rate.",
+        "url": "https://www.espressif.com/sites/default/files/documentation/esp32-c3_technical_reference_manual_en.pdf#page=497"
+      }
+    ]
+  }
+}
