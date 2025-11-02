@@ -90,14 +90,13 @@
             <v-tab value="info">Device Info</v-tab>
             <v-tab value="partitions">Partitions</v-tab>
             <v-tab value="flash">Flash Firmware</v-tab>
+            <v-tab value="log">Session Log</v-tab>
           </v-tabs>
 
           <v-window v-model="activeTab">
             <v-window-item value="info">
               <DeviceInfoTab
                 :chip-details="chipDetails"
-                :log-text="logText"
-                @clear-log="clearLog"
               />
             </v-window-item>
 
@@ -122,6 +121,33 @@
                 @firmware-input="handleFirmwareInput"
                 @flash="flashFirmware"
                 @apply-preset="applyOffsetPreset"
+              />
+              <SpiffsAgentCard
+                class="mt-6"
+                :connected="connected"
+                :stub-available="spiffsAgent.available"
+                :running="spiffsAgent.running"
+                :busy="spiffsAgent.busy || busy"
+                :uploading="spiffsAgent.uploading"
+                :status="spiffsAgent.status"
+                :error="spiffsAgent.error"
+                :files="spiffsAgent.files"
+                :preview="spiffsAgent.preview"
+                @upload-agent="uploadSpiffsAgent"
+                @list-files="listSpiffsFiles"
+                @read-file="handleSpiffsRead"
+                @delete-file="handleSpiffsDelete"
+                @upload-file="handleSpiffsUpload"
+                @format="formatSpiffs"
+                @reset-agent="resetSpiffsDevice"
+                @close-preview="closeSpiffsPreview"
+              />
+            </v-window-item>
+
+            <v-window-item value="log">
+              <SessionLogTab
+                :log-text="logText"
+                @clear-log="clearLog"
               />
             </v-window-item>
           </v-window>
@@ -161,13 +187,16 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { ESPLoader, Transport } from 'esptool-js';
 import { useTheme } from 'vuetify';
 import disconnectedLogo from './assets/disconnected-logo.svg';
 import DeviceInfoTab from './components/DeviceInfoTab.vue';
 import FlashFirmwareTab from './components/FlashFirmwareTab.vue';
 import PartitionsTab from './components/PartitionsTab.vue';
+import SessionLogTab from './components/SessionLogTab.vue';
+import SpiffsAgentCard from './components/SpiffsAgentCard.vue';
+import { getDecodedSpiffsStub } from './spiffs-agent';
 
 const SUPPORTED_VENDORS = [
   { usbVendorId: 0x303a },
@@ -508,6 +537,54 @@ const partitionTable = ref([]);
 const activeTab = ref('info');
 const flashSizeBytes = ref(null);
 
+const spiffsAgent = reactive({
+  available: false,
+  running: false,
+  uploading: false,
+  busy: false,
+  files: [],
+  status: '',
+  error: '',
+  buffer: '',
+  preview: null,
+  reader: null,
+});
+
+const spiffsTextEncoder = new TextEncoder();
+const spiffsLineDecoder = new TextDecoder();
+const spiffsPreviewDecoder = new TextDecoder('utf-8', { fatal: false });
+
+function resetSpiffsAgentState() {
+  if (spiffsAgent.preview?.downloadUrl && typeof URL !== 'undefined' && URL.revokeObjectURL) {
+    URL.revokeObjectURL(spiffsAgent.preview.downloadUrl);
+  }
+  if (spiffsAgent.reader) {
+    try {
+      spiffsAgent.reader.cancel?.();
+    } catch (error) {
+      /* ignore */
+    }
+    try {
+      spiffsAgent.reader.releaseLock?.();
+    } catch (error) {
+      /* ignore */
+    }
+  }
+  if (transport.value) {
+    transport.value.reader = undefined;
+  }
+  spiffsAgent.available = false;
+  spiffsAgent.running = false;
+  spiffsAgent.uploading = false;
+  spiffsAgent.busy = false;
+  spiffsAgent.files = [];
+  spiffsAgent.status = '';
+  spiffsAgent.error = '';
+  spiffsAgent.buffer = '';
+  spiffsAgent.preview = null;
+  spiffsAgent.reader = null;
+}
+
 const showBootDialog = ref(false);
 const lastErrorMessage = ref('');
 
@@ -547,6 +624,151 @@ watch(
 
 function toggleTheme() {
   currentTheme.value = isDarkTheme.value ? 'light' : 'dark';
+}
+
+watch(
+  () => loader.value?.chip?.CHIP_NAME,
+  chipName => {
+    const stub = chipName ? getDecodedSpiffsStub(chipName) : null;
+    spiffsAgent.available = Boolean(stub);
+    if (!spiffsAgent.available) {
+      spiffsAgent.running = false;
+    }
+  },
+  { immediate: true }
+);
+
+watch(
+  connected,
+  value => {
+    if (!value) {
+      resetSpiffsAgentState();
+    }
+  }
+);
+
+function encodeBytesToBase64(bytes) {
+  if (!bytes?.length) {
+    return '';
+  }
+  if (typeof btoa === 'function') {
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 1) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  }
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(bytes).toString('base64');
+  }
+  throw new Error('Base64 encoding is not supported in this environment.');
+}
+
+function decodeBase64ToBytes(data) {
+  if (!data) {
+    return new Uint8Array(0);
+  }
+  if (typeof atob === 'function') {
+    const binary = atob(data);
+    const result = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) {
+      result[i] = binary.charCodeAt(i);
+    }
+    return result;
+  }
+  if (typeof Buffer !== 'undefined') {
+    const buffer = Buffer.from(data, 'base64');
+    return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+  }
+  throw new Error('Base64 decoding is not supported in this environment.');
+}
+
+function chunkString(value, size = 76) {
+  const chunks = [];
+  for (let i = 0; i < value.length; i += size) {
+    chunks.push(value.slice(i, i + size));
+  }
+  return chunks;
+}
+
+function createSpiffsPreview(name, bytes) {
+  if (spiffsAgent.preview?.downloadUrl && typeof URL !== 'undefined' && URL.revokeObjectURL) {
+    URL.revokeObjectURL(spiffsAgent.preview.downloadUrl);
+  }
+  const MAX_TEXT_PREVIEW = 4096;
+  let text = '';
+  let isBinary = false;
+  if (!bytes.length) {
+    text = '(Empty file)';
+  } else {
+    let printable = 0;
+    for (let i = 0; i < bytes.length; i += 1) {
+      const value = bytes[i];
+      if ((value >= 32 && value <= 126) || value === 9 || value === 10 || value === 13) {
+        printable += 1;
+      }
+    }
+    if (printable / bytes.length < 0.85 || bytes.includes(0)) {
+      isBinary = true;
+    }
+    try {
+      text = spiffsPreviewDecoder.decode(bytes.subarray(0, MAX_TEXT_PREVIEW));
+    } catch (error) {
+      text = Array.from(bytes.slice(0, 256))
+        .map(value => value.toString(16).padStart(2, '0'))
+        .join(' ');
+      isBinary = true;
+    }
+    if (!text) {
+      text = '(Binary file preview not available)';
+      isBinary = true;
+    } else if (text.length > MAX_TEXT_PREVIEW) {
+      text = `${text.slice(0, MAX_TEXT_PREVIEW)}…`;
+    }
+  }
+  const downloadUrl =
+    typeof URL !== 'undefined' && URL.createObjectURL
+      ? URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' }))
+      : null;
+  return {
+    name,
+    size: bytes.length,
+    text,
+    isBinary,
+    downloadUrl,
+  };
+}
+
+const SPIFFS_ERROR_MESSAGES = {
+  NOFILE: 'File not found on SPIFFS.',
+  WRITE: 'Failed to write file to SPIFFS.',
+  FORMAT: 'SPIFFS format failed.',
+  CMD: 'SPIFFS agent did not recognize that command.',
+  RESET: 'Device reset request was rejected by SPIFFS agent.',
+};
+
+function createSpiffsAgentError(raw, fallback = 'SPIFFS agent reported an error.') {
+  if (!raw) {
+    return new Error(fallback);
+  }
+  if (raw instanceof Error) {
+    return raw;
+  }
+  const text = typeof raw === 'string' ? raw : String(raw);
+  if (!/^ERR\b/i.test(text)) {
+    return Object.assign(new Error(text), { raw: text });
+  }
+  const trimmed = text.replace(/^ERR\s*/i, '');
+  const [codeRaw, ...rest] = trimmed.split(/\s+/);
+  const code = (codeRaw ?? '').toUpperCase();
+  const friendly = SPIFFS_ERROR_MESSAGES[code] ?? fallback;
+  const extra = rest.length ? ` (${rest.join(' ')})` : '';
+  return Object.assign(new Error(`${friendly}${extra}`), { raw: text, code });
+}
+
+function formatBytesShort(bytes) {
+  const formatted = formatBytes(bytes);
+  return formatted ?? `${bytes} bytes`;
 }
 
 const partitionColorOverrides = {
@@ -944,6 +1166,11 @@ function appendLog(message, prefix = '[ui]') {
   logBuffer.value += `${line}\n`;
 }
 
+function logSpiffsError(action, error) {
+  const detail = error?.raw ?? error?.message ?? String(error);
+  appendLog(`SPIFFS ${action} failed: ${detail}`, '[error]');
+}
+
 const logText = computed(() => logBuffer.value);
 
 const terminal = {
@@ -962,6 +1189,411 @@ function clearLog() {
   terminal.clean();
 }
 
+function ensureSpiffsReady({ requireRunning = false } = {}) {
+  spiffsAgent.error = '';
+  if (!connected.value || !transport.value || !loader.value) {
+    spiffsAgent.error = 'Connect to a device first.';
+    return false;
+  }
+  if (!spiffsAgent.available) {
+    spiffsAgent.error = 'SPIFFS agent is not available for this chip.';
+    return false;
+  }
+  if (requireRunning && !spiffsAgent.running) {
+    spiffsAgent.error = 'Upload the SPIFFS agent before performing this action.';
+    return false;
+  }
+  return true;
+}
+
+async function ensureSpiffsReader() {
+  const device = transport.value?.device;
+  if (!device?.readable) {
+    throw new Error('Serial reader unavailable.');
+  }
+  if (spiffsAgent.reader) {
+    return spiffsAgent.reader;
+  }
+  if (transport.value.reader) {
+    spiffsAgent.reader = transport.value.reader;
+    return spiffsAgent.reader;
+  }
+  const reader = device.readable.getReader();
+  transport.value.reader = reader;
+  spiffsAgent.reader = reader;
+  return reader;
+}
+
+async function writeSpiffsLine(line) {
+  const device = transport.value?.device;
+  if (!device?.writable) {
+    throw new Error('Unable to write to the serial device.');
+  }
+  const writer = device.writable.getWriter();
+  try {
+    await writer.write(spiffsTextEncoder.encode(`${line}\n`));
+  } finally {
+    writer.releaseLock();
+  }
+}
+
+async function readSpiffsLines(terminators, { timeoutMs = 5000, includeTerminator = false } = {}) {
+  if (!Array.isArray(terminators) || !terminators.length) {
+    throw new Error('Terminators are required to read SPIFFS responses.');
+  }
+  const reader = await ensureSpiffsReader();
+  const collected = [];
+  const startTime = timeoutMs
+    ? (typeof performance !== 'undefined' ? performance.now() : Date.now())
+    : null;
+  const deadline = startTime && timeoutMs ? startTime + timeoutMs : null;
+  while (true) {
+    if (deadline) {
+      const current = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      if (current > deadline) {
+        throw new Error('Timeout waiting for SPIFFS agent response.');
+      }
+    }
+    let result;
+    try {
+      result = await reader.read();
+    } catch (error) {
+      spiffsAgent.reader = null;
+      if (transport.value) {
+        transport.value.reader = undefined;
+      }
+      throw error;
+    }
+    const { value, done } = result ?? {};
+    if (done) {
+      spiffsAgent.reader = null;
+      if (transport.value) {
+        transport.value.reader = undefined;
+      }
+      throw new Error('Serial reader closed unexpectedly.');
+    }
+    if (!value || value.length === 0) {
+      continue;
+    }
+    spiffsAgent.buffer += spiffsLineDecoder.decode(value, { stream: true });
+    let newlineIndex;
+    while ((newlineIndex = spiffsAgent.buffer.indexOf('\n')) !== -1) {
+      const rawLine = spiffsAgent.buffer.slice(0, newlineIndex);
+      spiffsAgent.buffer = spiffsAgent.buffer.slice(newlineIndex + 1);
+      const line = rawLine.replace(/\r$/, '');
+      if (!line && !collected.length) {
+        continue;
+      }
+      collected.push(line);
+      const matched = terminators.find(term =>
+        term instanceof RegExp ? term.test(line) : term === line
+      );
+      if (matched) {
+        const payload = includeTerminator ? [...collected] : collected.slice(0, -1);
+        return { lines: payload, terminator: line };
+      }
+    }
+  }
+}
+
+async function sendSpiffsCommand(command, options = {}) {
+  spiffsAgent.buffer = '';
+  await writeSpiffsLine(command);
+  return readSpiffsLines(options.terminators ?? ['DONE'], options);
+}
+
+async function uploadSpiffsAgent() {
+  if (!ensureSpiffsReady()) {
+    return;
+  }
+  if (busy.value || spiffsAgent.uploading) {
+    appendLog('Another operation is already running.', '[warn]');
+    return;
+  }
+  const chipName = loader.value?.chip?.CHIP_NAME;
+  const stub = chipName ? getDecodedSpiffsStub(chipName) : null;
+  if (!stub) {
+    spiffsAgent.error = 'No SPIFFS agent stub is available for this chip.';
+    return;
+  }
+  spiffsAgent.uploading = true;
+  spiffsAgent.status = '';
+  spiffsAgent.error = '';
+  spiffsAgent.files = [];
+  busy.value = true;
+  try {
+    appendLog('Uploading SPIFFS agent stub...', '[spiffs]');
+    await transport.value.flushInput?.();
+    const blockSize = loader.value.ESP_RAM_BLOCK ?? 0x1800;
+    const uploadPart = async (bytes, start) => {
+      if (!bytes || !bytes.length) return;
+      const length = bytes.length;
+      const blocks = Math.floor((length + blockSize - 1) / blockSize);
+      await loader.value.memBegin(length, blocks, blockSize, start);
+      for (let seq = 0; seq < blocks; seq += 1) {
+        const from = seq * blockSize;
+        const to = Math.min(from + blockSize, length);
+        await loader.value.memBlock(bytes.slice(from, to), seq);
+      }
+    };
+    await uploadPart(stub.text, stub.textStart);
+    await uploadPart(stub.data, stub.dataStart);
+    await loader.value.memFinish(stub.entry);
+    spiffsAgent.running = true;
+    spiffsAgent.status = 'SPIFFS agent uploaded successfully.';
+    appendLog('SPIFFS agent stub running.', '[spiffs]');
+    await listSpiffsFiles();
+  } catch (error) {
+    const message = error?.message || String(error);
+    spiffsAgent.error = message;
+    appendLog(`SPIFFS agent upload failed: ${message}`, '[error]');
+    spiffsAgent.running = false;
+  } finally {
+    busy.value = false;
+    spiffsAgent.uploading = false;
+  }
+}
+
+async function listSpiffsFiles() {
+  if (!ensureSpiffsReady({ requireRunning: true }) || spiffsAgent.busy) {
+    return;
+  }
+  spiffsAgent.busy = true;
+  spiffsAgent.error = '';
+  try {
+    appendLog('Requesting SPIFFS file list...', '[spiffs]');
+    const { lines, terminator } = await sendSpiffsCommand('LIST', {
+      terminators: ['DONE', /^ERR /],
+    });
+    if (terminator && /^ERR /i.test(terminator)) {
+      throw createSpiffsAgentError(terminator, 'Failed to list SPIFFS files.');
+    }
+    const files = lines
+      .map(line => {
+        if (!line.startsWith('FILE ')) {
+          return null;
+        }
+        const rest = line.slice(5).trim();
+        const lastSpace = rest.lastIndexOf(' ');
+        if (lastSpace === -1) {
+          return null;
+        }
+        const name = rest.slice(0, lastSpace).trim();
+        const size = Number.parseInt(rest.slice(lastSpace + 1), 10);
+        if (!name || Number.isNaN(size)) {
+          return null;
+        }
+        return { name, size };
+      })
+      .filter(Boolean);
+    spiffsAgent.files = files;
+    spiffsAgent.status = files.length
+      ? `Loaded ${files.length} file${files.length === 1 ? '' : 's'} from SPIFFS.`
+      : 'SPIFFS is empty.';
+    appendLog(
+      `SPIFFS file list loaded (${files.length} entr${files.length === 1 ? 'y' : 'ies'}).`,
+      '[spiffs]'
+    );
+  } catch (error) {
+    const message = error?.message || String(error);
+    spiffsAgent.error = message;
+    logSpiffsError('list', error);
+  } finally {
+    spiffsAgent.busy = false;
+  }
+}
+
+async function readSpiffsFile(name) {
+  if (!name) return;
+  if (!ensureSpiffsReady({ requireRunning: true }) || spiffsAgent.busy) {
+    return;
+  }
+  spiffsAgent.busy = true;
+  spiffsAgent.error = '';
+  try {
+    const { lines, terminator } = await sendSpiffsCommand(`READ ${name}`, {
+      terminators: ['DONE', /^ERR /],
+      timeoutMs: 8000,
+    });
+    if (terminator && /^ERR /i.test(terminator)) {
+      throw createSpiffsAgentError(terminator, `Failed to read ${name} from SPIFFS.`);
+    }
+    if (!lines.length || !lines[0].startsWith('DATA ')) {
+      throw new Error('Unexpected response from SPIFFS agent.');
+    }
+    const sizeLabel = lines[0].slice(5).trim();
+    const expectedSize = Number.parseInt(sizeLabel, 10);
+    const base64Payload = lines.slice(1).join('');
+    const bytes = decodeBase64ToBytes(base64Payload);
+    if (Number.isInteger(expectedSize) && expectedSize !== bytes.length) {
+      appendLog(
+        `SPIFFS agent reported ${expectedSize} bytes but returned ${bytes.length}.`,
+        '[warn]'
+      );
+    }
+    spiffsAgent.preview = createSpiffsPreview(name, bytes);
+    spiffsAgent.status = `Read ${name} (${formatBytesShort(bytes.length)}).`;
+    appendLog(`SPIFFS file read: ${name} (${bytes.length} bytes).`, '[spiffs]');
+  } catch (error) {
+    const message = error?.message || String(error);
+    spiffsAgent.error = message;
+    logSpiffsError('read', error);
+  } finally {
+    spiffsAgent.busy = false;
+  }
+}
+
+async function deleteSpiffsFile(name) {
+  if (!name) return;
+  if (!ensureSpiffsReady({ requireRunning: true }) || spiffsAgent.busy) {
+    return;
+  }
+  spiffsAgent.busy = true;
+  spiffsAgent.error = '';
+  let refresh = false;
+  try {
+    const { terminator } = await sendSpiffsCommand(`DELETE ${name}`, {
+      terminators: ['OK', /^ERR /],
+    });
+    if (terminator !== 'OK') {
+      throw createSpiffsAgentError(terminator, `Failed to delete ${name} from SPIFFS.`);
+    }
+    spiffsAgent.status = `Deleted ${name}.`;
+    appendLog(`SPIFFS file deleted: ${name}.`, '[spiffs]');
+    refresh = true;
+  } catch (error) {
+    const message = error?.message || String(error);
+    spiffsAgent.error = message;
+    logSpiffsError('delete', error);
+  } finally {
+    spiffsAgent.busy = false;
+  }
+  if (refresh) {
+    await listSpiffsFiles();
+  }
+}
+
+async function uploadSpiffsFile(file) {
+  const fileObject = Array.isArray(file) ? file[0] : file;
+  if (!fileObject) return;
+  if (!ensureSpiffsReady({ requireRunning: true }) || spiffsAgent.busy) {
+    return;
+  }
+  spiffsAgent.busy = true;
+  spiffsAgent.error = '';
+  try {
+    const buffer = await fileObject.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    spiffsAgent.buffer = '';
+    await writeSpiffsLine(`WRITE ${fileObject.name} ${bytes.length}`);
+    const base64Data = encodeBytesToBase64(bytes);
+    const chunks = chunkString(base64Data, 76);
+    for (const chunk of chunks) {
+      await writeSpiffsLine(chunk);
+    }
+    const { terminator } = await readSpiffsLines(['OK', /^ERR /], {
+      includeTerminator: true,
+      timeoutMs: Math.max(6000, bytes.length / 8 + 4000),
+    });
+    if (terminator !== 'OK') {
+      throw createSpiffsAgentError(
+        terminator,
+        `Failed to upload ${fileObject.name} to SPIFFS.`
+      );
+    }
+    spiffsAgent.status = `Uploaded ${fileObject.name} (${formatBytesShort(bytes.length)}).`;
+    appendLog(`SPIFFS file written: ${fileObject.name} (${bytes.length} bytes).`, '[spiffs]');
+  } catch (error) {
+    const message = error?.message || String(error);
+    spiffsAgent.error = message;
+    logSpiffsError('upload', error);
+  } finally {
+    spiffsAgent.busy = false;
+  }
+  await listSpiffsFiles();
+}
+
+async function formatSpiffs() {
+  if (!ensureSpiffsReady({ requireRunning: true }) || spiffsAgent.busy) {
+    return;
+  }
+  spiffsAgent.busy = true;
+  spiffsAgent.error = '';
+  try {
+    const { terminator } = await sendSpiffsCommand('FORMAT', {
+      terminators: ['OK', /^ERR /],
+      timeoutMs: 8000,
+    });
+    if (terminator !== 'OK') {
+      throw createSpiffsAgentError(terminator, 'Failed to format SPIFFS.');
+    }
+    spiffsAgent.status = 'SPIFFS formatted successfully.';
+    spiffsAgent.files = [];
+    appendLog('SPIFFS volume formatted.', '[spiffs]');
+  } catch (error) {
+    const message = error?.message || String(error);
+    spiffsAgent.error = message;
+    logSpiffsError('format', error);
+  } finally {
+    spiffsAgent.busy = false;
+  }
+}
+
+async function resetSpiffsDevice() {
+  if (!ensureSpiffsReady({ requireRunning: true }) || spiffsAgent.busy) {
+    return;
+  }
+  spiffsAgent.busy = true;
+  spiffsAgent.error = '';
+  try {
+    const { terminator } = await sendSpiffsCommand('RESET', {
+      terminators: ['OK', /^ERR /],
+      timeoutMs: 6000,
+    });
+    if (terminator !== 'OK') {
+      throw createSpiffsAgentError(terminator, 'Failed to reset device via SPIFFS agent.');
+    }
+    spiffsAgent.status = 'Device reset requested.';
+    appendLog('SPIFFS agent requested device reset.', '[spiffs]');
+  } catch (error) {
+    const message = error?.message || String(error);
+    spiffsAgent.error = message;
+    logSpiffsError('reset', error);
+  } finally {
+    spiffsAgent.busy = false;
+    spiffsAgent.running = false;
+    spiffsAgent.files = [];
+    closeSpiffsPreview();
+  }
+}
+
+function closeSpiffsPreview() {
+  if (spiffsAgent.preview?.downloadUrl && typeof URL !== 'undefined' && URL.revokeObjectURL) {
+    URL.revokeObjectURL(spiffsAgent.preview.downloadUrl);
+  }
+  spiffsAgent.preview = null;
+}
+
+function handleSpiffsRead(file) {
+  const name = typeof file === 'string' ? file : file?.name;
+  if (name) {
+    readSpiffsFile(name);
+  }
+}
+
+function handleSpiffsDelete(file) {
+  const name = typeof file === 'string' ? file : file?.name;
+  if (name) {
+    deleteSpiffsFile(name);
+  }
+}
+
+function handleSpiffsUpload(file) {
+  if (file) {
+    uploadSpiffsFile(file);
+  }
+}
+
 async function disconnectTransport() {
   try {
     if (transport.value) {
@@ -978,6 +1610,7 @@ async function disconnectTransport() {
       connected.value = false;
       chipDetails.value = null;
       flashSizeBytes.value = null;
+      resetSpiffsAgentState();
   }
 }
 
