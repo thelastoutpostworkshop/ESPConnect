@@ -1501,7 +1501,11 @@ const connectionChipLabel = computed(() => {
 });
 
 const canFlash = computed(
-  () => connected.value && Boolean(firmwareBuffer.value) && !flashInProgress.value
+  () =>
+    connected.value &&
+    Boolean(firmwareBuffer.value) &&
+    !flashInProgress.value &&
+    !spiffsAgent.running
 );
 
 function appendLog(message, prefix = '[ui]') {
@@ -2911,61 +2915,138 @@ async function handleDeploySpiffsAgent() {
   if (spiffsAgent.uploading || spiffsAgent.busy) {
     return;
   }
+  const loaderInstance = loader.value;
+  const transportInstance = transport.value;
+  if (!loaderInstance || !transportInstance) {
+    spiffsAgent.status = 'Transport unavailable.';
+    appendLog('SPIFFS agent upload aborted: transport unavailable.', '[warn]');
+    return;
+  }
   spiffsAgent.uploading = true;
   spiffsAgent.busy = true;
   spiffsAgent.error = null;
   maintenanceBusy.value = true;
+  const romBaud = loaderInstance.romBaudrate || DEFAULT_ROM_BAUD;
+  const previousBaud = loaderInstance.baudrate;
+  const previousStubState = loaderInstance.IS_STUB;
+  const previousSyncStub = loaderInstance.syncStubDetected;
+  let spiffsStubStarted = false;
   try {
     spiffsAgent.status = 'Uploading stub to device RAM...';
     appendLog('Uploading SPIFFS agent stub to device RAM...', '[debug]');
     await releaseTransportReader();
     clearSpiffsAgentDecoder();
-    const { entry, segments } = parseSpiffsAgentBinary(spiffsAgent.binary);
-    const blockSize = loader.value?.ESP_RAM_BLOCK || 0x1800;
-    const loaderInstance = loader.value;
-    if (!loaderInstance) {
-      throw new Error('Loader unavailable.');
-    }
-    const previousStubState = loaderInstance.IS_STUB;
-    loaderInstance.IS_STUB = false;
+    spiffsAgent.status = 'Switching device to ROM bootloader...';
+    appendLog('Re-synchronizing with ROM bootloader for SPIFFS agent upload.', '[debug]');
     try {
-      for (const segment of segments) {
-        const { address, data } = segment;
-        const length = data.length;
-        const blocks = Math.ceil(length / blockSize);
-        // eslint-disable-next-line no-await-in-loop
-        await loaderInstance.memBegin(length, blocks, blockSize, address);
-        for (let seq = 0; seq < blocks; seq += 1) {
-          const start = seq * blockSize;
-          const end = Math.min(start + blockSize, length);
-          // eslint-disable-next-line no-await-in-loop
-          await loaderInstance.memBlock(data.slice(start, end), seq);
-        }
-      }
-      spiffsAgent.status = 'Starting stub...';
-      await loaderInstance.memFinish(entry);
-    } finally {
-      loaderInstance.IS_STUB = previousStubState;
+      await transportInstance.disconnect();
+    } catch (disconnectError) {
+      appendLog(
+        `SPIFFS agent: transport disconnect warning: ${disconnectError?.message || disconnectError}`,
+        '[debug]'
+      );
     }
+    loaderInstance.transport.reader = null;
+    loaderInstance.IS_STUB = false;
+    loaderInstance.syncStubDetected = false;
+    await loaderInstance.connect('default_reset');
+    if (loaderInstance.syncStubDetected) {
+      throw new Error('Unable to enter ROM bootloader (stub still active).');
+    }
+    loaderInstance.baudrate = romBaud;
+    transportInstance.baudrate = romBaud;
+    await releaseTransportReader();
+    const { entry, segments } = parseSpiffsAgentBinary(spiffsAgent.binary);
+    const blockSize = loaderInstance.ESP_RAM_BLOCK || 0x1800;
+    for (const segment of segments) {
+      const { address, data } = segment;
+      const length = data.length;
+      const blocks = Math.ceil(length / blockSize);
+      // eslint-disable-next-line no-await-in-loop
+      await loaderInstance.memBegin(length, blocks, blockSize, address);
+      for (let seq = 0; seq < blocks; seq += 1) {
+        const start = seq * blockSize;
+        const end = Math.min(start + blockSize, length);
+        // eslint-disable-next-line no-await-in-loop
+        await loaderInstance.memBlock(data.slice(start, end), seq);
+      }
+    }
+    spiffsAgent.status = 'Starting stub...';
+    await loaderInstance.memFinish(entry);
+    await releaseTransportReader();
+    loaderInstance.transport.buffer = new Uint8Array(0);
     spiffsAgent.running = true;
+    spiffsStubStarted = true;
     spiffsAgent.files = [];
+    const availabilityNote = ' Flasher stub disabled until you disconnect and reconnect.';
     spiffsAgent.status = 'Waiting for agent response...';
     const readyLine = await readSpiffsAgentLine({ skipEmpty: true }).catch(() => null);
     if (readyLine) {
-      spiffsAgent.status = readyLine;
+      spiffsAgent.status = readyLine + availabilityNote;
       appendLog(`SPIFFS agent: ${readyLine}`, '[debug]');
     } else {
-      spiffsAgent.status = 'Stub running. Ready for SPIFFS commands.';
+      spiffsAgent.status = 'Stub running. Ready for SPIFFS commands.' + availabilityNote;
     }
     spiffsAgentRuntime.buffer = '';
     appendLog('SPIFFS agent stub running. Use the controls below to manage SPIFFS.', '[debug]');
+    appendLog(
+      'Flasher stub disabled while SPIFFS agent is active. Disconnect & reconnect after finishing to restore flashing features.',
+      '[warn]'
+    );
   } catch (error) {
     spiffsAgent.running = false;
     spiffsAgent.error = error?.message || String(error);
     spiffsAgent.status = `Stub upload failed: ${spiffsAgent.error}`;
     appendLog(`SPIFFS agent upload failed: ${spiffsAgent.error}`, '[error]');
     clearSpiffsAgentDecoder();
+    try {
+      spiffsAgent.status = 'Attempting to restore flasher stub...';
+      await releaseTransportReader();
+      loaderInstance.transport.reader = null;
+      loaderInstance.IS_STUB = false;
+      loaderInstance.syncStubDetected = false;
+      try {
+        await transportInstance.disconnect();
+      } catch (restoreDisconnectError) {
+        appendLog(
+          `SPIFFS agent: restore disconnect warning: ${restoreDisconnectError?.message || restoreDisconnectError}`,
+          '[debug]'
+        );
+      }
+      await loaderInstance.connect('default_reset');
+      await loaderInstance.runStub();
+      if (previousBaud && previousBaud !== romBaud) {
+        loaderInstance.baudrate = previousBaud;
+        transportInstance.baudrate = previousBaud;
+        try {
+          await loaderInstance.changeBaud();
+        } catch (baudError) {
+          appendLog(
+            `SPIFFS agent: baud restore warning: ${baudError?.message || baudError}`,
+            '[debug]'
+          );
+        }
+      }
+      appendLog('Flasher stub restored after SPIFFS agent failure.', '[debug]');
+      spiffsAgent.status = 'Stub upload failed. Flasher stub restored.';
+    } catch (restoreError) {
+      appendLog(
+        `Unable to automatically restore flasher stub: ${restoreError?.message || restoreError}. Use Disconnect/Connect to recover.`,
+        '[warn]'
+      );
+    }
   } finally {
+    if (spiffsStubStarted) {
+      loaderInstance.IS_STUB = false;
+      loaderInstance.syncStubDetected = false;
+      loaderInstance.baudrate = romBaud;
+      transportInstance.baudrate = romBaud;
+    } else {
+      loaderInstance.IS_STUB = previousStubState;
+      loaderInstance.syncStubDetected = previousSyncStub;
+      loaderInstance.baudrate = previousBaud;
+      transportInstance.baudrate = previousBaud;
+    }
     spiffsAgent.uploading = false;
     spiffsAgent.busy = false;
     maintenanceBusy.value = false;
