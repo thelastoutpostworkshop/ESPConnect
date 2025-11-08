@@ -83,11 +83,14 @@
                 :read-only-reason="spiffsState.readOnlyReason" :dirty="spiffsState.dirty"
                 :backup-done="spiffsState.backupDone || spiffsState.sessionBackupDone" :error="spiffsState.error"
                 :has-partition="hasSpiffsPartitionSelected" :has-client="Boolean(spiffsState.client)"
-                :usage="spiffsState.usage" :is-file-viewable="isViewableSpiffsFile"
+                :usage="spiffsState.usage" :upload-blocked="spiffsState.uploadBlocked"
+                :upload-blocked-reason="spiffsState.uploadBlockedReason"
+                :is-file-viewable="isViewableSpiffsFile"
                 @select-partition="handleSelectSpiffsPartition" @refresh="handleRefreshSpiffs"
                 @backup="handleSpiffsBackup" @restore="handleSpiffsRestore" @download-file="handleSpiffsDownloadFile"
-                @view-file="handleSpiffsView" @upload-file="handleSpiffsUpload" @delete-file="handleSpiffsDelete"
-                @format="handleSpiffsFormat" @save="handleSpiffsSave" />
+                @view-file="handleSpiffsView" @validate-upload="handleSpiffsUploadSelection"
+                @upload-file="handleSpiffsUpload" @delete-file="handleSpiffsDelete" @format="handleSpiffsFormat"
+                @save="handleSpiffsSave" />
             </v-window-item>
 
             <v-window-item value="apps">
@@ -767,6 +770,8 @@ function resetSpiffsState() {
   closeSpiffsViewer();
   spiffsUploadErrorDialog.visible = false;
   spiffsUploadErrorDialog.message = '';
+  spiffsState.uploadBlocked = false;
+  spiffsState.uploadBlockedReason = '';
 }
 
 function updateSpiffsUsage() {
@@ -1029,6 +1034,33 @@ async function handleSpiffsDownloadFile(name) {
   }
 }
 
+function handleSpiffsUploadSelection(file) {
+  if (!file || !spiffsState.client) {
+    spiffsState.uploadBlocked = false;
+    spiffsState.uploadBlockedReason = '';
+    return;
+  }
+  const targetName = (file.name || '').trim();
+  if (!targetName) {
+    spiffsState.uploadBlocked = true;
+    spiffsState.uploadBlockedReason = 'Selected file must have a name.';
+    return;
+  }
+  if (
+    typeof spiffsState.client.canFit === 'function' &&
+    !spiffsState.client.canFit(targetName, file.size ?? 0)
+  ) {
+    const message = 'Not enough SPIFFS space for this file. Delete files or format the partition, then try again.';
+    spiffsState.uploadBlocked = true;
+    spiffsState.uploadBlockedReason = message;
+    spiffsUploadErrorDialog.message = message;
+    spiffsUploadErrorDialog.visible = true;
+    return;
+  }
+  spiffsState.uploadBlocked = false;
+  spiffsState.uploadBlockedReason = '';
+}
+
 function isViewableSpiffsFile(name = '') {
   return Boolean(resolveSpiffsViewInfo(name));
 }
@@ -1097,6 +1129,14 @@ async function handleSpiffsUpload({ file }) {
     spiffsState.status = spiffsState.readOnlyReason || 'SPIFFS is read-only.';
     return;
   }
+  if (spiffsState.uploadBlocked) {
+    spiffsState.status = spiffsState.uploadBlockedReason || 'Resolve blocked upload before continuing.';
+    if (spiffsState.uploadBlockedReason) {
+      spiffsUploadErrorDialog.message = spiffsState.uploadBlockedReason;
+      spiffsUploadErrorDialog.visible = true;
+    }
+    return;
+  }
   if (!file) {
     spiffsState.status = 'Select a file to upload.';
     return;
@@ -1113,6 +1153,8 @@ async function handleSpiffsUpload({ file }) {
     await refreshSpiffsListing();
     markSpiffsDirty(`Staged ${targetName}. Remember to Save.`);
     appendLog(`SPIFFS staged ${targetName} (${data.length.toLocaleString()} bytes).`, '[debug]');
+    spiffsState.uploadBlocked = false;
+    spiffsState.uploadBlockedReason = '';
   } catch (error) {
     const isSpaceError = typeof error?.message === 'string' && error.message.includes('Not enough SPIFFS space');
     const friendly = isSpaceError
@@ -1446,6 +1488,8 @@ const spiffsState = reactive({
     usedBytes: 0,
     freeBytes: 0,
   },
+  uploadBlocked: false,
+  uploadBlockedReason: '',
 });
 const spiffsBackupDialog = reactive({
   visible: false,

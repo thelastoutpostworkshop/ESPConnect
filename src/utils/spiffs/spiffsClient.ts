@@ -30,6 +30,7 @@ export interface SpiffsClient {
   remove(name: string): Promise<void>;
   format(): Promise<void>;
   toImage(): Promise<Uint8Array>;
+  canFit?(name: string, dataLength: number): boolean;
 }
 
 type VirtualEntry = {
@@ -124,6 +125,15 @@ export class InMemorySpiffsClient implements SpiffsClient {
 
   public getUsage(): SpiffsUsage {
     return { ...this.usage };
+  }
+
+  public canFit(name: string, dataLength: number): boolean {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      return false;
+    }
+    const requiredPages = this.calculateRequiredPagesWith(trimmed, dataLength);
+    return requiredPages <= this.layout.totalDataPages;
   }
 
   private ensureCapacityFor(name: string, dataLength: number): void {

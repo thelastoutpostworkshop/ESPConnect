@@ -134,13 +134,23 @@
             color="primary"
             variant="tonal"
             class="upload-row__cta"
-            :disabled="readOnly || !uploadFile || !hasClient || loading || busy || saving"
+            :disabled="readOnly || !uploadFile || !hasClient || loading || busy || saving || uploadBlocked"
             @click="submitUpload"
           >
             <v-icon start>mdi-upload</v-icon>
             Upload
           </v-btn>
         </div>
+        <v-alert
+          v-if="uploadBlocked && uploadBlockedReason"
+          type="error"
+          variant="tonal"
+          density="comfortable"
+          border="start"
+          class="mt-3"
+        >
+          {{ uploadBlockedReason }}
+        </v-alert>
 
         <v-alert
           v-if="!files.length"
@@ -222,7 +232,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
   partitions: {
@@ -265,6 +275,11 @@ const props = defineProps({
       freeBytes: 0,
     }),
   },
+  uploadBlocked: Boolean,
+  uploadBlockedReason: {
+    type: String,
+    default: '',
+  },
   isFileViewable: {
     type: Function,
     default: () => false,
@@ -278,6 +293,7 @@ const emit = defineEmits([
   'restore',
   'download-file',
   'view-file',
+  'validate-upload',
   'upload-file',
   'delete-file',
   'format',
@@ -378,3 +394,6 @@ function isViewable(name) {
   font-size: 0.85rem;
 }
 </style>
+watch(uploadFile, file => {
+  emit('validate-upload', file);
+});
