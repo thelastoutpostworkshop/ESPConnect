@@ -270,7 +270,7 @@
       </v-card-actions>
     </v-card>
   </v-dialog>
-  <v-dialog :model-value="downloadProgress.visible" persistent max-width="420" class="progress-dialog">
+  <v-dialog :model-value="downloadProgress.visible" persistent max-width="500" class="progress-dialog">
     <v-card class="progress-dialog__card">
       <v-card-title class="progress-dialog__title">
         <v-icon start color="primary">mdi-download</v-icon>
