@@ -1,7 +1,7 @@
 <template>
   <v-alert type="warning" variant="tonal" border="start" class="mb-4 advanced-warning" density="comfortable">
     Firmware tools are intended for advanced users. Writing or erasing flash can permanently remove data or render the
-    device unbootable. Double-check settings before proceeding.
+    microcontroller unbootable. Double-check settings before proceeding.
   </v-alert>
   <v-card class="tools-card mb-6" variant="tonal" prepend-icon="mdi-archive-arrow-down">
     <template v-slot:title>
