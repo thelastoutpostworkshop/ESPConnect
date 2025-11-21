@@ -1,6 +1,6 @@
 <template>
-  <v-expand-transition v-if="details">
-    <div class="device-info-wrapper">
+  <Transition name="device-info-reveal" mode="out-in" appear>
+    <div v-if="details" :key="detailsKey" class="device-info-wrapper device-info-wrapper--connected">
       <v-card class="device-card" elevation="0">
         <v-card-text class="device-card__body">
           <div class="device-header">
@@ -97,12 +97,10 @@
         </v-card-text>
       </v-card>
     </div>
-  </v-expand-transition>
-  <v-expand-transition v-else>
-    <div class="device-info-empty">
+    <div v-else key="device-info-empty" class="device-info-empty">
       <DisconnectedState subtitle="Connect to an ESP32 to see device information." />
     </div>
-  </v-expand-transition>
+  </Transition>
 </template>
 
 <script setup>
@@ -128,6 +126,12 @@ const revisionLabel = computed(() => {
   const facts = details.value?.facts;
   if (!Array.isArray(facts)) return null;
   return facts.find(fact => fact.label === 'Revision')?.value ?? null;
+});
+
+const detailsKey = computed(() => {
+  if (!details.value) return 'disconnected';
+  const signatureParts = [details.value.mac, revisionLabel.value, details.value.name].filter(Boolean);
+  return signatureParts.join('|');
 });
 
 const hasDistinctDescription = computed(() => {
@@ -188,6 +192,65 @@ const featurePreview = computed(() => {
 <style scoped>
 .device-info-wrapper {
   position: relative;
+}
+
+.device-info-reveal-enter-active,
+.device-info-reveal-leave-active {
+  transition:
+    opacity 0.32s ease,
+    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.32s ease;
+}
+
+.device-info-reveal-enter-from,
+.device-info-reveal-leave-to {
+  opacity: 0;
+  transform: translateY(18px) scale(0.985);
+  filter: blur(3px);
+}
+
+.device-info-wrapper--connected .device-card {
+  animation: device-card-rise 0.64s cubic-bezier(0.2, 0.8, 0.25, 1) 0.04s both;
+  transform-origin: center 12%;
+}
+
+.device-info-wrapper--connected .device-summary-card,
+.device-info-wrapper--connected .detail-card__item {
+  animation: device-info-fade-in 0.54s cubic-bezier(0.16, 1, 0.3, 1) 0.14s both;
+}
+
+.device-info-wrapper--connected .detail-card__item:nth-child(2n) {
+  animation-delay: 0.18s;
+}
+
+@keyframes device-card-rise {
+  from {
+    transform: translateY(14px) scale(0.985);
+    box-shadow:
+      0 22px 32px rgba(8, 23, 47, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  }
+
+  to {
+    transform: translateY(0) scale(1);
+    box-shadow:
+      0 12px 22px rgba(8, 23, 47, 0.14),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+}
+
+@keyframes device-info-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(2px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
 }
 
 .device-card {
@@ -485,6 +548,19 @@ const featurePreview = computed(() => {
 
   .detail-card__item-value {
     text-align: left;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .device-info-reveal-enter-active,
+  .device-info-reveal-leave-active {
+    transition: none;
+  }
+
+  .device-info-wrapper--connected .device-card,
+  .device-info-wrapper--connected .device-summary-card,
+  .device-info-wrapper--connected .detail-card__item {
+    animation: none;
   }
 }
 </style>
