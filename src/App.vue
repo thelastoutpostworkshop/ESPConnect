@@ -3526,7 +3526,7 @@ const resourceLinks = [
   },
   {
     title: 'Get Help',
-    href: 'https://github.com/thelastoutpostworkshop/ESP32PartitionBuilder',
+    href: 'https://github.com/thelastoutpostworkshop/ESPConnect',
     icon: 'mdi-lifebuoy',
   },
 ];
