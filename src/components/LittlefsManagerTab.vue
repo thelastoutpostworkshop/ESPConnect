@@ -493,15 +493,14 @@ async function processDroppedItems(items, fallbackFiles = []) {
     fallbackFiles.length,
   );
 
-  const totalSize = filesForSizeCheck.reduce((sum, f) => sum + (f.size || 0), 0);
-
   for (const entry of entryMap.values()) {
-    emit('upload-file', { ...entry, bundleTotal: totalSize });
+    emit('upload-file', { ...entry });
   }
 }
 
 function submitUpload() {
   if (!uploadFile.value) return;
+  emit('reset-upload-block');
   emit('upload-file', { file: uploadFile.value, path: uploadFile.value.name });
   uploadFile.value = null;
 }
