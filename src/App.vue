@@ -689,6 +689,26 @@ function normalizeFsPath(path = '/') {
   return p || '/';
 }
 
+function littlefsEstimateFileFootprint(size = 0) {
+  const block = littlefsState.blockSize || 1;
+  const dataBytes = Math.max(1, Math.ceil(size / block)) * block;
+  const metadataBytes = block; // per-file metadata block
+  return dataBytes + metadataBytes;
+}
+
+function littlefsEstimateUsage(entries) {
+  const block = littlefsState.blockSize || 1;
+  let total = block * 2; // root metadata copies
+  for (const entry of entries || []) {
+    if (entry.type === 'dir') {
+      total += block;
+    } else {
+      total += littlefsEstimateFileFootprint(entry.size ?? 0);
+    }
+  }
+  return total;
+}
+
 function isDirectChildPath(childPath, basePath) {
   const child = normalizeFsPath(childPath);
   const base = normalizeFsPath(basePath);
@@ -1145,10 +1165,15 @@ function handleLittlefsUploadSelection(file) {
   const partition = littlefsSelectedPartition.value;
   const partitionSize = partition?.size ?? littlefsState.blockSize * littlefsState.blockCount;
   const usageSource = littlefsState.allFiles?.length ? littlefsState.allFiles : littlefsState.files;
-  const usedBytes = usageSource.reduce((sum, entry) => sum + (entry.size ?? 0), 0);
-  const existingSize = usageSource.find(entry => entry.path === targetPath)?.size ?? 0;
-  const availableBytes = partitionSize ? partitionSize - usedBytes + existingSize : 0;
-  if (partitionSize && file.size > availableBytes) {
+  const usedBytes = littlefsEstimateUsage(usageSource);
+  const existingEntry = usageSource.find(entry => entry.path === targetPath);
+  const existingFootprint =
+    existingEntry?.type === 'dir'
+      ? littlefsState.blockSize || existingEntry?.size || 0
+      : littlefsEstimateFileFootprint(existingEntry?.size ?? 0);
+  const incomingFootprint = littlefsEstimateFileFootprint(file.size);
+  const availableBytes = partitionSize ? partitionSize - usedBytes + existingFootprint : 0;
+  if (partitionSize && incomingFootprint > availableBytes) {
     const message =
       'Not enough LittleFS space for this file. Delete files or format the partition, then try again.';
     littlefsState.uploadBlocked = true;
@@ -1193,7 +1218,7 @@ async function performLittlefsUpload(payload) {
   const partition = littlefsSelectedPartition.value;
   const partitionSize = partition?.size ?? littlefsState.blockSize * littlefsState.blockCount;
   const usageSource = littlefsState.allFiles?.length ? littlefsState.allFiles : littlefsState.files;
-  const usedBytes = usageSource.reduce((sum, entry) => sum + (entry.size ?? 0), 0);
+  const usedBytes = littlefsEstimateUsage(usageSource);
   let workingFreeBytes =
     littlefsState.usage?.freeBytes ??
     (partitionSize ? Math.max(partitionSize - usedBytes, 0) : Number.POSITIVE_INFINITY);
@@ -1223,9 +1248,14 @@ async function performLittlefsUpload(payload) {
   }
   // size check using handleLittlefsUploadSelection logic
   const targetPath = joinFsPath(littlefsState.currentPath || '/', path || targetName);
-  const existingSize = usageSource.find(entry => entry.path === targetPath)?.size ?? 0;
-  const availableBytes = partitionSize ? workingFreeBytes + existingSize : Number.POSITIVE_INFINITY;
-  if (file.size > availableBytes) {
+  const existingEntry = usageSource.find(entry => entry.path === targetPath);
+  const existingFootprint =
+    existingEntry?.type === 'dir'
+      ? littlefsState.blockSize || existingEntry?.size || 0
+      : littlefsEstimateFileFootprint(existingEntry?.size ?? 0);
+  const incomingFootprint = littlefsEstimateFileFootprint(file.size);
+  const availableBytes = partitionSize ? workingFreeBytes + existingFootprint : Number.POSITIVE_INFINITY;
+  if (incomingFootprint > availableBytes) {
     const message =
       'Not enough LittleFS space for this upload. Delete files or format the partition, then try again.';
     littlefsState.uploadBlocked = true;
@@ -1268,7 +1298,9 @@ async function performLittlefsUpload(payload) {
     await refreshLittlefsListing();
     markLittlefsDirty(`Staged ${target}. Remember to Save.`);
     appendLog(`LittleFS staged ${target} (${data.length.toLocaleString()} bytes).`, '[ESPConnect-Debug]');
-    workingFreeBytes = Math.max(0, workingFreeBytes - Math.max(file.size - existingSize, 0));
+    workingFreeBytes = partitionSize
+      ? Math.max(0, partitionSize - littlefsEstimateUsage(littlefsState.allFiles?.length ? littlefsState.allFiles : littlefsState.files))
+      : workingFreeBytes;
     console.info('[ESPConnect-LittleFS] upload success', {
       target,
       size: file.size,
@@ -2304,7 +2336,7 @@ function updateLittlefsUsage(partition = littlefsSelectedPartition.value) {
       ? littlefsState.blockSize * littlefsState.blockCount
       : partitionSize;
   const source = littlefsState.allFiles?.length ? littlefsState.allFiles : littlefsState.files;
-  const usedBytes = source.reduce((sum, file) => sum + (file.size ?? 0), 0);
+  const usedBytes = littlefsEstimateUsage(source);
   littlefsState.usage = {
     capacityBytes,
     usedBytes,
