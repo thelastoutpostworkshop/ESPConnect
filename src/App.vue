@@ -3209,6 +3209,8 @@ type StopMonitorOptions = {
   closeConnection?: boolean;
 };
 
+type BaudRate = (typeof SUPPORTED_BAUDRATES)[number];
+
 type DownloadFlashOptions = {
   label?: string;
   fileName?: string;
@@ -3435,7 +3437,7 @@ const flashInProgress = ref(false);
 const flashProgress = ref(0);
 const flashProgressDialog = reactive({ visible: false, value: 0, label: '' });
 const flashCancelRequested = ref(false);
-const selectedBaud = ref<number>(DEFAULT_FLASH_BAUD);
+const selectedBaud = ref<BaudRate>(DEFAULT_FLASH_BAUD as BaudRate);
 const baudrateOptions = SUPPORTED_BAUDRATES;
 const flashOffset = ref('0x0');
 const eraseFlash = ref(false);
@@ -3781,7 +3783,7 @@ async function setConnectionBaud(targetBaud: string | number, options: SetBaudOp
   if (updateDropdown) {
     const previousSuspendState = suspendBaudWatcher;
     suspendBaudWatcher = true;
-    selectedBaud.value = parsed;
+    selectedBaud.value = parsed as BaudRate;
     queueMicrotask(() => {
       suspendBaudWatcher = previousSuspendState;
     });
@@ -3804,14 +3806,14 @@ watch(selectedBaud, async (value, oldValue) => {
     if (oldValue != null) {
       const previousSuspendState = suspendBaudWatcher;
       suspendBaudWatcher = true;
-      selectedBaud.value = oldValue;
+      selectedBaud.value = oldValue as BaudRate;
       queueMicrotask(() => {
         suspendBaudWatcher = previousSuspendState;
       });
     } else {
       const previousSuspendState = suspendBaudWatcher;
       suspendBaudWatcher = true;
-      selectedBaud.value = currentBaud.value;
+      selectedBaud.value = currentBaud.value as BaudRate;
       queueMicrotask(() => {
         suspendBaudWatcher = previousSuspendState;
       });
@@ -3834,7 +3836,7 @@ watch(selectedBaud, async (value, oldValue) => {
     );
     const previousSuspendState = suspendBaudWatcher;
     suspendBaudWatcher = true;
-    selectedBaud.value = currentBaud.value;
+    selectedBaud.value = currentBaud.value as BaudRate;
     queueMicrotask(() => {
       suspendBaudWatcher = previousSuspendState;
     });
@@ -3845,7 +3847,7 @@ watch(selectedBaud, async (value, oldValue) => {
   } catch (error) {
     const previousSuspendState = suspendBaudWatcher;
     suspendBaudWatcher = true;
-    selectedBaud.value = currentBaud.value;
+    selectedBaud.value = currentBaud.value as BaudRate;
     queueMicrotask(() => {
       suspendBaudWatcher = previousSuspendState;
     });
@@ -5230,7 +5232,7 @@ async function connect() {
     connectDialogTimer = setTimeout(() => {
       connectDialog.visible = true;
     }, TIMEOUT_CONNECT);
-    let desiredBaud = selectedBaud.value || DEFAULT_FLASH_BAUD;
+    let desiredBaud: BaudRate = (selectedBaud.value || DEFAULT_FLASH_BAUD) as BaudRate;
     const connectBaud_defaultROM = DEFAULT_ROM_BAUD;
     lastFlashBaud.value = desiredBaud;
 
@@ -5240,8 +5242,10 @@ async function connect() {
     const bridge = getUsbDeviceInfo(portDetails.usbVendorId, portDetails.usbProductId);
 
     if (bridge.productName === 'CH340' && desiredBaud > bridge.maxBaudrate) {
-      // Reduce baud rate for CH340
-      desiredBaud = bridge.maxBaudrate;
+      // Reduce baud rate for CH340 to the highest supported value under its max.
+      const cappedBaud =
+        SUPPORTED_BAUDRATES.filter(rate => rate <= bridge.maxBaudrate).pop() ?? DEFAULT_FLASH_BAUD;
+      desiredBaud = cappedBaud as BaudRate;
       lastFlashBaud.value = desiredBaud;
       const previousSuspendState = suspendBaudWatcher;
       suspendBaudWatcher = true;
@@ -5285,7 +5289,7 @@ async function connect() {
     transport.value.baudrate = currentBaud.value;
     const previousSuspendState = suspendBaudWatcher;
     suspendBaudWatcher = true;
-    selectedBaud.value = currentBaud.value;
+    selectedBaud.value = currentBaud.value as BaudRate;
     queueMicrotask(() => {
       suspendBaudWatcher = previousSuspendState;
     });
