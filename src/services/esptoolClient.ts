@@ -367,7 +367,8 @@ export function createEsptoolClient({
   const isBusy: BusyGetter = () => busy;
 
   const logger = createLogger(terminal, debugLogging);
-  let loader = decorateLoader(new ESPLoader(port, logger), setBusy);
+  const esp_loader = new ESPLoader(port, logger);
+  let loader = decorateLoader(esp_loader, setBusy);
   loader.debug = debugLogging;
 
   const loaderProxy = new Proxy({} as CompatibleLoader, {
