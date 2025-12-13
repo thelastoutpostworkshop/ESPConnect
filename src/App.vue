@@ -5470,7 +5470,7 @@ async function connect() {
     }
 
     connectDialog.message = `Reading partition table...`;
-    if (esp.chipName === 'ESP8266') {
+    if (esp.chipName?.includes('ESP8266')) {
       appendLog('Skipping partition table read for ESP8266 (not supported).', '[ESPConnect-Debug]');
       partitionTable.value = [];
       appMetadataLoaded.value = false;
