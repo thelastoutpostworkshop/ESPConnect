@@ -59,9 +59,19 @@ The tool cannot read partition tables or access SPIFFS/LittleFS, and advanced fe
 
 ## Running ESPConnect Locally
 ESPConnect is a **pure in-browser web application** — no backend, no installation required, and all operations happen directly in your browser using Web Serial / WebUSB.
-### 1. Development Mode (Recommended for Contributors)
 
-If you want to modify the source code or run ESPConnect in development mode, use the Vite dev server.
+### 1. Run as a Desktop App (Electron)
+Follow installation instructions for your platform in the [latest release](https://github.com/thelastoutpostworkshop/ESPConnect/releases/latest) 
+
+Development (Recommended for Contributors - Electron loads the Vite dev server):
+```bash
+npm install
+npm run dev
+# in another terminal:
+npm run start
+```
+
+### 2. Web application Development Mode (Recommended for Contributors)
 
 ```bash
 git clone https://github.com/thelastoutpostworkshop/ESPConnect.git
@@ -69,13 +79,13 @@ cd ESPConnect
 npm install
 npm run dev
 ```
-### 2. Run ESPConnect via Docker
+### 3. Run ESPConnect via Docker
 
 ```bash
 docker build -t espconnect .
 docker run --rm -p 8080:80 espconnect
 ```
-### 3. Run the Built Version Locally (Static Server)
+### 4. Run the Built Version Locally (Static Server)
 Step 1 — Build the App
 ```bash
 npm install
@@ -92,6 +102,7 @@ npx serve .
 cd dist
 python -m http.server 8080
 ```
+
 ## Privacy & Security
 ESPConnect runs fully in your browser—there is no backend, account, or telemetry. Firmware files, backups, and diagnostics stay local and only move when you download them yourself. Always flash firmware from trusted sources.
 

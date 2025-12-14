@@ -1,4 +1,8 @@
 # Changelog
+
+## 1.0.10
+- Added standalone electron app in release assets by Jason2866 ([PR #56](https://github.com/thelastoutpostworkshop/ESPConnect/pull/56)).
+
 ## 1.0.9
 - Fixed issues on flash size determination ([issue #8](https://github.com/thelastoutpostworkshop/ESPConnect/issues/8)).
 - Removed duplicate detectFlashSize().
