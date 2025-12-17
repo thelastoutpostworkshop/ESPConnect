@@ -5262,14 +5262,6 @@ async function connect() {
     connected.value = true;
     appendLog(`Handshake complete with ${esp.chipName}. Collecting device details...`, '[ESPConnect-Debug]');
 
-    // if (chip?.CHIP_NAME === 'ESP32-C6' && chip.SPI_REG_BASE === 0x60002000) {
-    //   chip.SPI_REG_BASE = 0x60003000;
-    //   appendLog(
-    //     'Applied ESP32-C6 SPI register base workaround (0x60002000 → 0x60003000).',
-    //     '[ESPConnect-Debug]'
-    //   );
-    // }
-
     lastFlashBaud.value = currentBaud.value;
 
     const metadata = await esptool.readChipMetadata();
@@ -5285,7 +5277,7 @@ async function connect() {
       '[ESPConnect-Debug]'
     );
 
-    const flashId = await esptool.readFlashId();
+    const flashId = await esptool.loader.flashId();
     const id = Number.isFinite(flashId) ? flashId : null;
 
     const manufacturerCode = id !== null ? id & 0xff : null;

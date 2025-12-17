@@ -73,7 +73,6 @@ export interface EsptoolClient {
   connectAndHandshake: () => Promise<ConnectHandshakeResult>;
   changeBaud: (baud: number) => Promise<void>;
   readPartitionTable: (offset?: number, length?: number) => Promise<any[]>;
-  readFlashId: () => Promise<number | undefined>;
   readChipMetadata: () => Promise<ChipMetadata>;
 }
 
@@ -396,17 +395,6 @@ export function createEsptoolClient({
     return entries;
   }
 
-  async function readFlashId() {
-    setBusy(true);
-    try {
-      return await loader.flashId();
-    } catch {
-      return undefined;
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function readChipMetadata(): Promise<ChipMetadata> {
     setBusy(true);
     try {
@@ -482,7 +470,6 @@ export function createEsptoolClient({
     connectAndHandshake,
     changeBaud,
     readPartitionTable,
-    readFlashId,
     readChipMetadata,
   };
 
