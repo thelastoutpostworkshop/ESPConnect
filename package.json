@@ -5,10 +5,10 @@
   "version": "1.1.10",
   "type": "module",
   "description": "Browser-based control center for ESP32 and ESP8266 boards",
-  "main": "electron/main.cjs",
-  "author": "The Last Outpost Workshop",
+  "author": "mcuw",
   "license": "MIT",
   "engines": {
+    "pnpm": ">=10.26.0",
     "node": ">=22.12.0"
   },
   "scripts": {
@@ -18,14 +18,10 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:fatfs": "vitest run src/tests/fatfs.fixture.test.ts",
-    "test:e2e": "playwright test",
-    "start": "electron-forge start",
-    "package": "electron-forge package",
-    "make": "electron-forge make",
-    "publish": "electron-forge publish"
+    "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@mdi/font": "^7.3.67",
+    "@mdi/font": "^7.4.47",
     "electron-squirrel-startup": "^1.0.1",
     "tasmota-webserial-esptool": "^7.3.7",
     "vue": "^3.5.28",
@@ -33,23 +29,15 @@
     "vuetify": "^3.11.8"
   },
   "devDependencies": {
-    "@electron-forge/cli": "^7.11.1",
-    "@electron-forge/maker-deb": "^7.11.1",
-    "@electron-forge/maker-dmg": "^7.11.1",
-    "@electron-forge/maker-rpm": "^7.11.1",
-    "@electron-forge/maker-squirrel": "^7.11.1",
-    "@electron-forge/maker-zip": "^7.11.1",
-    "@electron-forge/plugin-auto-unpack-natives": "^7.11.1",
-    "@electron/fuses": "^2.0.0",
     "@playwright/test": "^1.58.2",
     "@types/node": "^25.2.3",
     "@vitejs/plugin-vue": "^6.0.4",
-    "electron": "^40.4.1",
     "sass": "^1.97.3",
     "typescript": "^5.9.3",
-    "vite": "^7.1.12",
+    "vite": "^7.3.1",
     "vite-plugin-vuetify": "^2.1.3",
     "vitest": "^4.0.18",
     "vue-tsc": "^3.2.3"
-  }
+  },
+  "packageManager": "pnpm@10.26.0"
 }

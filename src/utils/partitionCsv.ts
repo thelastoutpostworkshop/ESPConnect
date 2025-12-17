@@ -1,5 +1,3 @@
-import { Buffer } from 'buffer';
-
 import type { FormattedPartitionRow } from '../types/partitions';
 
 export const PARTITION_CSV_HEADER = '# Name,Type,SubType,Offset,Size,Flags';
