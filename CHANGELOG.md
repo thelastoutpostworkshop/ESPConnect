@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.0
+- started fork
+- remove electron
+- use pnpm as package manager
+
 ## 1.1.10-preview
 - Added German translations. Thanks to flxcraft for the contribution ([PR #141](https://github.com/thelastoutpostworkshop/ESPConnect/pull/141)).
 

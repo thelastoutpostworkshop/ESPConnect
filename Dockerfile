@@ -2,13 +2,16 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 
+RUN npm install -g pnpm
+
 # Install dependencies
 COPY package*.json ./
-RUN npm install
+COPY pnpm*.json ./
+RUN pnpm install
 
 # Copy the rest of the source and build
 COPY . .
-RUN npm run build
+RUN pnpm build
 
 # Stage 2: Serve with nginx
 FROM nginx:alpine

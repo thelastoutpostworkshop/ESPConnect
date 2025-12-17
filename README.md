@@ -105,17 +105,38 @@ That document contains development setup instructions, project conventions, and 
 
 ESPConnect is a **pure in-browser web application** — no backend, no installation required, and all operations happen directly in your browser using Web Serial / WebUSB.
 
-### 1. Run as a Desktop App (Electron)
-Follow installation instructions for your platform in the [latest release](https://github.com/thelastoutpostworkshop/ESPConnect/releases/latest) 
+### 1. Web application Development Mode (Recommended for Contributors)
 
-### 2. Run ESPConnect via Docker
+```bash
+git clone https://github.com/mcuw/ESPConnect.git
+cd ESPConnect
+pnpm install
+pnpm dev
+```
 
 ```bash
 docker build -t espconnect .
 docker run --rm -p 8080:80 espconnect
 ```
-### 3. Run the Built Version Locally (Static Server)
+### 2. Run the Built Version Locally (Static Server)
 Follow instructions in the [latest release](https://github.com/thelastoutpostworkshop/ESPConnect/releases/latest) 
+
+Step 1 — Build the App
+```bash
+pnpm install
+pnpm build
+```
+Step 2 — Serve the dist/ Folder, you may use any of the following options:
+> Option A — Node “serve”
+```bash
+cd dist
+pnpx serve .
+```
+> Option B — Python 3
+```bash
+cd dist
+python -m http.server 8080
+```
 
 ## Privacy & Security
 ESPConnect runs fully in your browser—there is no backend, account, or telemetry. Firmware files, backups, and diagnostics stay local and only move when you download them yourself. Always flash firmware from trusted sources.
