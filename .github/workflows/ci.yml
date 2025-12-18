@@ -1,31 +1,48 @@
-name: CI
+# workflow for deploying static content to GitHub Pages
+name: Deploy static content to Pages
 
 on:
-  pull_request:
-    branches: [ main ]
+  # Runs on pushes targeting the default branch
   push:
-    branches: [ main ]
+    branches: ["main"]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: "pages"
   cancel-in-progress: true
 
 jobs:
-  build:
+  # Single deploy job since we're just deploying
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      # https://github.com/actions/setup-node
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
         with:
-          node-version: 22.12.0
-          cache: npm
+          node-version: 24
+          cache: "pnpm"
 
-      - name: Install
-        run: npm ci
+      # https://github.com/actions/checkout
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        run: npm i -g pnpm --no-fund
+
+      - name: Install dependencies and fail if an update is needed
+        run: pnpm i
 
       - name: Typecheck
         run: npm run typecheck
@@ -35,3 +52,14 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # https://github.com/actions/upload-pages-artifact
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: "./dist"
+
+      # https://github.com/actions/deploy-pages
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
