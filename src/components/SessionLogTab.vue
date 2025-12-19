@@ -3,7 +3,7 @@
     <v-card-title class="session-log-title">
       <div class="title-text">
         <v-icon class="me-2" size="20">mdi-monitor</v-icon>
-        Session Log
+        {{ $t('nav.sessionLog') }}
       </div>
       <div class="session-log-actions">
         <v-btn
@@ -15,7 +15,7 @@
           :loading="copying"
           @click="copyLog"
         >
-          Copy
+          {{ $t('buttons.copy') }}
         </v-btn>
         <v-btn
           variant="text"
@@ -25,13 +25,13 @@
           :disabled="!logText"
           @click="emit('clear-log')"
         >
-          Clear
+          {{ $t('buttons.clear') }}
         </v-btn>
       </div>
     </v-card-title>
     <v-divider></v-divider>
     <v-card-text class="log-surface" ref="logSurface">
-      <pre class="log-output">{{ logText || 'Logs will appear here once actions begin.' }}</pre>
+      <pre class="log-output">{{ logText || $t('sessionLog.empty') }}</pre>
     </v-card-text>
     <v-snackbar
       v-model="copyFeedback.visible"
@@ -46,6 +46,9 @@
 
 <script setup>
 import { nextTick, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const props = defineProps({
   logText: {
@@ -104,14 +107,14 @@ async function copyLog() {
     }
     copyFeedback.value = {
       visible: true,
-      message: 'Session log copied to clipboard.',
+      message: t('sessionLog.copied'),
       color: 'success',
     };
   } catch (error) {
     console.error('Failed to copy log', error);
     copyFeedback.value = {
       visible: true,
-      message: 'Unable to copy log. Please try again.',
+      message: t('sessionLog.copyFailed'),
       color: 'error',
     };
   } finally {

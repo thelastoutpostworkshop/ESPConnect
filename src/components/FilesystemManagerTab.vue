@@ -13,45 +13,43 @@
         <span class="font-weight-black">{{ partitionHeading }}</span>
       </template>
       <v-card-text class="d-flex flex-column gap-4">
-        <v-select :items="partitions" item-title="label" item-value="id" density="comfortable" label="Partition name"
+        <v-select :items="partitions" item-title="label" item-value="id" density="comfortable" :label="$t('filesystem.partitionName')"
           :model-value="selectedPartitionId" :disabled="loading || busy || saving || !partitions.length"
           @update:model-value="value => emit('select-partition', value)" />
         <div class="filesystem-manager__controls">
           <v-btn color="primary" variant="tonal" :disabled="!hasPartition || loading || busy || saving"
             @click="emit('refresh')">
             <v-icon start>mdi-refresh</v-icon>
-            Read
+            {{ $t('filesystem.read') }}
           </v-btn>
           <v-btn color="secondary" variant="outlined" :disabled="!hasPartition || loading || busy || saving"
             @click="emit('backup')">
             <v-icon start>mdi-content-save</v-icon>
-            Backup
+            {{ $t('filesystem.backup') }}
           </v-btn>
           <v-btn color="secondary" variant="text" :disabled="!hasPartition || loading || busy || saving"
             @click="triggerRestore">
             <v-icon start>mdi-upload</v-icon>
-            Restore Image
+            {{ $t('filesystem.restoreImage') }}
           </v-btn>
           <v-btn color="error" variant="text"
             :disabled="readOnly || !hasClient || loading || busy || saving || !backupDone" @click="emit('format')">
             <v-icon start>mdi-delete-sweep</v-icon>
-            Format
+            {{ $t('filesystem.format') }}
           </v-btn>
           <v-spacer />
           <v-btn color="primary" variant="elevated"
             :disabled="readOnly || !dirty || !backupDone || saving || loading || busy || !hasClient"
             @click="emit('save')">
             <v-icon start>mdi-content-save-outline</v-icon>
-            Save to Flash
+            {{ $t('filesystem.saveToFlash') }}
           </v-btn>
         </div>
         <v-alert v-if="!backupDone" type="warning" variant="tonal" density="comfortable" border="start" class="mt-2">
-          Download a backup image first (use the "Backup" button once per session). "Save to Flash"
-          becomes available after any successful backup made during this connection.
+          {{ $t('filesystem.backupRequired') }}
         </v-alert>
         <p class="text-caption text-medium-emphasis mb-0">
-          Changes are staged locally until you click “Save to Flash”. A recent backup ensures you can
-          recover if something goes wrong.
+          {{ $t('filesystem.stagedNotice') }}
         </p>
       </v-card-text>
     </v-card>
@@ -63,28 +61,27 @@
 
     <v-card v-else :variant="dragActive ? 'outlined' : 'tonal'">
       <v-card-title class="d-flex align-center justify-space-between">
-        <span>Files</span>
+        <span>{{ $t('filesystem.files') }}</span>
         <v-chip v-if="dirty" color="warning" size="large" variant="tonal">
-          Unsaved changes
+          {{ $t('filesystem.unsavedChanges') }}
         </v-chip>
       </v-card-title>
       <v-card-text>
         <div v-if="usage?.capacityBytes" class="filesystem-usage">
           <div class="">
-            <span>Used {{ usagePercent }}% ({{ formatSize(usage.usedBytes) }} / {{ formatSize(usage.capacityBytes)
-            }})</span>
+            <span>{{ $t('filesystem.usedLabel', { percent: usagePercent, used: formatSize(usage.usedBytes), capacity: formatSize(usage.capacityBytes) }) }}</span>
             <span></span>
           </div>
           <v-progress-linear :model-value="usagePercent" height="15" rounded color="primary" />
           <div class="text-caption text-medium-emphasis">
-            Free {{ formatSize(usage.freeBytes) }}
+            {{ $t('filesystem.freeLabel', { free: formatSize(usage.freeBytes) }) }}
           </div>
         </div>
         <div>
           <v-row>
             <v-col>
               <div>
-                <v-file-input v-model="uploadFile" density="comfortable" accept="*/*" label="Select file"
+                <v-file-input v-model="uploadFile" density="comfortable" accept="*/*" :label="$t('filesystem.selectFile')"
                   prepend-icon="mdi-file-upload" class="upload-picker"
                   :disabled="readOnly || !hasClient || loading || busy || saving" />
               </div>
@@ -95,7 +92,7 @@
                   :disabled="readOnly || !uploadFile || !hasClient || loading || busy || saving || uploadBlocked"
                   @click="submitUpload">
                   <v-icon start>mdi-upload</v-icon>
-                  Upload
+                  {{ $t('filesystem.upload') }}
                 </v-btn>
               </div>
             </v-col>
@@ -104,7 +101,7 @@
                 <div class="filesystem-dropzone__hint">
                   <v-icon size="32">mdi-cloud-upload-outline</v-icon>
                   <div class="filesystem-dropzone__hint-text">
-                    <strong>Drop files to add</strong>
+                    <strong>{{ $t('filesystem.dropAddSimple') }}</strong>
                   </div>
                 </div>
               </div>
@@ -113,11 +110,11 @@
         </div>
         <v-divider :thickness="2" class="mt-3"></v-divider>
         <div v-if="files.length" class="filesystem-table__toolbar mt-4">
-          <v-text-field v-model="fileSearch" label="Filter files" variant="outlined" density="comfortable" clearable
+          <v-text-field v-model="fileSearch" :label="$t('filesystem.filterFiles')" variant="outlined" density="comfortable" clearable
             hide-details prepend-inner-icon="mdi-magnify"
             class="filesystem-table__filter filesystem-table__filter--search" />
           <v-select v-model="fileTypeFilter" :items="fileFilterOptions" item-title="label" item-value="value"
-            label="File type" density="comfortable" hide-details variant="outlined"
+            :label="$t('filesystem.fileType')" density="comfortable" hide-details variant="outlined"
             class="filesystem-table__filter filesystem-table__filter--type" />
           <v-chip size="large" variant="tonal" color="primary">
             {{ filteredCountLabel }}
@@ -140,16 +137,16 @@
                 @click="emit('view-file', unwrapItem(item).name)" />
               <v-icon size="small" variant="text" color="primary" v-if="enableDownload"
                 :disabled="loading || busy || saving || readOnly" icon="mdi-download"
-                :title="`Download ${unwrapItem(item).name}`" :aria-label="`Download ${unwrapItem(item).name}`"
+                :title="$t('filesystem.download', { name: unwrapItem(item).name })" :aria-label="$t('filesystem.download', { name: unwrapItem(item).name })"
                 @click="emit('download-file', unwrapItem(item).name)" />
               <v-icon size="small" variant="text" color="error" :disabled="readOnly || loading || busy || saving"
-                icon="mdi-delete" :title="`Delete ${unwrapItem(item).name}`"
-                :aria-label="`Delete ${unwrapItem(item).name}`" @click="emit('delete-file', unwrapItem(item).name)" />
+                icon="mdi-delete" :title="$t('filesystem.delete', { name: unwrapItem(item).name })"
+                :aria-label="$t('filesystem.delete', { name: unwrapItem(item).name })" @click="emit('delete-file', unwrapItem(item).name)" />
             </div>
           </template>
           <template #no-data>
             <div v-if="files.length">
-              <v-alert type="warning" variant="tonal" border="start"> No files match the current filter</v-alert>
+              <v-alert type="warning" variant="tonal" border="start"> {{ $t('filesystem.noMatch') }}</v-alert>
             </div>
             <div v-else>
               <v-alert type="info" variant="tonal" border="start"> {{ emptyMessage }}</v-alert>
@@ -163,8 +160,11 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const props = defineProps({
   partitions: {
@@ -246,22 +246,24 @@ const props = defineProps({
   },
 });
 
-const fileTableHeaders = Object.freeze([
-  { title: 'Name', key: 'name', sortable: true, align: 'start' },
-  { title: 'Size', key: 'size', sortable: true, align: 'start' },
-  { title: 'Actions', key: 'actions', sortable: false, align: 'end' },
-]);
-const filesPerPageOptions = Object.freeze([10, 25, 50, { value: -1, title: 'All' }]);
+const fileTableHeaders = computed(() => (
+  [
+    { title: t('filesystem.columns.name'), key: 'name', sortable: true, align: 'start' as const },
+    { title: t('filesystem.columns.size'), key: 'size', sortable: true, align: 'start' as const },
+    { title: t('filesystem.columns.actions'), key: 'actions', sortable: false, align: 'end' as const },
+  ] as const
+));
+const filesPerPageOptions = computed(() => Object.freeze([10, 25, 50, { value: -1, title: t('filesystem.all') }]));
 const FALLBACK_TEXT_EXT = ['txt', 'log', 'json', 'csv', 'ini', 'cfg', 'conf', 'htm', 'html', 'md', 'xml'];
 const FALLBACK_IMAGE_EXT = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'svg'];
 const FALLBACK_AUDIO_EXT = ['mp3', 'wav', 'ogg', 'oga', 'opus', 'm4a', 'aac', 'flac', 'weba', 'webm'];
-const FILE_CATEGORY_LABELS = {
-  all: 'All types',
-  text: 'Text',
-  image: 'Images',
-  audio: 'Audio',
-  other: 'Other',
-};
+const FILE_CATEGORY_LABELS = computed(() => ({
+  all: t('filesystem.allTypes'),
+  text: t('filesystem.text'),
+  image: t('filesystem.image'),
+  audio: t('filesystem.audio'),
+  other: t('filesystem.other'),
+}));
 
 const emit = defineEmits([
   'select-partition',
@@ -290,19 +292,20 @@ const selectedPartition = computed(() =>
 );
 const partitionHeading = computed(() => {
   const sizeLabel = selectedPartition.value?.sizeText?.trim();
-  const base = props.partitionTitle?.trim() || `${fsLabel.value} Partition`;
+  const base = props.partitionTitle?.trim() || t('filesystem.partitionHeading', { fs: fsLabel.value });
   return sizeLabel ? `${base} · ${sizeLabel}` : base;
 });
 const emptyMessage = computed(
-  () => props.emptyStateMessage?.trim() || `No files detected. Upload or restore a ${fsLabel.value} image to begin.`,
+  () => props.emptyStateMessage?.trim() || t('filesystem.noFilesDetected', { fs: fsLabel.value }),
 );
 const showLoadCancelledBanner = computed(() => props.loadCancelled && !props.loading);
 const loadCancelledMessage = computed(
-  () => `${fsLabel.value} load cancelled. Use "Read" to fetch the partition again.`,
+  () => t('filesystem.loadCancelled', { fs: fsLabel.value }),
 );
 const readOnlyMessage = computed(() => {
   const detail = props.readOnlyReason?.trim();
-  return `${fsLabel.value} is in read-only mode. ${detail || 'Changes cannot be saved.'}`;
+  const fallback = t('filesystem.readOnlyDefault');
+  return t('filesystem.readOnly', { fs: fsLabel.value, detail: detail || fallback });
 });
 const usagePercent = computed(() => {
   if (!props.usage || !props.usage.capacityBytes) {
@@ -325,10 +328,10 @@ const fileFilterOptions = computed(() => {
   const options = [
     {
       value: 'all',
-      label: `${FILE_CATEGORY_LABELS.all} (${props.files.length})`,
+      label: `${FILE_CATEGORY_LABELS.value.all} (${props.files.length})`,
     },
   ];
-  for (const [key, label] of Object.entries(FILE_CATEGORY_LABELS)) {
+  for (const [key, label] of Object.entries(FILE_CATEGORY_LABELS.value)) {
     if (key === 'all') continue;
     if (counts[key]) {
       options.push({
@@ -357,14 +360,13 @@ const filteredFiles = computed(() => {
 const filteredCountLabel = computed(() => {
   const total = props.files.length;
   const filtered = filteredFiles.value.length;
-  const pluralize = count => (count === 1 ? 'file' : 'files');
   if (!total) {
-    return 'No files';
+    return t('filesystem.noFiles');
   }
   if (filtered === total) {
-    return `${total} ${pluralize(total)}`;
+    return t('filesystem.fileCount', { count: total });
   }
-  return `${filtered} of ${total} files`;
+  return t('filesystem.fileCountFiltered', { filtered, total });
 });
 const canUpload = computed(
   () =>
@@ -571,9 +573,9 @@ function previewIcon(name) {
 function previewLabel(name) {
   const info = getPreviewInfo(name);
   if (info?.mode === 'audio') {
-    return 'Listen';
+    return t('filesystem.listen');
   }
-  return 'View';
+  return t('filesystem.view');
 }
 </script>
 

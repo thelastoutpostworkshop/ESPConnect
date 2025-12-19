@@ -1,18 +1,17 @@
 <template>
   <v-alert type="warning" variant="tonal" border="start" class="mb-4 advanced-warning" density="comfortable">
-    Firmware tools are intended for advanced users. Writing or erasing flash can permanently remove data or render the
-    microcontroller unbootable. Double-check settings before proceeding.
+    {{ $t('flash.advancedWarning') }}
   </v-alert>
   <v-card class="tools-card mb-6" variant="tonal" prepend-icon="mdi-archive-arrow-down">
     <template v-slot:title>
-      <span class="font-weight-black"> Flash Backup &amp; Erase
+      <span class="font-weight-black"> {{ $t('flash.backupEraseTitle') }}
       </span>
     </template>
     <v-card-text class="tools-card__body">
 
       <div v-if="partitionOptions.length" class="partition-tools">
         <v-select :model-value="selectedPartition" :items="partitionOptions" item-title="label" item-value="value"
-          label="Partition" density="comfortable" clearable :disabled="busy || maintenanceBusy"
+          :label="$t('flash.partition')" density="comfortable" clearable :disabled="busy || maintenanceBusy"
           @update:model-value="value => emit('update:selectedPartition', value)">
           <template #item="{ props, item }">
             <v-list-item v-bind="props" class="partition-select__item">
@@ -33,28 +32,28 @@
           <v-btn color="primary" variant="tonal" :disabled="busy || maintenanceBusy || selectedPartition === null"
             @click="emit('download-partition')">
             <v-icon start>mdi-download-multiple</v-icon>
-            Download Selected Partition
+            {{ $t('flash.downloadSelected') }}
           </v-btn>
           <v-btn color="primary" variant="text" :disabled="busy || maintenanceBusy"
             @click="emit('download-all-partitions')">
             <v-icon start>mdi-select-group</v-icon>
-            Download All Partitions
+            {{ $t('flash.downloadAll') }}
           </v-btn>
           <v-btn color="secondary" variant="text" :disabled="busy || maintenanceBusy"
             @click="emit('download-used-flash')">
             <v-icon start>mdi-content-save</v-icon>
-            Download Used Flash
+            {{ $t('flash.downloadUsedFlash') }}
           </v-btn>
         </div>
       </div>
       <v-divider v-if="partitionOptions.length" class="my-4" />
       <v-row dense>
         <v-col cols="12" md="6">
-          <v-text-field :model-value="flashReadOffset" label="Start offset" placeholder="0x0" density="comfortable"
+          <v-text-field :model-value="flashReadOffset" :label="$t('flash.startOffset')" placeholder="0x0" density="comfortable"
             :disabled="busy || maintenanceBusy" @update:model-value="value => emit('update:flashReadOffset', value)" />
         </v-col>
         <v-col cols="12" md="6">
-          <v-text-field :model-value="flashReadLength" label="Length (bytes)" placeholder="0x100000"
+          <v-text-field :model-value="flashReadLength" :label="$t('flash.lengthBytes')" placeholder="0x100000"
             density="comfortable" :disabled="busy || maintenanceBusy"
             @update:model-value="value => emit('update:flashReadLength', value)" />
         </v-col>
@@ -62,12 +61,12 @@
       <div class="tools-card__actions">
         <v-btn color="primary" variant="tonal" :disabled="busy || maintenanceBusy" @click="emit('download-flash')">
           <v-icon start>mdi-download-box</v-icon>
-          Download Flash Region
+          {{ $t('flash.downloadRegion') }}
         </v-btn>
         <v-btn color="error" variant="outlined" :disabled="busy || maintenanceBusy"
           @click="emit('erase-flash', { mode: 'full' })">
           <v-icon start>mdi-delete-sweep</v-icon>
-          Erase Entire Flash
+          {{ $t('flash.eraseEntire') }}
         </v-btn>
       </div>
       <v-alert v-if="flashReadStatus" :type="flashReadStatusType" variant="tonal" density="comfortable" border="start"
@@ -78,21 +77,21 @@
   </v-card>
   <v-card class="tools-card" variant="tonal" prepend-icon="mdi-lightning-bolt">
     <template v-slot:title>
-      <span class="font-weight-black"> Flash Firmware</span>
+      <span class="font-weight-black"> {{ $t('flash.firmwareTitle') }}</span>
     </template>
     <v-card-text class="tools-card__body">
       <v-row class="mb-2" dense>
         <v-col cols="12" md="8">
-          <v-file-input label="Firmware binary (.bin)" prepend-icon="mdi-file-upload" accept=".bin"
+          <v-file-input :label="$t('flash.firmwareBinary')" prepend-icon="mdi-file-upload" accept=".bin"
             density="comfortable" :disabled="busy || maintenanceBusy"
             @update:model-value="value => emit('firmware-input', value)" />
         </v-col>
         <v-col cols="12" md="4">
-          <v-text-field :model-value="flashOffset" label="Flash offset" placeholder="0x0" density="comfortable"
+          <v-text-field :model-value="flashOffset" :label="$t('flash.flashOffset')" placeholder="0x0" density="comfortable"
             :disabled="busy || maintenanceBusy" @update:model-value="value => emit('update:flashOffset', value)" />
         </v-col>
         <v-col cols="12" md="4">
-          <v-select :model-value="selectedPreset" :items="offsetPresets" label="Recommended offsets" item-title="label"
+          <v-select :model-value="selectedPreset" :items="offsetPresets" :label="$t('flash.recommendedOffsets')" item-title="label"
             item-value="value" clearable density="comfortable" :disabled="busy || maintenanceBusy"
             @update:model-value="value => handlePresetChange(value)">
             <template #item="{ props, item }">
@@ -114,18 +113,17 @@
         </v-col>
       </v-row>
 
-      <v-checkbox :model-value="eraseFlash" label="Erase entire flash before writing" density="comfortable" hide-details
+      <v-checkbox :model-value="eraseFlash" :label="$t('flash.eraseBeforeWrite')" density="comfortable" hide-details
         :disabled="busy || maintenanceBusy" @update:model-value="value => emit('update:eraseFlash', value)" />
 
       <p class="flash-tools__hint text-medium-emphasis">
-        Flashing runs at 921,600&nbsp;bps by default. Drop the baud if the device struggles to sync.
-        The serial monitor automatically switches to 115,200&nbsp;bps for stability.
+        {{ $t('flash.flashHint') }}
       </p>
 
       <v-btn color="primary" size="large" block class="mt-2" :disabled="!canFlash || busy || maintenanceBusy"
         @click="emit('flash')">
         <v-icon start>mdi-lightning-bolt</v-icon>
-        Flash Firmware
+        {{ $t('flash.flashButton') }}
       </v-btn>
     </v-card-text>
   </v-card>
@@ -134,12 +132,12 @@
 
   <v-card class="tools-card mt-6" variant="tonal" prepend-icon="mdi-chip">
     <template v-slot:title>
-      <span class="font-weight-black"> Register Access</span>
+      <span class="font-weight-black"> {{ $t('flash.registerTitle') }}</span>
     </template>
     <v-card-text class="tools-card__body">
       <v-autocomplete v-if="registerOptions.length" class="register-quick-select" :items="registerOptions"
         item-title="label" item-value="address" density="comfortable" variant="outlined" hide-details
-        label="Quick-select register" :model-value="selectedRegisterAddress" :return-object="false" clearable
+        :label="$t('flash.quickSelect')" :model-value="selectedRegisterAddress" :return-object="false" clearable
         @update:model-value="handleRegisterSelect">
         <template #item="{ props, item }">
           <v-list-item v-bind="props">
@@ -157,35 +155,35 @@
         <div class="register-info__address">{{ selectedRegisterInfo.address }}</div>
         <div class="register-info__description">{{ selectedRegisterInfo.description }}</div>
         <div class="register-info__link" v-if="selectedRegisterInfo.link">
-          <a :href="selectedRegisterInfo.link" target="_blank" rel="noopener">View register reference</a>
+          <a :href="selectedRegisterInfo.link" target="_blank" rel="noopener">{{ $t('flash.viewRegisterReference') }}</a>
         </div>
       </v-alert>
       <v-alert v-else-if="registerReference" type="info" variant="tonal" border="start" density="comfortable"
         class="register-info">
         <div class="register-info__title">{{ registerReference.title }}</div>
         <div class="register-info__link">
-          <a :href="registerReference.url" target="_blank" rel="noopener">Open technical reference</a>
+          <a :href="registerReference.url" target="_blank" rel="noopener">{{ $t('flash.openTechnicalReference') }}</a>
         </div>
       </v-alert>
       <v-row dense>
         <v-col cols="12" md="6">
-          <v-text-field :model-value="registerAddress" label="Register address" placeholder="0x60000000"
+          <v-text-field :model-value="registerAddress" :label="$t('flash.registerAddress')" placeholder="0x60000000"
             density="comfortable" :disabled="busy || maintenanceBusy"
             @update:model-value="value => emit('update:registerAddress', value)" />
         </v-col>
         <v-col cols="12" md="6">
-          <v-text-field :model-value="registerValue" label="Value" placeholder="0x0" density="comfortable"
+          <v-text-field :model-value="registerValue" :label="$t('flash.registerValue')" placeholder="0x0" density="comfortable"
             :disabled="busy || maintenanceBusy" @update:model-value="value => emit('update:registerValue', value)" />
         </v-col>
       </v-row>
       <div class="tools-card__actions">
         <v-btn color="primary" variant="tonal" :disabled="busy || maintenanceBusy" @click="emit('read-register')">
           <v-icon start>mdi-eye</v-icon>
-          Read Register
+          {{ $t('flash.readRegister') }}
         </v-btn>
         <v-btn color="primary" variant="text" :disabled="busy || maintenanceBusy" @click="emit('write-register')">
           <v-icon start>mdi-pencil</v-icon>
-          Write Register
+          {{ $t('flash.writeRegister') }}
         </v-btn>
       </div>
       <v-alert v-if="registerStatus" :type="registerStatusType" variant="tonal" density="comfortable" border="start"
@@ -200,11 +198,11 @@
   </v-card>
   <v-card class="tools-card mt-6" variant="tonal" prepend-icon="mdi-shield-check-outline">
     <template v-slot:title>
-      <span class="font-weight-black"> Flash Integrity</span>
+      <span class="font-weight-black"> {{ $t('flash.flashIntegrityTitle') }}</span>
     </template>
     <v-card-text class="tools-card__body">
       <v-select v-if="partitionOptions.length" class="integrity-select" :items="partitionOptions" item-title="label"
-        item-value="value" variant="outlined" density="comfortable" clearable label="Partition"
+        item-value="value" variant="outlined" density="comfortable" clearable :label="$t('flash.partition')"
         :model-value="integrityPartition" :disabled="busy || maintenanceBusy"
         @update:model-value="handleIntegrityPartitionSelect">
         <template #item="{ props, item }">
@@ -223,29 +221,29 @@
         </template>
       </v-select>
       <p v-if="partitionOptions.length" class="integrity-helper">
-        Selecting a partition will auto-fill the offset and length fields below.
+        {{ $t('flash.selectPartitionHelper') }}
       </p>
       <v-row dense class="flash-progress-row">
         <v-col cols="12" md="6">
-          <v-text-field :model-value="md5Offset" label="Start offset" placeholder="0x0" density="comfortable"
+          <v-text-field :model-value="md5Offset" :label="$t('flash.startOffset')" placeholder="0x0" density="comfortable"
             :disabled="busy || maintenanceBusy" @update:model-value="value => emit('update:md5Offset', value)" />
         </v-col>
         <v-col cols="12" md="6">
-          <v-text-field :model-value="md5Length" label="Length (bytes)" placeholder="0x100000" density="comfortable"
+          <v-text-field :model-value="md5Length" :label="$t('flash.lengthBytes')" placeholder="0x100000" density="comfortable"
             :disabled="busy || maintenanceBusy" @update:model-value="value => emit('update:md5Length', value)" />
         </v-col>
       </v-row>
       <div class="tools-card__actions">
         <v-btn color="primary" variant="tonal" :disabled="busy || maintenanceBusy" @click="emit('compute-md5')">
           <v-icon start>mdi-fingerprint</v-icon>
-          Compute MD5
+          {{ $t('flash.computeMd5') }}
         </v-btn>
       </div>
       <v-alert v-if="md5Status" :type="md5StatusType" variant="tonal" density="comfortable" border="start" class="mt-3">
         {{ md5Status }}
       </v-alert>
       <v-alert v-else-if="md5Result" type="success" variant="tonal" density="comfortable" border="start" class="mt-3">
-        MD5 checksum: <code>{{ md5Result }}</code>
+        {{ $t('flash.md5Checksum') }} <code>{{ md5Result }}</code>
       </v-alert>
     </v-card-text>
   </v-card>

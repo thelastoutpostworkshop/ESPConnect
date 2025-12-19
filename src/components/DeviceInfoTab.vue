@@ -27,11 +27,11 @@
                 <div class="summary-block">
                   <div class="summary-label">
                     <v-icon size="40" class="me-2">mdi-memory</v-icon>
-                    Flash & Clock
+                    {{ $t('deviceInfo.flashClock') }}
                   </div>
-                  <div class="summary-value">{{ details.flashSize || 'Unknown' }}</div>
+                  <div class="summary-value">{{ details.flashSize || $t('deviceInfo.unknown') }}</div>
                   <div v-if="details.crystal" class="summary-meta">
-                    Crystal {{ details.crystal }}
+                    {{ $t('deviceInfo.crystal') }} {{ details.crystal }}
                   </div>
                   <div v-if="primaryFacts.length" class="summary-list">
                     <div v-for="fact in primaryFacts" :key="fact.label" class="summary-list__item">
@@ -44,10 +44,10 @@
                 <div class="summary-block">
                   <div class="summary-label">
                     <v-icon size="40" class="me-2">mdi-lightning-bolt-outline</v-icon>
-                    Feature Set
+                    {{ $t('deviceInfo.featureSet') }}
                   </div>
                   <div class="summary-value ml-2">
-                    {{ hasFeatures ? `${details.features.length} capabilities` : 'No features reported' }}
+                    {{ hasFeatures ? $t('deviceInfo.capabilitiesCount', { count: details.features.length }) : $t('deviceInfo.noFeatures') }}
                   </div>
 
                   <div class="summary-chips">
@@ -59,12 +59,12 @@
                       </v-chip>
                       <v-chip v-if="details.features.length > featurePreview.length"
                         class="summary-chip summary-chip--more" size="small" variant="outlined">
-                        +{{ details.features.length - featurePreview.length }} more
+                        {{ $t('deviceInfo.moreCount', { count: details.features.length - featurePreview.length }) }}
                       </v-chip>
                     </template>
                     <div v-else class="summary-empty">
                       <v-icon size="16">mdi-eye-off-outline</v-icon>
-                      <span>No optional capabilities.</span>
+                      <span>{{ $t('deviceInfo.noOptional') }}</span>
                     </div>
                   </div>
                 </div>
@@ -85,13 +85,13 @@
                   <div v-for="fact in group.items" :key="fact.label" class="detail-card__item">
                     <div class="detail-card__item-label">
                       <v-icon v-if="fact.icon" class="me-2">{{ fact.icon }}</v-icon>
-                      <span>{{ fact.label }}</span>
+                      <span>{{ tFactLabel(fact.label) }}</span>
                     </div>
                     <div class="detail-card__item-value">
                       <template v-if="fact.label === 'PWM/LEDC'">
                         <VTooltip
                           location="top"
-                          :text="'PWM/LEDC capabilities are based on the chip family, not on live data read from the device.'"
+                          :text="$t('deviceInfo.pwmLedcInfo')"
                         >
                           <template #activator="{ props }">
                             <span class="detail-card__value-with-icon" v-bind="props">
@@ -120,15 +120,28 @@
       </v-card>
     </div>
     <div v-else key="device-info-empty" class="device-info-empty">
-      <DisconnectedState subtitle="Connect to an ESP32 to see device information." />
+      <DisconnectedState :title="$t('disconnected.noDevice')" :subtitle="$t('disconnected.deviceInfo')" />
     </div>
   </Transition>
 </template>
 
 <script setup>
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import DisconnectedState from './DisconnectedState.vue';
 import {PRIMARY_FACTS} from  '../constants/deviceFacts';
+
+const { t } = useI18n();
+
+function tFactLabel(label) {
+  const map = {
+    'Chip Variant': t('facts.chipVariant'),
+    'Revision': t('facts.revision'),
+    'Max CPU Frequency': t('facts.maxCpuFreq'),
+    'CPU Cores': t('facts.cpuCores'),
+  };
+  return map[label] || label;
+}
 
 const props = defineProps({
   chipDetails: {
