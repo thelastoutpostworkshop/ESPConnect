@@ -22,6 +22,7 @@
     "electron-squirrel-startup": "^1.0.1",
     "tasmota-webserial-esptool": "^7.1.0",
     "vue": "^3.5.11",
+    "vue-i18n": "^11.2.2",
     "vuetify": "^3.7.2"
   },
   "devDependencies": {
