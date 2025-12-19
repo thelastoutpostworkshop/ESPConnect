@@ -1,0 +1,193 @@
+{
+  "app": { "title": "ESPConnect" },
+  "drawer": { "sections": "功能", "resources": "资源" },
+  "buttons": {
+    "connect": "连接",
+    "disconnect": "断开",
+    "copy": "复制",
+    "clear": "清空",
+    "start": "开始",
+    "stop": "停止",
+    "pause": "暂停",
+    "resume": "继续",
+    "reset": "重置"
+  },
+  "labels": { "baudRate": "波特率" },
+  "tooltips": { "higherBaud": "可使用更高的波特率" },
+  "theme": { "switch": "切换为{mode}主题", "light": "明亮", "dark": "深色" },
+  "status": { "connected": "已连接", "disconnected": "未连接" },
+  "warnings": {
+    "noSerial": "当前浏览器不支持 Web Serial API。请使用 Chrome、Edge 或其它基于 Chromium 的浏览器。"
+  },
+  "info": {
+    "serialMonitorClosed": "串口监视器已关闭——点击“连接”重新进入维护模式。"
+  },
+  "placeholders": {
+    "filterOutput": "筛选输出"
+  },
+  "nav": {
+    "deviceInfo": "设备信息",
+    "partitions": "分区",
+    "apps": "应用",
+    "spiffsTools": "SPIFFS 工具",
+    "littlefsTools": "LittleFS 工具",
+    "fatfsTools": "FATFS 工具",
+    "flashTools": "烧录工具",
+    "serialMonitor": "串口监视器",
+    "sessionLog": "会话日志",
+    "about": "关于"
+  },
+  "serialMonitor": {
+    "title": "串口监视器",
+    "statusLive": "实时",
+    "statusStopped": "已停止",
+    "subtitle": "控制台自动以 115200 bps 运行以保证输出可靠。烧录使用工具栏中选择的波特率。",
+    "info": "启动串口监视器会关闭引导加载器连接，将开发板复位到正常固件模式，并在你退出后释放 USB 端口以停止浏览器访问。运行维护操作（烧录、分区工具等）前，请先使用主界面的 <strong>连接</strong> 按钮重新连接。",
+    "empty": "启动后，串口输出将显示在此。"
+  },
+  "sessionLog": {
+    "empty": "执行操作后日志将显示在此。",
+    "copied": "会话日志已复制到剪贴板。",
+    "copyFailed": "无法复制日志，请重试。"
+  },
+  "resources": {
+    "tutorial": "教程",
+    "buyCoffee": "请我喝咖啡",
+    "getHelp": "获取帮助"
+  },
+  "disconnected": {
+    "spiffs": "连接到 ESP32 以浏览和编辑 SPIFFS 文件。",
+    "littlefs": "连接到带有 LittleFS 分区的 ESP32 以使用这些工具。",
+    "fatfs": "连接到带有 FATFS 分区的 ESP32 以使用这些工具。",
+    "apps": "连接设备以查看 OTA 应用分区。",
+    "flash": "连接到你的开发板以烧录固件或检查寄存器。",
+    "noDevice": "未连接设备",
+    "deviceInfo": "连接 ESP32 以查看设备信息。"
+  },
+  "deviceInfo": {
+    "flashClock": "闪存与时钟",
+    "unknown": "未知",
+    "crystal": "晶振",
+    "featureSet": "功能集",
+    "capabilitiesCount": "{count} 项能力",
+    "noFeatures": "未报告功能",
+    "moreCount": "+{count} 更多",
+    "noOptional": "没有可选功能。",
+    "pwmLedcInfo": "PWM/LEDC 能力基于芯片家族，而非从设备读取的实时数据。"
+  },
+  "facts": {
+    "chipVariant": "芯片封装/变种",
+    "revision": "版本",
+    "maxCpuFreq": "CPU 最高频率",
+    "cpuCores": "CPU 核心数"
+  },
+  "filesystem": {
+    "partitionName": "分区名称",
+    "partitionHeading": "{fs} 分区",
+    "read": "读取",
+    "backup": "备份",
+    "restoreImage": "恢复镜像",
+    "format": "格式化",
+    "saveToFlash": "写入到闪存",
+    "backupRequired": "请先下载备份镜像（每次连接至少点击一次“备份”）。成功备份后才会解锁“写入到闪存”。",
+    "stagedNotice": "更改会本地暂存，点击“写入到闪存”才会真正写入。请先备份以便出现问题时可恢复。",
+    "files": "文件",
+    "unsavedChanges": "未保存的更改",
+    "usedLabel": "已用 {percent}%（{used} / {capacity}）",
+    "freeLabel": "可用 {free}",
+    "selectFile": "选择文件",
+    "upload": "上传",
+    "dropAdd": "拖拽文件或文件夹以添加",
+    "dropAddSimple": "拖拽文件以添加",
+    "columns": {
+      "name": "名称",
+      "size": "大小",
+      "actions": "操作"
+    },
+    "newFolder": "新建文件夹",
+    "newFolderName": "文件夹名称",
+    "create": "创建",
+    "cancel": "取消",
+    "filterFiles": "筛选文件",
+    "fileType": "文件类型",
+    "fileCount": "{count} 个文件",
+    "fileCountFiltered": "{filtered} / {total} 个文件",
+    "noFiles": "没有文件",
+    "noFilesDetected": "未检测到文件。上传或恢复一个 {fs} 镜像后开始。",
+    "noMatch": "没有文件符合当前筛选条件",
+    "itemsPerPage": "每页条数：",
+    "all": "全部",
+    "allTypes": "所有类型",
+    "text": "文本",
+    "image": "图片",
+    "audio": "音频",
+    "other": "其他",
+    "listen": "收听",
+    "view": "查看",
+    "download": "下载 {name}",
+    "delete": "删除 {name}",
+    "loadCancelled": "{fs} 读取已取消。可点击“读取”重新获取分区。",
+    "readOnly": "{fs} 当前为只读模式。{detail}",
+    "readOnlyDefault": "无法保存更改。"
+  },
+  "flash": {
+    "advancedWarning": "固件工具适用于高级用户。写入或擦除闪存可能会永久删除数据或导致设备不可启动。操作前请仔细检查设置。",
+    "backupEraseTitle": "闪存备份与擦除",
+    "partition": "分区",
+    "downloadSelected": "下载所选分区",
+    "downloadAll": "下载全部分区",
+    "downloadUsedFlash": "下载已用闪存",
+    "startOffset": "起始偏移",
+    "lengthBytes": "长度（字节）",
+    "downloadRegion": "下载闪存区域",
+    "eraseEntire": "擦除整个闪存",
+    "flashStatusPreparing": "正在准备闪存...",
+    "firmwareTitle": "烧录固件",
+    "firmwareBinary": "固件二进制 (.bin)",
+    "flashOffset": "烧录偏移",
+    "recommendedOffsets": "推荐偏移",
+    "eraseBeforeWrite": "写入前先擦除整个闪存",
+    "flashHint": "默认以 921,600 bps 烧录。如设备握手困难，可降低波特率。串口监视器会自动切换到 115,200 bps 以保持稳定。",
+    "flashButton": "烧录固件",
+    "registerTitle": "寄存器访问",
+    "quickSelect": "快速选择寄存器",
+    "registerAddress": "寄存器地址",
+    "registerValue": "数值",
+    "readRegister": "读取寄存器",
+    "writeRegister": "写入寄存器",
+    "viewRegisterReference": "查看寄存器参考",
+    "openTechnicalReference": "打开技术参考",
+    "flashIntegrityTitle": "闪存校验",
+    "selectPartitionHelper": "选择分区后会自动填写下方偏移与长度。",
+    "computeMd5": "计算 MD5",
+    "md5Checksum": "MD5 校验：",
+    "flashInProgressTitle": "正在烧录",
+    "downloadInProgressTitle": "闪存下载中",
+    "preparingFlash": "正在准备烧录...",
+    "preparingDownload": "正在准备下载...",
+    "stop": "停止",
+    "lastReadValue": "上次读取值："
+  },
+  "aboutPage": {
+    "title": "关于 ESPConnect",
+    "intro1": "ESPConnect 是一款面向 ESP32 的浏览器工具包，将常见维护任务集中在一起，让你无需安装桌面工具即可连接、查看与更新开发板。",
+    "intro2": "应用通过 Web Serial API 与设备通信，提供固件烧录、分区管理、文件系统编辑、备份/恢复，以及便于排查问题的会话日志与串口监视器。其基于 Jason2866 的 <a href=\"https://github.com/Jason2866/WebSerial_ESPTool/tree/development\" target=\"_blank\" rel=\"noreferrer noopener\">WebSerial ESPTool</a> 开发。",
+    "filesystemTitle": "文件系统工具",
+    "filesystem": {
+      "spiffs": "SPIFFS：TypeScript 模拟器，可在写入闪存前本地演练修改。",
+      "littlefs": "LittleFS：基于 littlefs-wasm，保持与真实存储一致。",
+      "fatfs": "FATFS：全新 wasm 工具链，映射设备分区布局。",
+      "uploads": "拖拽上传、常见类型的预览/收听、差异摘要，以及写入前的强制备份，保障流程安全。"
+    },
+    "firmwareTitle": "固件与维护",
+    "firmware": {
+      "flash": "支持进度显示、预设与安全提示的自定义固件烧录。",
+      "inspect": "快速查看分区表、OTA 分区、设备描述以及闪存使用。",
+      "monitor": "带快捷指令与会话日志的串口监视器，便于排查。"
+    },
+    "safetyTitle": "安全优先的流程",
+    "safety": "所有破坏性操作都需确认且依赖最新备份。ESPConnect 将改动暂存在内存中，只有显式写入闪存才会生效，便于审查或通过重新读取分区撤销。",
+    "privacyTitle": "隐私与安全",
+    "privacy": "ESPConnect 完全在浏览器本地运行——无后台、无账号、无遥测。固件、备份和诊断数据只在你主动下载时才会移动。请只从可信来源烧录固件。"
+  }
+}
