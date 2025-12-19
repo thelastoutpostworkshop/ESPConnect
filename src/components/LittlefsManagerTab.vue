@@ -69,9 +69,12 @@
       </v-card-title>
       <v-card-text>
         <div v-if="usage?.capacityBytes" class="filesystem-usage">
-          <div class="">
+          <div class="d-flex justify-space-between align-center">
             <span>Used {{ usagePercent }}% ({{ formatSize(usage.usedBytes) }} / {{ formatSize(usage.capacityBytes) }})</span>
-            <span></span>
+            <v-chip v-if="diskVersion" size="small" variant="outlined" color="info" class="ml-2">
+              <v-icon start size="small">mdi-information-outline</v-icon>
+              LittleFS v{{ formatDiskVersion(diskVersion) }}
+            </v-chip>
           </div>
           <v-progress-linear :model-value="usagePercent" height="15" rounded color="primary" />
           <div class="text-caption text-medium-emphasis">
@@ -226,6 +229,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { formatDiskVersion } from '../../public/wasm/littlefs/index.js';
 
 const props = defineProps({
   partitions: Array,
@@ -247,6 +251,10 @@ const props = defineProps({
   hasPartition: Boolean,
   hasClient: Boolean,
   usage: Object,
+  diskVersion: {
+    type: Number,
+    default: 0,
+  },
   uploadBlocked: Boolean,
   uploadBlockedReason: String,
   isFileViewable: {
@@ -430,6 +438,8 @@ function formatSize(bytes) {
   const formatted = val % 1 === 0 ? val.toFixed(0) : val.toFixed(1);
   return `${formatted} ${units[idx]}`;
 }
+
+const diskVersion = computed(() => props.diskVersion);
 
 function triggerRestore() {
   const input = restoreInput.value;

@@ -35,6 +35,8 @@ export type LittlefsClient = {
   toImage?: () => Uint8Array;
   getUsage?: () => { capacityBytes: number; usedBytes: number; freeBytes: number };
   canFit?: (path: string, size: number) => boolean;
+  getDiskVersion?: () => number;
+  setDiskVersion?: (version: number) => void;
 };
 
 export type FatfsClient = {
@@ -130,6 +132,7 @@ export function useLittlefsManager(defaultBlockSize: number) {
     uploadBlockedReason: '',
     blockSize: defaultBlockSize,
     blockCount: 0,
+    diskVersion: 0 as number,  // LittleFS disk version (0x00020000 = v2.0, 0x00020001 = v2.1)
   });
   const littlefsBackupDialog = reactive({ visible: false, value: 0, label: '' });
   const littlefsLoadingDialog = reactive({ visible: false, value: 0, label: 'Reading LittleFS...' });
