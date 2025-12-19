@@ -126,7 +126,7 @@ export const skipPatterns = [
 
 ## 快速开始
 
-1. 打开 [ESPConnect](https://thelastoutpostworkshop.github.io/microcontroller_devkit/espconnect/)
+1. 打开 [ESPConnect - Original Website None Translated](https://thelastoutpostworkshop.github.io/microcontroller_devkit/espconnect/)
 2. 点击 **连接**，在浏览器弹出的对话框中选择您的设备
 3. 握手完成后，导航栏将解锁所有工具：设备信息、分区表、SPIFFS、应用、烧录工具、串口终端和日志
 4. 需要释放 USB 端口给其他应用时，点击 **断开连接**
