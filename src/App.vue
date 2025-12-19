@@ -2,12 +2,12 @@
   <v-app>
     <v-navigation-drawer permanent app elevation="1">
       <v-list>
-        <v-list-item prepend-icon="mdi-usb" title="ESPConnect" :subtitle="'v' + APP_VERSION">
+        <v-list-item prepend-icon="mdi-usb" :title="$t('app.title')" :subtitle="'v' + APP_VERSION">
         </v-list-item>
       </v-list>
       <v-list nav density="comfortable">
         <v-list-subheader class="app-drawer__label text-overline text-medium-emphasis">
-          Sections
+          {{ $t('drawer.sections') }}
         </v-list-subheader>
         <v-list-item v-for="item in navigationItems" :key="item.value" :value="item.value" :prepend-icon="item.icon"
           :active="activeTab === item.value" :disabled="item.disabled" class="app-drawer__list-item" rounded="lg"
@@ -18,7 +18,7 @@
       <v-divider class="app-drawer__divider" />
       <v-list density="comfortable">
         <v-list-subheader class="app-drawer__label text-overline text-medium-emphasis">
-          Resources
+          {{ $t('drawer.resources') }}
         </v-list-subheader>
         <v-list-item v-for="link in resourceLinks" :key="link.href" :href="link.href" :prepend-icon="link.icon"
           target="_blank" rel="noopener" class="app-drawer__list-item" rounded="lg">
@@ -31,19 +31,19 @@
         <v-btn color="primary" variant="outlined" density="comfortable"
           :disabled="!serialSupported || connected || busy" @click="connect">
           <v-icon start>mdi-usb-flash-drive</v-icon>
-          Connect
+          {{ $t('buttons.connect') }}
         </v-btn>
         <v-btn color="error" variant="outlined" density="comfortable" :disabled="!connected || busy"
           @click="disconnect">
           <v-icon start>mdi-close-circle</v-icon>
-          Disconnect
+          {{ $t('buttons.disconnect') }}
         </v-btn>
-        <v-select v-model="selectedBaud" :items="baudrateOptions" label="Baud rate" density="compact" variant="outlined"
+        <v-select v-model="selectedBaud" :items="baudrateOptions" :label="$t('labels.baudRate')" density="compact" variant="outlined"
           hide-details class="status-select"
           :disabled="busy || flashInProgress || maintenanceBusy || baudChangeBusy || monitorActive" />
         <span v-if="higherBaudrateAvailable">
 
-          <v-tooltip text="A higher baudrate can be used" location="bottom">
+          <v-tooltip :text="$t('tooltips.higherBaud')" location="bottom">
             <template v-slot:activator="{ props }">
               <v-btn class="text-none" stacked v-bind="props">
                 <v-badge bordered color="success" dot>
@@ -55,7 +55,8 @@
         </span>
       </div>
       <v-spacer />
-      <v-btn :title="`Switch to ${isDarkTheme ? 'light' : 'dark'} theme`" variant="text" icon size="small"
+      <v-select v-model="selectedLocale" :items="languageOptions" item-title="title" item-value="value" density="compact" variant="outlined" hide-details class="status-select locale-select" style="max-width: 140px" />
+      <v-btn :title="themeSwitchTitle" variant="text" icon size="small"
         @click="toggleTheme">
         <v-icon>{{ themeIcon }}</v-icon>
       </v-btn>
@@ -76,11 +77,11 @@
       <v-container fluid>
         <v-card elevation="8" class="pa-6">
           <v-alert v-if="!serialSupported" type="error" class="mb-4" variant="tonal" icon="mdi-alert-circle-outline">
-            This browser does not support the Web Serial API. Use Chrome, Edge, or another Chromium-based browser.
+            {{ $t('warnings.noSerial') }}
           </v-alert>
           <v-alert v-else-if="showSerialMonitorReconnectNotice" type="info" class="mb-4" variant="tonal"
             icon="mdi-console-line">
-            Serial monitor closed — click Connect to re-enter maintenance mode.
+            {{ $t('info.serialMonitorClosed') }}
           </v-alert>
           <v-window v-model="activeTab" class="app-tab-content">
             <v-window-item value="info">
@@ -108,7 +109,7 @@
                 @validate-upload="handleSpiffsUploadSelection" @upload-file="handleSpiffsUpload"
                 @delete-file="handleSpiffsDelete" @format="handleSpiffsFormat" @save="handleSpiffsSave" />
               <DisconnectedState v-else icon="mdi-folder-key-outline" :min-height="420"
-                subtitle="Connect to an ESP32 to browse and edit SPIFFS files." />
+                :subtitle="$t('disconnected.spiffs')" />
             </v-window-item>
 
             <v-window-item value="littlefs">
@@ -132,7 +133,7 @@
                 @navigate="handleLittlefsNavigate" @navigate-up="handleLittlefsNavigateUp"
                 @new-folder="handleLittlefsNewFolder" @reset-upload-block="handleLittlefsResetUploadBlock" />
               <DisconnectedState v-else icon="mdi-alpha-l-circle-outline" :min-height="420"
-                subtitle="Connect to an ESP32 with a LittleFS partition to use these tools." />
+                :subtitle="$t('disconnected.littlefs')" />
             </v-window-item>
 
             <v-window-item value="fatfs">
@@ -152,14 +153,14 @@
                 @validate-upload="handleFatfsUploadSelection" @upload-file="handleFatfsUpload"
                 @delete-file="handleFatfsDelete" @format="handleFatfsFormat" @save="handleFatfsSave" />
               <DisconnectedState v-else icon="mdi-alpha-f-circle-outline" :min-height="420"
-                subtitle="Connect to an ESP32 with a FATFS partition to use these tools." />
+                :subtitle="$t('disconnected.fatfs')" />
             </v-window-item>
 
             <v-window-item value="apps">
               <AppsTab v-if="connected" :apps="appPartitions" :active-slot-id="activeAppSlotId"
                 :active-summary="appActiveSummary" :loading="appMetadataLoading" :error="appMetadataError" />
               <DisconnectedState v-else icon="mdi-application-cog-outline" :min-height="420"
-                subtitle="Connect to a device to inspect OTA application slots." />
+                :subtitle="$t('disconnected.apps')" />
             </v-window-item>
 
             <v-window-item value="flash">
@@ -190,7 +191,7 @@
                 @erase-flash="handleEraseFlash" @cancel-download="handleCancelDownload"
                 @select-register="handleSelectRegister" />
               <DisconnectedState v-else icon="mdi-chip" :min-height="420"
-                subtitle="Connect to your board to flash firmware or inspect registers." />
+                :subtitle="$t('disconnected.flash')" />
             </v-window-item>
             <v-window-item value="console">
               <SerialMonitorTab :monitor-text="monitorText" :monitor-active="monitorActive"
@@ -615,6 +616,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useTheme } from 'vuetify';
 import DeviceInfoTab from './components/DeviceInfoTab.vue';
 import FlashFirmwareTab from './components/FlashFirmwareTab.vue';
@@ -670,6 +672,19 @@ import {
 import { FACT_GROUP_CONFIG, FACT_ICONS } from './constants/deviceFacts';
 import { findChipDocs } from './constants/chipDocsLinks';
 import { PWM_TABLE } from './utils/pwm-capabilities-table';
+
+const { t, locale } = useI18n();
+const languageOptions = [
+  { title: 'English', value: 'en' },
+  { title: '中文', value: 'zh-CN' },
+];
+const selectedLocale = ref(locale.value as string);
+watch(selectedLocale, (val) => {
+  locale.value = val as any;
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem('esp32-locale', String(val));
+  }
+});
 
 let littlefsModulePromise = null;
 let fatfsModulePromise = null;
@@ -3623,45 +3638,45 @@ const partitionTable = ref([]);
 const activeTab = ref('info');
 const sessionLogRef = ref(null);
 const navigationItems = computed(() => [
-  { title: 'Device Info', value: 'info', icon: 'mdi-information-outline', disabled: false },
-  { title: 'Partitions', value: 'partitions', icon: 'mdi-table', disabled: !connected.value },
+  { title: t('nav.deviceInfo'), value: 'info', icon: 'mdi-information-outline', disabled: false },
+  { title: t('nav.partitions'), value: 'partitions', icon: 'mdi-table', disabled: !connected.value },
   {
-    title: 'Apps',
+    title: t('nav.apps'),
     value: 'apps',
     icon: 'mdi-application',
     disabled: !connected.value || maintenanceNavigationLocked.value,
   },
   {
-    title: 'SPIFFS Tools',
+    title: t('nav.spiffsTools'),
     value: 'spiffs',
     icon: 'mdi-folder-wrench',
     disabled:
       !connected.value || !spiffsAvailable.value || maintenanceNavigationLocked.value,
   },
   {
-    title: 'LittleFS Tools',
+    title: t('nav.littlefsTools'),
     value: 'littlefs',
     icon: 'mdi-alpha-l-circle-outline',
     disabled:
       !connected.value || !littleFsAvailable.value || maintenanceNavigationLocked.value,
   },
   {
-    title: 'FATFS Tools',
+    title: t('nav.fatfsTools'),
     value: 'fatfs',
     icon: 'mdi-alpha-f-circle-outline',
     disabled:
       !connected.value || !fatfsAvailable.value || maintenanceNavigationLocked.value,
   },
   {
-    title: 'Flash Tools',
+    title: t('nav.flashTools'),
     value: 'flash',
     icon: 'mdi-chip',
     disabled: !connected.value || maintenanceNavigationLocked.value,
   },
-  { title: 'Serial Monitor', value: 'console', icon: 'mdi-console-line', disabled: false },
-  { title: 'Session Log', value: 'log', icon: 'mdi-clipboard-text-outline', disabled: false },
+  { title: t('nav.serialMonitor'), value: 'console', icon: 'mdi-console-line', disabled: false },
+  { title: t('nav.sessionLog'), value: 'log', icon: 'mdi-clipboard-text-outline', disabled: false },
   {
-    title: 'About',
+    title: t('nav.about'),
     value: 'about',
     icon: 'mdi-information-box-outline',
     disabled: false,
@@ -3679,17 +3694,17 @@ watch(
 
 const resourceLinks = [
   {
-    title: 'Tutorial',
+    title: t('resources.tutorial'),
     href: 'https://youtu.be/-nhDKzBxHiI',
     icon: 'mdi-youtube',
   },
   {
-    title: 'Buy Me a Coffee',
+    title: t('resources.buyCoffee'),
     href: 'https://buymeacoffee.com/thelastoutpostworkshop',
     icon: 'mdi-coffee',
   },
   {
-    title: 'Get Help',
+    title: t('resources.getHelp'),
     href: 'https://github.com/thelastoutpostworkshop/ESPConnect',
     icon: 'mdi-lifebuoy',
   },
@@ -3717,6 +3732,10 @@ const isDarkTheme = computed(() => currentTheme.value === 'dark');
 const themeIcon = computed(() =>
   isDarkTheme.value ? 'mdi-weather-night' : 'mdi-white-balance-sunny'
 );
+const themeSwitchTitle = computed(() => {
+  const mode = isDarkTheme.value ? t('theme.light') : t('theme.dark');
+  return t('theme.switch', { mode });
+});
 
 // Apply or remove the light-theme helper class on the document body.
 function applyThemeClass(name) {
@@ -4799,11 +4818,11 @@ watch([md5Offset, md5Length], ([offsetValue, lengthValue]) => {
 
 const connectionChipLabel = computed(() => {
   if (!connected.value) {
-    return 'Disconnected';
+    return t('status.disconnected');
   }
 
   const name = chipDetails.value?.name?.trim();
-  return name ? `${name}` : 'Connected';
+  return name ? `${name}` : t('status.connected');
 });
 
 const canFlash = computed(

@@ -1,0 +1,193 @@
+{
+  "app": { "title": "ESPConnect" },
+  "drawer": { "sections": "Sections", "resources": "Resources" },
+  "buttons": {
+    "connect": "Connect",
+    "disconnect": "Disconnect",
+    "copy": "Copy",
+    "clear": "Clear",
+    "start": "Start",
+    "stop": "Stop",
+    "pause": "Pause",
+    "resume": "Resume",
+    "reset": "Reset"
+  },
+  "labels": { "baudRate": "Baud rate" },
+  "tooltips": { "higherBaud": "A higher baudrate can be used" },
+  "theme": { "switch": "Switch to {mode} theme", "light": "light", "dark": "dark" },
+  "status": { "connected": "Connected", "disconnected": "Disconnected" },
+  "warnings": {
+    "noSerial": "This browser does not support the Web Serial API. Use Chrome, Edge, or another Chromium-based browser."
+  },
+  "info": {
+    "serialMonitorClosed": "Serial monitor closed — click Connect to re-enter maintenance mode."
+  },
+  "placeholders": {
+    "filterOutput": "Filter output"
+  },
+  "nav": {
+    "deviceInfo": "Device Info",
+    "partitions": "Partitions",
+    "apps": "Apps",
+    "spiffsTools": "SPIFFS Tools",
+    "littlefsTools": "LittleFS Tools",
+    "fatfsTools": "FATFS Tools",
+    "flashTools": "Flash Tools",
+    "serialMonitor": "Serial Monitor",
+    "sessionLog": "Session Log",
+    "about": "About"
+  },
+  "serialMonitor": {
+    "title": "Serial Monitor",
+    "statusLive": "Live",
+    "statusStopped": "Stopped",
+    "subtitle": "Console run at 115200 bps automatically for reliable output. Flashing uses the baud rate selected in the toolbar.",
+    "info": "Starting the serial monitor closes the bootloader connection, resets the board into normal firmware mode, and releases the USB port so the browser stops access once you exit. Reconnect with the main <strong>Connect</strong> button before running maintenance (flash, partition tools, etc.).",
+    "empty": "Monitor output will appear here once started."
+  },
+  "sessionLog": {
+    "empty": "Logs will appear here once actions begin.",
+    "copied": "Session log copied to clipboard.",
+    "copyFailed": "Unable to copy log. Please try again."
+  },
+  "resources": {
+    "tutorial": "Tutorial",
+    "buyCoffee": "Buy Me a Coffee",
+    "getHelp": "Get Help"
+  },
+  "disconnected": {
+    "spiffs": "Connect to an ESP32 to browse and edit SPIFFS files.",
+    "littlefs": "Connect to an ESP32 with a LittleFS partition to use these tools.",
+    "fatfs": "Connect to an ESP32 with a FATFS partition to use these tools.",
+    "apps": "Connect to a device to inspect OTA application slots.",
+    "flash": "Connect to your board to flash firmware or inspect registers.",
+    "noDevice": "No device connected",
+    "deviceInfo": "Connect to an ESP32 to see device information."
+  },
+  "deviceInfo": {
+    "flashClock": "Flash & Clock",
+    "unknown": "Unknown",
+    "crystal": "Crystal",
+    "featureSet": "Feature Set",
+    "capabilitiesCount": "{count} capabilities",
+    "noFeatures": "No features reported",
+    "moreCount": "+{count} more",
+    "noOptional": "No optional capabilities.",
+    "pwmLedcInfo": "PWM/LEDC capabilities are based on the chip family, not on live data read from the device."
+  },
+  "facts": {
+    "chipVariant": "Chip Variant",
+    "revision": "Revision",
+    "maxCpuFreq": "Max CPU Frequency",
+    "cpuCores": "CPU Cores"
+  },
+  "filesystem": {
+    "partitionName": "Partition name",
+    "partitionHeading": "{fs} Partition",
+    "read": "Read",
+    "backup": "Backup",
+    "restoreImage": "Restore Image",
+    "format": "Format",
+    "saveToFlash": "Save to Flash",
+    "backupRequired": "Download a backup image first (use the \"Backup\" button once per session). \"Save to Flash\" becomes available after any successful backup made during this connection.",
+    "stagedNotice": "Changes are staged locally until you click \"Save to Flash\". A recent backup ensures you can recover if something goes wrong.",
+    "files": "Files",
+    "unsavedChanges": "Unsaved changes",
+    "usedLabel": "Used {percent}% ({used} / {capacity})",
+    "freeLabel": "Free {free}",
+    "selectFile": "Select file",
+    "upload": "Upload",
+    "dropAdd": "Drop files or a folder to add",
+    "dropAddSimple": "Drop files to add",
+    "columns": {
+      "name": "Name",
+      "size": "Size",
+      "actions": "Actions"
+    },
+    "newFolder": "New Folder",
+    "newFolderName": "Folder name",
+    "create": "Create",
+    "cancel": "Cancel",
+    "filterFiles": "Filter files",
+    "fileType": "File type",
+    "fileCount": "{count} {count, plural, one {file} other {files}}",
+    "fileCountFiltered": "{filtered} of {total} files",
+    "noFiles": "No files",
+    "noFilesDetected": "No files detected. Upload or restore a {fs} image to begin.",
+    "noMatch": "No files match the current filter",
+    "itemsPerPage": "Items per page:",
+    "all": "All",
+    "allTypes": "All types",
+    "text": "Text",
+    "image": "Images",
+    "audio": "Audio",
+    "other": "Other",
+    "listen": "Listen",
+    "view": "View",
+    "download": "Download {name}",
+    "delete": "Delete {name}",
+    "loadCancelled": "{fs} load cancelled. Use \"Read\" to fetch the partition again.",
+    "readOnly": "{fs} is in read-only mode. {detail}",
+    "readOnlyDefault": "Changes cannot be saved."
+  },
+  "flash": {
+    "advancedWarning": "Firmware tools are intended for advanced users. Writing or erasing flash can permanently remove data or render the microcontroller unbootable. Double-check settings before proceeding.",
+    "backupEraseTitle": "Flash Backup & Erase",
+    "partition": "Partition",
+    "downloadSelected": "Download Selected Partition",
+    "downloadAll": "Download All Partitions",
+    "downloadUsedFlash": "Download Used Flash",
+    "startOffset": "Start offset",
+    "lengthBytes": "Length (bytes)",
+    "downloadRegion": "Download Flash Region",
+    "eraseEntire": "Erase Entire Flash",
+    "flashStatusPreparing": "Preparing flash...",
+    "firmwareTitle": "Flash Firmware",
+    "firmwareBinary": "Firmware binary (.bin)",
+    "flashOffset": "Flash offset",
+    "recommendedOffsets": "Recommended offsets",
+    "eraseBeforeWrite": "Erase entire flash before writing",
+    "flashHint": "Flashing runs at 921,600 bps by default. Drop the baud if the device struggles to sync. The serial monitor automatically switches to 115,200 bps for stability.",
+    "flashButton": "Flash Firmware",
+    "registerTitle": "Register Access",
+    "quickSelect": "Quick-select register",
+    "registerAddress": "Register address",
+    "registerValue": "Value",
+    "readRegister": "Read Register",
+    "writeRegister": "Write Register",
+    "viewRegisterReference": "View register reference",
+    "openTechnicalReference": "Open technical reference",
+    "flashIntegrityTitle": "Flash Integrity",
+    "selectPartitionHelper": "Selecting a partition will auto-fill the offset and length fields below.",
+    "computeMd5": "Compute MD5",
+    "md5Checksum": "MD5 checksum:",
+    "flashInProgressTitle": "Flash in progress",
+    "downloadInProgressTitle": "Flash download in progress",
+    "preparingFlash": "Preparing flash...",
+    "preparingDownload": "Preparing download...",
+    "stop": "Stop",
+    "lastReadValue": "Last read value:"
+  },
+  "aboutPage": {
+    "title": "About ESPConnect",
+    "intro1": "ESPConnect is a browser-based toolkit for ESP32 devices. It brings common maintenance tasks together so you can connect, inspect and update your board without installing desktop utilities.",
+    "intro2": "The application talks to the device over the Web Serial API, then exposes high-level tools for firmware flashing, partition management, filesystem editing, backup/restore workflows, as well as a session log and serial monitor for troubleshooting. It is based on Jason2866's <a href=\"https://github.com/Jason2866/WebSerial_ESPTool/tree/development\" target=\"_blank\" rel=\"noreferrer noopener\">WebSerial ESPTool</a>.",
+    "filesystemTitle": "Filesystem Tools",
+    "filesystem": {
+      "spiffs": "SPIFFS: TypeScript emulator for staging changes locally before writing flash.",
+      "littlefs": "LittleFS: Backed by the littlefs-wasm module for true storage parity.",
+      "fatfs": "FATFS: New wasm-powered tooling for FAT partitions, mirroring your device layout.",
+      "uploads": "Drag-and-drop uploads, preview/listen for common file types, diff summaries, and mandatory backups before saving keep the workflow safe."
+    },
+    "firmwareTitle": "Firmware & Maintenance",
+    "firmware": {
+      "flash": "Flash custom binaries with progress tracking, presets, and safety prompts.",
+      "inspect": "Inspect partition tables, OTA slots, device descriptors, and flash usage at a glance.",
+      "monitor": "Serial monitor with command shortcuts and session logging for troubleshooting."
+    },
+    "safetyTitle": "Safety-first Workflow",
+    "safety": "Every destructive action is gated behind confirmation prompts and recent backups. ESPConnect keeps staged changes in-memory until you explicitly write them to flash, making it easy to review modifications or revert by re-reading the partition.",
+    "privacyTitle": "Privacy & Security",
+    "privacy": "ESPConnect runs fully in your browser -- there is no backend, account, or telemetry. Firmware files, backups, and diagnostics stay local and only move when you download them yourself. Always flash firmware from trusted sources."
+  }
+}
