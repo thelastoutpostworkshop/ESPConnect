@@ -2,7 +2,7 @@
   "name": "espconnect",
   "productName": "ESPConnect",
   "private": true,
-  "version": "1.0.9",
+  "version": "1.0.12",
   "type": "module",
   "description": "Browser-based control center for ESP32 and ESP8266 boards",
   "main": "electron/main.cjs",
@@ -20,7 +20,7 @@
   "dependencies": {
     "@mdi/font": "^7.3.67",
     "electron-squirrel-startup": "^1.0.1",
-    "tasmota-webserial-esptool": "^7.1.0",
+    "tasmota-webserial-esptool": "^7.2.2",
     "vue": "^3.5.11",
     "vue-i18n": "^11.2.2",
     "vuetify": "^3.7.2"

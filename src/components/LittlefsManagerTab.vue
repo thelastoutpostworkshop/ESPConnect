@@ -67,9 +67,12 @@
       </v-card-title>
       <v-card-text>
         <div v-if="usage?.capacityBytes" class="filesystem-usage">
-          <div class="">
-            <span>{{ $t('filesystem.usedLabel', { percent: usagePercent, used: formatSize(usage.usedBytes), capacity: formatSize(usage.capacityBytes) }) }}</span>
-            <span></span>
+          <div class="d-flex justify-space-between align-center">
+            <span>Used {{ usagePercent }}% ({{ formatSize(usage.usedBytes) }} / {{ formatSize(usage.capacityBytes) }})</span>
+            <v-chip v-if="diskVersion" size="small" variant="outlined" color="info" class="ml-2">
+              <v-icon start size="small">mdi-information-outline</v-icon>
+              LittleFS v{{ diskVersionLabel }}
+            </v-chip>
           </div>
           <v-progress-linear :model-value="usagePercent" height="15" rounded color="primary" />
           <div class="text-caption text-medium-emphasis">
@@ -248,6 +251,11 @@ const props = defineProps({
   hasPartition: Boolean,
   hasClient: Boolean,
   usage: Object,
+  diskVersion: {
+    type: Number,
+    default: 0,
+  },
+  formatDiskVersion: Function,
   uploadBlocked: Boolean,
   uploadBlockedReason: String,
   isFileViewable: {
@@ -436,6 +444,14 @@ function formatSize(bytes) {
   const formatted = val % 1 === 0 ? val.toFixed(0) : val.toFixed(1);
   return `${formatted} ${units[idx]}`;
 }
+
+const diskVersion = computed(() => props.diskVersion);
+const diskVersionLabel = computed(() => {
+  if (!diskVersion.value) return '';
+  const formatter = props.formatDiskVersion;
+  if (typeof formatter !== 'function') return String(diskVersion.value);
+  return formatter(diskVersion.value);
+});
 
 function triggerRestore() {
   const input = restoreInput.value;

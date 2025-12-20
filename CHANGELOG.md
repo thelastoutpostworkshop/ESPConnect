@@ -1,10 +1,16 @@
 # Changelog
 
-## 1.0.10
+## 1.0.12
+- Filesystem backups now reuse the last partition read (avoids re-downloading the same flash region twice) ([issue #51](https://github.com/thelastoutpostworkshop/ESPConnect/issues/51)).
+- Moved WASM modules from public/ to src/ to ensure proper Vite module handling and eliminate dev/build import errors.
+- Renamed "Download used flash" to "Download flash backup" in Flash Tools.
+
+## 1.0.11
 - Added standalone electron app in release assets by Jason2866 ([PR #56](https://github.com/thelastoutpostworkshop/ESPConnect/pull/56)).
 - Fixed filesystem image flashing to pass an `ArrayBuffer` into `flashData` (avoids `ArrayBufferLike` / `SharedArrayBuffer` TypeScript warnings).
 - Use tasmota-webserial-esptool v7.2.2
 - Refactor to be better aligned with tasmota-webserial-esptool
+- Fixed LittleFS update to support disk version by Jason2866 ([PR #61](https://github.com/thelastoutpostworkshop/ESPConnect/pull/61)).
 
 ## 1.0.9
 - Fixed issues on flash size determination ([issue #8](https://github.com/thelastoutpostworkshop/ESPConnect/issues/8)).

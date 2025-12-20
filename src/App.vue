@@ -122,6 +122,7 @@
                 :dirty="littlefsState.dirty" :backup-done="littlefsState.backupDone || littlefsState.sessionBackupDone"
                 :error="littlefsState.error" :has-partition="hasLittlefsPartitionSelected"
                 :has-client="Boolean(littlefsState.client)" :usage="littlefsState.usage"
+                :disk-version="littlefsState.diskVersion" :format-disk-version="littlefsFormatDiskVersion"
                 :upload-blocked="littlefsState.uploadBlocked" :upload-blocked-reason="littlefsState.uploadBlockedReason"
                 :fs-label="$t('filesystem.labels.littlefs')" :load-cancelled="littlefsState.loadCancelled"
                 :partition-title="$t('filesystem.partitionHeading', { fs: $t('filesystem.labels.littlefs') })"
@@ -652,9 +653,6 @@ import {
   APP_IMAGE_HEADER_MAGIC,
   APP_SCAN_LENGTH,
   APP_VERSION,
-  FATFS_WASM_ENTRY,
-  LITTLEFS_MODULE_CACHE_KEY,
-  LITTLEFS_WASM_ENTRY,
   OTA_SELECT_ENTRY_SIZE,
   asciiDecoder,
 } from './constants/app';
@@ -699,6 +697,7 @@ watch(selectedLocale, (val) => {
 
 let littlefsModulePromise = null;
 let fatfsModulePromise = null;
+const littlefsFormatDiskVersion = ref<((version: number) => string) | null>(null);
 
 // Sort device facts using the preferred display order, then fall back to name sorting.
 // function sortFacts(facts) {
@@ -725,23 +724,19 @@ let fatfsModulePromise = null;
 // Lazy-load and cache the LittleFS WASM module.
 async function loadLittlefsModule() {
   if (!littlefsModulePromise) {
-    const moduleUrl = resolveLittlefsModuleUrl();
-    littlefsModulePromise = import(
-      /* @vite-ignore */ moduleUrl
-    ).catch(error => {
-      littlefsModulePromise = null;
-      throw error;
-    });
+    littlefsModulePromise = import('./wasm/littlefs/index.js')
+      .then(module => {
+        littlefsFormatDiskVersion.value =
+          typeof module.formatDiskVersion === 'function' ? module.formatDiskVersion : null;
+        return module;
+      })
+      .catch(error => {
+        littlefsModulePromise = null;
+        littlefsFormatDiskVersion.value = null;
+        throw error;
+      });
   }
   return littlefsModulePromise;
-}
-
-// Build a cache-busted URL for the LittleFS WASM bundle.
-function resolveLittlefsModuleUrl() {
-  const base = typeof window !== 'undefined' && window.location ? window.location.href : import.meta.url;
-  const url = new URL(LITTLEFS_WASM_ENTRY, base);
-  url.searchParams.set('v', LITTLEFS_MODULE_CACHE_KEY);
-  return url.toString();
 }
 
 // Normalize filesystem paths by enforcing a leading slash and collapsing separators.
@@ -801,11 +796,7 @@ function joinFsPath(basePath, name) {
 // Lazy-load and cache the FATFS WASM module.
 async function loadFatfsModule() {
   if (!fatfsModulePromise) {
-    const base = typeof window !== 'undefined' && window.location ? window.location.href : import.meta.url;
-    const moduleUrl = new URL(FATFS_WASM_ENTRY, base);
-    fatfsModulePromise = import(
-      /* @vite-ignore */ moduleUrl.toString()
-    ).catch(error => {
+    fatfsModulePromise = import('./wasm/fatfs/index.js').catch(error => {
       fatfsModulePromise = null;
       throw error;
     });
@@ -961,6 +952,9 @@ async function loadLittlefsPartition(partition) {
         littlefsLoadingDialog.value = progress.value ?? 0;
       },
     });
+    littlefsState.lastReadOffset = partition.offset;
+    littlefsState.lastReadSize = partition.size;
+    littlefsState.lastReadImage = image;
     const module = await loadLittlefsModule();
     const createLittleFSFromImage =
       typeof module.createLittleFSFromImage === 'function' ? module.createLittleFSFromImage : null;
@@ -1159,15 +1153,27 @@ async function handleLittlefsBackup() {
     const baseLabel = `${partition.label || 'littlefs'}_${partition.offset.toString(16)}`;
     const safeBase = sanitizeFileName(baseLabel, 'littlefs');
     const stampedName = `${safeBase}_${formatBackupTimestamp()}.bin`;
-    await downloadFlashRegion(partition.offset, partition.size, {
-      label: `${partition.label || fsLabel}`,
-      fileName: stampedName,
-      suppressStatus: true,
-      onProgress: progress => {
-        littlefsBackupDialog.value = progress.value ?? 0;
-        littlefsBackupDialog.label = progress.label || t('filesystem.messages.backupLabel', { fs: fsLabel });
-      },
-    });
+    const cachedImage =
+      littlefsState.lastReadImage &&
+      littlefsState.lastReadOffset === partition.offset &&
+      littlefsState.lastReadSize === partition.size
+        ? littlefsState.lastReadImage
+        : null;
+    if (cachedImage) {
+      littlefsBackupDialog.value = 100;
+      littlefsBackupDialog.label = 'Saving backup from cached LittleFS image...';
+      saveBinaryFile(stampedName, cachedImage);
+    } else {
+      await downloadFlashRegion(partition.offset, partition.size, {
+        label: `${partition.label || 'LittleFS'} partition`,
+        fileName: stampedName,
+        suppressStatus: true,
+        onProgress: progress => {
+          littlefsBackupDialog.value = progress.value ?? 0;
+          littlefsBackupDialog.label = progress.label || 'Backing up LittleFS...';
+        },
+      });
+    }
     littlefsState.backupDone = true;
     littlefsState.sessionBackupDone = true;
     littlefsState.status = t('filesystem.messages.backupComplete', { fs: fsLabel });
@@ -1799,6 +1805,9 @@ async function loadFatfsPartition(partition) {
         fatfsLoadingDialog.value = progress.value ?? 0;
       },
     });
+    fatfsState.lastReadOffset = partition.offset;
+    fatfsState.lastReadSize = partition.size;
+    fatfsState.lastReadImage = image;
     const module = await loadFatfsModule();
     const createFatFSFromImage =
       typeof module.createFatFSFromImage === 'function' ? module.createFatFSFromImage : null;
@@ -1937,15 +1946,27 @@ async function handleFatfsBackup() {
     const baseLabel = `${partition.label || 'fatfs'}_${partition.offset.toString(16)}`;
     const safeBase = sanitizeFileName(baseLabel, 'fatfs');
     const stampedName = `${safeBase}_${formatBackupTimestamp()}.bin`;
-    await downloadFlashRegion(partition.offset, partition.size, {
-      label: `${partition.label || fsLabel}`,
-      fileName: stampedName,
-      suppressStatus: true,
-      onProgress: progress => {
-        fatfsBackupDialog.value = progress.value ?? 0;
-        fatfsBackupDialog.label = progress.label || t('filesystem.messages.backupLabel', { fs: fsLabel });
-      },
-    });
+    const cachedImage =
+      fatfsState.lastReadImage &&
+      fatfsState.lastReadOffset === partition.offset &&
+      fatfsState.lastReadSize === partition.size
+        ? fatfsState.lastReadImage
+        : null;
+    if (cachedImage) {
+      fatfsBackupDialog.value = 100;
+      fatfsBackupDialog.label = 'Saving backup from cached FATFS image...';
+      saveBinaryFile(stampedName, cachedImage);
+    } else {
+      await downloadFlashRegion(partition.offset, partition.size, {
+        label: `${partition.label || 'FATFS'} partition`,
+        fileName: stampedName,
+        suppressStatus: true,
+        onProgress: progress => {
+          fatfsBackupDialog.value = progress.value ?? 0;
+          fatfsBackupDialog.label = progress.label || 'Backing up FATFS...';
+        },
+      });
+    }
     fatfsState.backupDone = true;
     fatfsState.sessionBackupDone = true;
     fatfsState.status = t('filesystem.messages.backupComplete', { fs: fsLabel });
@@ -2450,6 +2471,9 @@ function saveBinaryFile(name, data) {
 // Reset SPIFFS state to initial defaults.
 function resetSpiffsState() {
   spiffsState.selectedId = null;
+  spiffsState.lastReadOffset = null;
+  spiffsState.lastReadSize = 0;
+  spiffsState.lastReadImage = null;
   spiffsState.client = null;
   spiffsState.files = [];
   spiffsState.status = t('filesystem.messages.loadPrompt', { fs: t('filesystem.labels.spiffs') });
@@ -2491,6 +2515,9 @@ function updateSpiffsUsage() {
 // Reset LittleFS state to initial defaults.
 function resetLittlefsState() {
   littlefsState.selectedId = null;
+  littlefsState.lastReadOffset = null;
+  littlefsState.lastReadSize = 0;
+  littlefsState.lastReadImage = null;
   littlefsState.client = null;
   littlefsState.files = [];
   littlefsState.currentPath = '/';
@@ -2518,6 +2545,8 @@ function resetLittlefsState() {
   littlefsState.blockSize = 0;
   littlefsState.blockCount = 0;
   littlefsState.currentPath = '/';
+  // Ensure disk version doesn’t leak between sessions
+  littlefsState.diskVersion = 0;
 }
 
 // Calculate LittleFS usage based on current entries.
@@ -2534,11 +2563,18 @@ function updateLittlefsUsage(partition = littlefsSelectedPartition.value) {
     usedBytes,
     freeBytes: Math.max(capacityBytes - usedBytes, 0),
   };
+  // Update disk version from client if available
+  if (littlefsState.client?.getDiskVersion) {
+    littlefsState.diskVersion = littlefsState.client.getDiskVersion();
+  }
 }
 
 // Reset FATFS state to initial defaults.
 function resetFatfsState() {
   fatfsState.selectedId = null;
+  fatfsState.lastReadOffset = null;
+  fatfsState.lastReadSize = 0;
+  fatfsState.lastReadImage = null;
   fatfsState.client = null;
   fatfsState.files = [];
   fatfsState.status = t('filesystem.messages.loadPrompt', { fs: t('filesystem.labels.fatfs') });
@@ -2667,6 +2703,9 @@ async function loadSpiffsPartition(partition) {
         spiffsLoadingDialog.value = progress.value ?? 0;
       },
     });
+    spiffsState.lastReadOffset = partition.offset;
+    spiffsState.lastReadSize = partition.size;
+    spiffsState.lastReadImage = image;
     let client;
     try {
       client = await InMemorySpiffsClient.fromImage(image);
@@ -2829,15 +2868,27 @@ async function handleSpiffsBackup() {
     const baseLabel = `${partition.label || 'spiffs'}_${partition.offset.toString(16)}`;
     const safeBase = sanitizeFileName(baseLabel, 'spiffs');
     const stampedName = `${safeBase}_${formatBackupTimestamp()}.bin`;
-    await downloadFlashRegion(partition.offset, partition.size, {
-      label: `${partition.label} SPIFFS`,
-      fileName: stampedName,
-      suppressStatus: true,
-      onProgress: progress => {
-        spiffsBackupDialog.value = progress.value ?? 0;
-        spiffsBackupDialog.label = progress.label || t('filesystem.messages.backupLabel', { fs: fsLabel });
-      },
-    });
+    const cachedImage =
+      spiffsState.lastReadImage &&
+      spiffsState.lastReadOffset === partition.offset &&
+      spiffsState.lastReadSize === partition.size
+        ? spiffsState.lastReadImage
+        : null;
+    if (cachedImage) {
+      spiffsBackupDialog.value = 100;
+      spiffsBackupDialog.label = 'Saving backup from cached SPIFFS image...';
+      saveBinaryFile(stampedName, cachedImage);
+    } else {
+      await downloadFlashRegion(partition.offset, partition.size, {
+        label: `${partition.label} SPIFFS`,
+        fileName: stampedName,
+        suppressStatus: true,
+        onProgress: progress => {
+          spiffsBackupDialog.value = progress.value ?? 0;
+          spiffsBackupDialog.label = progress.label || 'Backing up SPIFFS...';
+        },
+      });
+    }
     spiffsState.backupDone = true;
     spiffsState.sessionBackupDone = true;
     spiffsState.status = t('filesystem.messages.backupComplete', { fs: fsLabel });
