@@ -521,7 +521,7 @@
     "partition": "Partition",
     "downloadSelected": "Download Selected Partition",
     "downloadAll": "Download All Partitions",
-    "downloadUsedFlash": "Download Used Flash",
+    "downloadUsedFlash": "Download flash backup",
     "startOffset": "Start offset",
     "lengthBytes": "Length (bytes)",
     "downloadRegion": "Download Flash Region",

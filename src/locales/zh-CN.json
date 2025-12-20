@@ -545,7 +545,7 @@
     "partition": "分区",
     "downloadSelected": "下载所选分区",
     "downloadAll": "下载全部分区",
-    "downloadUsedFlash": "下载已用闪存",
+    "downloadUsedFlash": "下载闪存备份",
     "startOffset": "起始偏移",
     "lengthBytes": "长度（字节）",
     "downloadRegion": "下载闪存区域",
