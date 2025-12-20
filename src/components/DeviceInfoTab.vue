@@ -133,14 +133,33 @@ import {PRIMARY_FACTS} from  '../constants/deviceFacts';
 
 const { t } = useI18n();
 
+const FACT_LABEL_KEY_MAP = {
+  'Chip Variant': 'facts.chipVariant',
+  'Package Form Factor': 'facts.packageFormFactor',
+  'Revision': 'facts.revision',
+  'Embedded Flash': 'facts.embeddedFlash',
+  'Embedded PSRAM': 'facts.embeddedPsram',
+  'Max CPU Frequency': 'facts.maxCpuFreq',
+  'CPU Cores': 'facts.cpuCores',
+  'PWM/LEDC': 'facts.pwmLedc',
+  'Flash Vendor (eFuse)': 'facts.flashVendorEfuse',
+  'PSRAM Vendor (eFuse)': 'facts.psramVendorEfuse',
+  'Flash ID': 'facts.flashId',
+  'Flash Manufacturer': 'facts.flashManufacturer',
+  'Flash Device': 'facts.flashDevice',
+  'eFuse Block Version': 'facts.efuseBlockVersion',
+  'USB Bridge': 'facts.usbBridge',
+  'Connection Baud': 'facts.connectionBaud',
+  'Hardware Reference': 'facts.hardwareReference',
+  'Datasheet': 'facts.datasheet',
+  'Technical Reference Manual': 'facts.technicalReferenceManual',
+  'Errata': 'facts.errata',
+  'Hardware Design Guidelines': 'facts.hardwareDesignGuidelines',
+};
+
 function tFactLabel(label) {
-  const map = {
-    'Chip Variant': t('facts.chipVariant'),
-    'Revision': t('facts.revision'),
-    'Max CPU Frequency': t('facts.maxCpuFreq'),
-    'CPU Cores': t('facts.cpuCores'),
-  };
-  return map[label] || label;
+  const key = FACT_LABEL_KEY_MAP[label];
+  return key ? t(key) : label;
 }
 
 const props = defineProps({

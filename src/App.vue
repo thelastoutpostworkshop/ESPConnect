@@ -38,8 +38,8 @@
           <v-icon start>mdi-close-circle</v-icon>
           {{ $t('buttons.disconnect') }}
         </v-btn>
-        <v-select v-model="selectedBaud" :items="baudrateOptions" :label="$t('labels.baudRate')" density="compact" variant="outlined"
-          hide-details class="status-select"
+        <v-select v-model="selectedBaud" :items="baudrateOptions" :label="$t('labels.baudRate')" density="compact"
+          variant="outlined" hide-details class="status-select"
           :disabled="busy || flashInProgress || maintenanceBusy || baudChangeBusy || monitorActive" />
         <span v-if="higherBaudrateAvailable">
 
@@ -55,9 +55,10 @@
         </span>
       </div>
       <v-spacer />
-      <v-select v-model="selectedLocale" :items="languageOptions" item-title="title" item-value="value" density="compact" variant="outlined" hide-details class="status-select locale-select" style="max-width: 140px" />
-      <v-btn :title="themeSwitchTitle" variant="text" icon size="small"
-        @click="toggleTheme">
+      <v-select v-model="selectedLocale" :items="languageOptions" item-title="title" item-value="value"
+        density="compact" variant="outlined" hide-details class="status-select locale-select"
+        style="max-width: 140px" />
+      <v-btn :title="themeSwitchTitle" variant="text" icon size="small" @click="toggleTheme">
         <v-icon>{{ themeIcon }}</v-icon>
       </v-btn>
       <v-chip :color="connected ? 'success' : 'grey-darken-1'" class="text-capitalize" variant="elevated"
@@ -122,8 +123,9 @@
                 :error="littlefsState.error" :has-partition="hasLittlefsPartitionSelected"
                 :has-client="Boolean(littlefsState.client)" :usage="littlefsState.usage"
                 :upload-blocked="littlefsState.uploadBlocked" :upload-blocked-reason="littlefsState.uploadBlockedReason"
-                fs-label="LittleFS" :load-cancelled="littlefsState.loadCancelled" partition-title="LittleFS Partition"
-                empty-state-message="No LittleFS files found. Read the partition or upload to begin."
+                :fs-label="$t('filesystem.labels.littlefs')" :load-cancelled="littlefsState.loadCancelled"
+                :partition-title="$t('filesystem.partitionHeading', { fs: $t('filesystem.labels.littlefs') })"
+                :empty-state-message="$t('filesystem.noFilesDetected', { fs: $t('filesystem.labels.littlefs') })"
                 :is-file-viewable="isViewableSpiffsFile" :get-file-preview-info="resolveSpiffsViewInfo"
                 @select-partition="handleSelectLittlefsPartition" @refresh="handleRefreshLittlefs"
                 @backup="handleLittlefsBackup" @restore="handleLittlefsRestore"
@@ -145,8 +147,9 @@
                 :has-partition="hasFatfsPartitionSelected" :has-client="Boolean(fatfsState.client)"
                 :usage="fatfsState.usage" :upload-blocked="fatfsState.uploadBlocked"
                 :upload-blocked-reason="fatfsState.uploadBlockedReason" :load-cancelled="fatfsState.loadCancelled"
-                fs-label="FATFS" partition-title="FATFS Partition"
-                empty-state-message="No FATFS files found. Read the partition or upload to begin."
+                :fs-label="$t('filesystem.labels.fatfs')"
+                :partition-title="$t('filesystem.partitionHeading', { fs: $t('filesystem.labels.fatfs') })"
+                :empty-state-message="$t('filesystem.noFilesDetected', { fs: $t('filesystem.labels.fatfs') })"
                 :is-file-viewable="isViewableSpiffsFile" :get-file-preview-info="resolveSpiffsViewInfo"
                 @select-partition="handleSelectFatfsPartition" @refresh="handleRefreshFatfs" @backup="handleFatfsBackup"
                 @restore="handleFatfsRestore" @download-file="handleFatfsDownloadFile" @view-file="handleFatfsView"
@@ -190,8 +193,7 @@
                 @download-used-flash="handleDownloadUsedFlash" @cancel-flash="handleCancelFlash"
                 @erase-flash="handleEraseFlash" @cancel-download="handleCancelDownload"
                 @select-register="handleSelectRegister" />
-              <DisconnectedState v-else icon="mdi-chip" :min-height="420"
-                :subtitle="$t('disconnected.flash')" />
+              <DisconnectedState v-else icon="mdi-chip" :min-height="420" :subtitle="$t('disconnected.flash')" />
             </v-window-item>
             <v-window-item value="console">
               <SerialMonitorTab :monitor-text="monitorText" :monitor-active="monitorActive"
@@ -217,7 +219,7 @@
             <v-card-title class="text-h6">
               <v-icon start
                 :color="confirmationDialog.destructive ? 'error' : 'warning'">mdi-alert-circle-outline</v-icon>
-              {{ confirmationDialog.title || 'Please confirm' }}
+              {{ confirmationDialog.title || $t('dialogs.confirm.title') }}
             </v-card-title>
             <v-card-text class="text-body-2">
               <div class="confirmation-message">
@@ -227,11 +229,11 @@
             <v-card-actions>
               <v-spacer />
               <v-btn variant="text" @click="resolveConfirmation(false)">
-                {{ confirmationDialog.cancelText || 'Cancel' }}
+                {{ confirmationDialog.cancelText || $t('buttons.cancel') }}
               </v-btn>
               <v-btn :color="confirmationDialog.destructive ? 'error' : 'primary'" variant="tonal"
                 @click="resolveConfirmation(true)">
-                {{ confirmationDialog.confirmText || 'Continue' }}
+                {{ confirmationDialog.confirmText || $t('buttons.continue') }}
               </v-btn>
             </v-card-actions>
           </v-card>
@@ -241,7 +243,7 @@
           <v-card>
             <v-card-title class="text-h6">
               <v-icon start color="primary">mdi-usb</v-icon>
-              Connecting
+              {{ $t('dialogs.connect.title') }}
             </v-card-title>
             <v-card-text class="progress-dialog__body">
               <div class="progress-dialog__label">
@@ -259,11 +261,11 @@
           <v-card>
             <v-card-title class="text-h6">
               <v-icon start color="primary">mdi-content-save</v-icon>
-              LittleFS Backup
+              {{ $t('dialogs.fs.backupTitle', { fs: 'LittleFS' }) }}
             </v-card-title>
             <v-card-text class="progress-dialog__body">
               <div class="progress-dialog__label">
-                {{ littlefsBackupDialog.label || 'Preparing backup...' }}
+                {{ littlefsBackupDialog.label || $t('dialogs.fs.backupPreparing') }}
               </div>
               <v-progress-linear :model-value="littlefsBackupDialog.value" height="24" color="primary" rounded>
                 <strong>{{ Math.min(100, Math.max(0, Math.floor(littlefsBackupDialog.value))) }}%</strong>
@@ -272,7 +274,7 @@
             <v-card-actions>
               <v-spacer />
               <v-btn variant="text" @click="cancelLittlefsBackup">
-                Cancel
+                {{ $t('buttons.cancel') }}
               </v-btn>
             </v-card-actions>
           </v-card>
@@ -282,7 +284,7 @@
           <v-card>
             <v-card-title class="text-h6">
               <v-icon start color="primary">mdi-folder-sync</v-icon>
-              Loading LittleFS
+              {{ $t('dialogs.fs.loadingTitle', { fs: 'LittleFS' }) }}
             </v-card-title>
             <v-card-text class="progress-dialog__body">
               <div class="progress-dialog__label">
@@ -294,7 +296,7 @@
             <v-card-actions class="progress-dialog__actions">
               <v-spacer />
               <v-btn variant="text" :disabled="littlefsLoadCancelRequested" @click="cancelLittlefsLoad">
-                Cancel
+                {{ $t('buttons.cancel') }}
               </v-btn>
             </v-card-actions>
           </v-card>
@@ -304,11 +306,11 @@
           <v-card>
             <v-card-title class="text-h6">
               <v-icon start color="primary">mdi-floppy</v-icon>
-              Saving LittleFS
+              {{ $t('dialogs.fs.savingTitle', { fs: 'LittleFS' }) }}
             </v-card-title>
             <v-card-text class="progress-dialog__body">
               <div class="progress-dialog__label">
-                {{ littlefsSaveDialog.label || 'Writing LittleFS image...' }}
+                {{ littlefsSaveDialog.label || $t('dialogs.fs.writingImage', { fs: 'LittleFS' }) }}
               </div>
               <v-progress-linear :model-value="littlefsSaveDialog.value" height="24" color="primary" rounded>
                 <strong>{{ Math.min(100, Math.max(0, Math.floor(littlefsSaveDialog.value))) }}%</strong>
@@ -321,11 +323,11 @@
           <v-card>
             <v-card-title class="text-h6">
               <v-icon start color="primary">mdi-backup-restore</v-icon>
-              Restoring LittleFS
+              {{ $t('dialogs.fs.restoringTitle', { fs: 'LittleFS' }) }}
             </v-card-title>
             <v-card-text class="progress-dialog__body">
               <div class="progress-dialog__label">
-                {{ littlefsRestoreDialog.label || 'Writing LittleFS image...' }}
+                {{ littlefsRestoreDialog.label || $t('dialogs.fs.writingImage', { fs: 'LittleFS' }) }}
               </div>
               <v-progress-linear :model-value="littlefsRestoreDialog.value" height="24" color="primary" rounded>
                 <strong>{{ Math.min(100, Math.max(0, Math.floor(littlefsRestoreDialog.value))) }}%</strong>
@@ -338,11 +340,11 @@
           <v-card>
             <v-card-title class="text-h6">
               <v-icon start color="primary">mdi-content-save</v-icon>
-              FATFS Backup
+              {{ $t('dialogs.fs.backupTitle', { fs: 'FATFS' }) }}
             </v-card-title>
             <v-card-text class="progress-dialog__body">
               <div class="progress-dialog__label">
-                {{ fatfsBackupDialog.label || 'Preparing backup...' }}
+                {{ fatfsBackupDialog.label || $t('dialogs.fs.backupPreparing') }}
               </div>
               <v-progress-linear :model-value="fatfsBackupDialog.value" height="24" color="primary" rounded>
                 <strong>{{ Math.min(100, Math.max(0, Math.floor(fatfsBackupDialog.value))) }}%</strong>
@@ -351,7 +353,7 @@
             <v-card-actions>
               <v-spacer />
               <v-btn variant="text" @click="cancelFatfsBackup">
-                Cancel
+                {{ $t('buttons.cancel') }}
               </v-btn>
             </v-card-actions>
           </v-card>
@@ -361,7 +363,7 @@
           <v-card>
             <v-card-title class="text-h6">
               <v-icon start color="primary">mdi-folder-sync</v-icon>
-              Loading FATFS
+              {{ $t('dialogs.fs.loadingTitle', { fs: 'FATFS' }) }}
             </v-card-title>
             <v-card-text class="progress-dialog__body">
               <div class="progress-dialog__label">
@@ -373,7 +375,7 @@
             <v-card-actions class="progress-dialog__actions">
               <v-spacer />
               <v-btn variant="text" :disabled="fatfsLoadCancelRequested" @click="cancelFatfsLoad">
-                Cancel
+                {{ $t('buttons.cancel') }}
               </v-btn>
             </v-card-actions>
           </v-card>
@@ -383,11 +385,11 @@
           <v-card>
             <v-card-title class="text-h6">
               <v-icon start color="primary">mdi-floppy</v-icon>
-              Saving FATFS
+              {{ $t('dialogs.fs.savingTitle', { fs: 'FATFS' }) }}
             </v-card-title>
             <v-card-text class="progress-dialog__body">
               <div class="progress-dialog__label">
-                {{ fatfsSaveDialog.label || 'Writing FATFS image...' }}
+                {{ fatfsSaveDialog.label || $t('dialogs.fs.writingImage', { fs: 'FATFS' }) }}
               </div>
               <v-progress-linear :model-value="fatfsSaveDialog.value" height="24" color="primary" rounded>
                 <strong>{{ Math.min(100, Math.max(0, Math.floor(fatfsSaveDialog.value))) }}%</strong>
@@ -400,11 +402,11 @@
           <v-card>
             <v-card-title class="text-h6">
               <v-icon start color="primary">mdi-backup-restore</v-icon>
-              Restoring FATFS
+              {{ $t('dialogs.fs.restoringTitle', { fs: 'FATFS' }) }}
             </v-card-title>
             <v-card-text class="progress-dialog__body">
               <div class="progress-dialog__label">
-                {{ fatfsRestoreDialog.label || 'Writing FATFS image...' }}
+                {{ fatfsRestoreDialog.label || $t('dialogs.fs.writingImage', { fs: 'FATFS' }) }}
               </div>
               <v-progress-linear :model-value="fatfsRestoreDialog.value" height="24" color="primary" rounded>
                 <strong>{{ Math.min(100, Math.max(0, Math.floor(fatfsRestoreDialog.value))) }}%</strong>
@@ -417,11 +419,11 @@
           <v-card>
             <v-card-title class="text-h6">
               <v-icon start color="primary">mdi-content-save</v-icon>
-              SPIFFS Backup
+              {{ $t('dialogs.fs.backupTitle', { fs: 'SPIFFS' }) }}
             </v-card-title>
             <v-card-text class="progress-dialog__body">
               <div class="progress-dialog__label">
-                {{ spiffsBackupDialog.label || 'Preparing backup...' }}
+                {{ spiffsBackupDialog.label || $t('dialogs.fs.backupPreparing') }}
               </div>
               <v-progress-linear :model-value="spiffsBackupDialog.value" height="24" color="primary" rounded>
                 <strong>{{ Math.min(100, Math.max(0, Math.floor(spiffsBackupDialog.value))) }}%</strong>
@@ -430,7 +432,7 @@
             <v-card-actions>
               <v-spacer />
               <v-btn variant="text" @click="cancelSpiffsBackup">
-                Cancel
+                {{ $t('buttons.cancel') }}
               </v-btn>
             </v-card-actions>
           </v-card>
@@ -440,7 +442,7 @@
           <v-card>
             <v-card-title class="text-h6">
               <v-icon start color="primary">mdi-folder-sync</v-icon>
-              Loading SPIFFS
+              {{ $t('dialogs.fs.loadingTitle', { fs: 'SPIFFS' }) }}
             </v-card-title>
             <v-card-text class="progress-dialog__body">
               <div class="progress-dialog__label">
@@ -452,7 +454,7 @@
             <v-card-actions class="progress-dialog__actions">
               <v-spacer />
               <v-btn variant="text" :disabled="spiffsLoadCancelRequested" @click="cancelSpiffsLoad">
-                Cancel
+                {{ $t('buttons.cancel') }}
               </v-btn>
             </v-card-actions>
           </v-card>
@@ -462,11 +464,11 @@
           <v-card>
             <v-card-title class="text-h6">
               <v-icon start color="primary">mdi-floppy</v-icon>
-              Saving SPIFFS
+              {{ $t('dialogs.fs.savingTitle', { fs: 'SPIFFS' }) }}
             </v-card-title>
             <v-card-text class="progress-dialog__body">
               <div class="progress-dialog__label">
-                {{ spiffsSaveDialog.label || 'Writing SPIFFS image...' }}
+                {{ spiffsSaveDialog.label || $t('dialogs.fs.writingImage', { fs: 'SPIFFS' }) }}
               </div>
               <v-progress-linear :model-value="spiffsSaveDialog.value" height="24" color="primary" rounded>
                 <strong>{{ Math.min(100, Math.max(0, Math.floor(spiffsSaveDialog.value))) }}%</strong>
@@ -479,11 +481,11 @@
           <v-card>
             <v-card-title class="text-h6">
               <v-icon start color="primary">mdi-backup-restore</v-icon>
-              Restoring SPIFFS
+              {{ $t('dialogs.fs.restoringTitle', { fs: 'SPIFFS' }) }}
             </v-card-title>
             <v-card-text class="progress-dialog__body">
               <div class="progress-dialog__label">
-                {{ spiffsRestoreDialog.label || 'Writing SPIFFS image...' }}
+                {{ spiffsRestoreDialog.label || $t('dialogs.fs.writingImage', { fs: 'SPIFFS' }) }}
               </div>
               <v-progress-linear :model-value="spiffsRestoreDialog.value" height="24" color="primary" rounded>
                 <strong>{{ Math.min(100, Math.max(0, Math.floor(spiffsRestoreDialog.value))) }}%</strong>
@@ -496,23 +498,20 @@
           <v-card>
             <v-card-title class="text-h6">
               <v-icon start color="warning">mdi-lock-alert</v-icon>
-              Port Busy
+              {{ $t('dialogs.portBusy.title') }}
             </v-card-title>
             <v-card-text>
               <p class="text-body-2">
-                {{
-                  busyDialogMessage ||
-                  ['The selected serial port is busy.', 'Close any other apps or tabs using it and try again.'].join(' ')
-                }}
+                {{ busyDialogMessage || $t('dialogs.portBusy.message') }}
               </p>
               <p class="text-caption text-medium-emphasis">
-                If you just disconnected from another tool, wait a moment for the OS to release the port.
+                {{ $t('dialogs.portBusy.hint') }}
               </p>
             </v-card-text>
             <v-card-actions>
               <v-spacer />
               <v-btn color="primary" variant="text" @click="showBusyDialog = false">
-                Got it
+                {{ $t('dialogs.portBusy.ok') }}
               </v-btn>
             </v-card-actions>
           </v-card>
@@ -522,20 +521,20 @@
           <v-card>
             <v-card-title class="text-h6">
               <v-icon start color="error">mdi-alert-circle-outline</v-icon>
-              Processing Error
+              {{ $t('dialogs.generalError.title') }}
             </v-card-title>
             <v-card-text>
               <p class="text-body-2">
-                An error occurred while processing information from the device.
+                {{ $t('dialogs.generalError.message') }}
               </p>
               <p class="text-caption text-medium-emphasis" v-if="lastErrorMessage">
-                Last error: {{ lastErrorMessage }}
+                {{ $t('dialogs.generalError.lastError', { error: lastErrorMessage }) }}
               </p>
             </v-card-text>
             <v-card-actions>
               <v-spacer />
               <v-btn color="primary" variant="text" @click="showGeneralErrorDialog = false">
-                Got it
+                {{ $t('buttons.gotIt') }}
               </v-btn>
             </v-card-actions>
           </v-card>
@@ -545,26 +544,26 @@
           <v-card>
             <v-card-title class="text-h6">
               <v-icon start color="warning">mdi-alert-circle-outline</v-icon>
-              Connection Tips
+              {{ $t('dialogs.boot.title') }}
             </v-card-title>
             <v-card-subtitle>
-              Last error: {{ lastErrorMessage }}
+              {{ $t('dialogs.boot.lastError', { error: lastErrorMessage }) }}
             </v-card-subtitle>
             <v-card-text>
               <p class="text-body-2">
-                We couldn't communicate with the board. Try putting your ESP32 into bootloader mode:
+                {{ $t('dialogs.boot.description') }}
               </p>
               <ol class="text-body-2 ps-4">
-                <li>Press and hold the <strong>BOOT</strong> (GPIO0) button and keep it held down.</li>
-                <li>Tap <strong>RESET</strong>, then release only the RESET button.</li>
-                <li>While still holding BOOT, click <strong>Connect</strong>.</li>
-                <li>Release the BOOT button once the log shows the ESP-ROM banner or the connection completes.</li>
+                <li>{{ $t('dialogs.boot.steps.step1') }}</li>
+                <li>{{ $t('dialogs.boot.steps.step2') }}</li>
+                <li>{{ $t('dialogs.boot.steps.step3') }}</li>
+                <li>{{ $t('dialogs.boot.steps.step4') }}</li>
               </ol>
             </v-card-text>
             <v-card-actions>
               <v-spacer />
               <v-btn color="primary" variant="text" @click="showBootDialog = false">
-                Got it
+                {{ $t('buttons.gotIt') }}
               </v-btn>
             </v-card-actions>
           </v-card>
@@ -575,7 +574,7 @@
           <v-card>
             <v-card-title class="text-h6 d-flex align-center">
               <v-icon start>mdi-eye</v-icon>
-              {{ spiffsViewerDialog.name || 'Preview' }}
+              {{ spiffsViewerDialog.name || $t('viewer.preview') }}
             </v-card-title>
             <v-card-text>
               <v-progress-linear v-if="spiffsViewerDialog.loading" indeterminate color="primary" class="mb-4" />
@@ -587,7 +586,7 @@
                   :src="spiffsViewerDialog.imageUrl" class="spiffs-viewer__image" :alt="spiffsViewerDialog.name" />
                 <audio v-else-if="spiffsViewerDialog.mode === 'audio' && spiffsViewerDialog.audioUrl"
                   :src="spiffsViewerDialog.audioUrl" class="spiffs-viewer__audio" controls preload="auto">
-                  Your browser does not support audio playback.
+                  {{ $t('viewer.audioUnsupported') }}
                 </audio>
                 <pre v-else class="spiffs-viewer__content">{{ spiffsViewerDialog.content }}</pre>
               </template>
@@ -595,12 +594,12 @@
             <v-card-actions>
               <v-spacer />
               <v-btn variant="text" @click="closeSpiffsViewer">
-                Close
+                {{ $t('buttons.close') }}
               </v-btn>
               <v-btn color="primary" variant="tonal" :disabled="!spiffsViewerDialog.name"
                 @click="handleFilesystemViewerDownload">
                 <v-icon start>mdi-download</v-icon>
-                Download
+                {{ $t('buttons.download') }}
               </v-btn>
             </v-card-actions>
           </v-card>
@@ -672,6 +671,18 @@ import {
 import { FACT_GROUP_CONFIG, FACT_ICONS } from './constants/deviceFacts';
 import { findChipDocs } from './constants/chipDocsLinks';
 import { PWM_TABLE } from './utils/pwm-capabilities-table';
+
+const PWM_NOTE_KEYS = {
+  ESP32: 'facts.pwmNotes.esp32',
+  'ESP32-S2': 'facts.pwmNotes.esp32s2',
+  'ESP32-S3': 'facts.pwmNotes.esp32s3',
+  'ESP32-C2': 'facts.pwmNotes.esp32c2',
+  'ESP32-C3': 'facts.pwmNotes.esp32c3',
+  'ESP32-C6': 'facts.pwmNotes.esp32c6',
+  'ESP32-H2': 'facts.pwmNotes.esp32h2',
+  'ESP32-P4': 'facts.pwmNotes.esp32p4',
+  ESP8266: 'facts.pwmNotes.esp8266',
+};
 
 const { t, locale } = useI18n();
 const languageOptions = [
@@ -917,8 +928,9 @@ async function ensureLittlefsReady(options: EnsureFsOptions = {}) {
 
 // Read LittleFS from flash, initialize the client, and populate state.
 async function loadLittlefsPartition(partition) {
+  const fsLabel = t('filesystem.labels.littlefs');
   if (!loader.value || !partition) {
-    littlefsState.error = 'Connect to a device with a LittleFS partition first.';
+    littlefsState.error = t('filesystem.messages.connectFirst');
     return;
   }
   littlefsLoadCancelRequested.value = false;
@@ -930,13 +942,19 @@ async function loadLittlefsPartition(partition) {
   littlefsLoadingDialog.value = 0;
   littlefsState.loadCancelled = false;
   const littlefsBaudLabel = currentBaud.value ? ` @ ${currentBaud.value.toLocaleString()} bps` : '';
-  littlefsState.status = `Reading LittleFS @ 0x${partition.offset.toString(16).toUpperCase()}${littlefsBaudLabel}...`;
+  const readLabel = `${partition.label || fsLabel}${littlefsBaudLabel}`;
+  const totalBytesLabel = partition.size?.toLocaleString() ?? '';
+  littlefsState.status = t('filesystem.messages.readProgress', {
+    label: readLabel,
+    written: '0',
+    total: totalBytesLabel,
+  });
   littlefsLoadingDialog.visible = true;
-  littlefsLoadingDialog.label = `Reading LittleFS${littlefsBaudLabel}...`;
+  littlefsLoadingDialog.label = t('filesystem.messages.loading', { fs: readLabel });
   const attemptedConfigs = [];
   try {
     const image = await readFlashToBuffer(partition.offset, partition.size, {
-      label: `LittleFS${littlefsBaudLabel}`,
+      label: readLabel,
       cancelSignal: littlefsLoadCancelRequested,
       onProgress: progress => {
         littlefsLoadingDialog.label = progress.label;
@@ -947,7 +965,7 @@ async function loadLittlefsPartition(partition) {
     const createLittleFSFromImage =
       typeof module.createLittleFSFromImage === 'function' ? module.createLittleFSFromImage : null;
     if (!createLittleFSFromImage) {
-      throw new Error('LittleFS module is missing createLittleFSFromImage(). Update the WASM bundle.');
+      throw new Error(t('filesystem.messages.missingLittlefsCreateFromImage'));
     }
     const imageIsBlank = isBlankLittlefsImage(image);
     const createLittleFS = typeof module.createLittleFS === 'function' ? module.createLittleFS : null;
@@ -990,9 +1008,8 @@ async function loadLittlefsPartition(partition) {
           littlefsState.readOnlyReason = '';
           littlefsState.error = null;
           updateLittlefsUsage(partition);
-          littlefsState.status =
-            'LittleFS partition appears blank. Download a backup, click Format, then Save to Flash to initialize it.';
-          appendLog('LittleFS partition appears blank/unformatted. Format then save to persist.', '[ESPConnect-Warn]');
+          littlefsState.status = t('filesystem.messages.blankPartition', { fs: fsLabel });
+          appendLog(t('filesystem.messages.blankPartitionLog', { fs: fsLabel }), '[ESPConnect-Warn]');
           littlefsState.loadCancelled = false;
           return;
         } catch (fallbackError) {
@@ -1003,8 +1020,9 @@ async function loadLittlefsPartition(partition) {
       littlefsState.files = [];
       littlefsState.baselineFiles = [];
       littlefsState.readOnly = true;
-      littlefsState.readOnlyReason = 'LittleFS image unreadable (unsupported layout or encrypted).';
-      littlefsState.status = 'LittleFS is read-only.';
+      littlefsState.readOnlyReason = t('filesystem.messages.readOnlyReason', { fs: fsLabel });
+      const detail = littlefsState.readOnlyReason || t('filesystem.readOnlyDefault');
+      littlefsState.status = t('filesystem.readOnly', { fs: fsLabel, detail });
       littlefsState.error = formatErrorMessage(lastError);
       updateLittlefsUsage(partition);
       return;
@@ -1029,9 +1047,13 @@ async function loadLittlefsPartition(partition) {
     littlefsState.backupDone = false;
     updateLittlefsUsage(partition);
     const count = littlefsState.files.length;
-    littlefsState.status = count === 1 ? 'Loaded 1 file.' : `Loaded ${count} files.`;
+    littlefsState.status = t('filesystem.messages.loadedCount', { count });
     appendLog(
-      `LittleFS partition ${partition.label} loaded (${count} file${count === 1 ? '' : 's'}).`,
+      t('filesystem.messages.loadLog', {
+        fs: fsLabel,
+        label: partition.label,
+        count,
+      }),
       '[ESPConnect-Debug]'
     );
   } catch (error) {
@@ -1048,7 +1070,7 @@ async function loadLittlefsPartition(partition) {
       littlefsState.error = null;
       littlefsState.readOnly = false;
       littlefsState.readOnlyReason = '';
-      littlefsState.status = 'LittleFS load cancelled. Use "Read" to fetch the partition again.';
+      littlefsState.status = t('filesystem.loadCancelled', { fs: fsLabel });
       return;
     } else {
       littlefsState.loadCancelled = false;
@@ -1059,8 +1081,9 @@ async function loadLittlefsPartition(partition) {
       updateLittlefsUsage(partition);
       littlefsState.error = message;
       littlefsState.readOnly = true;
-      littlefsState.readOnlyReason = 'LittleFS image unreadable.';
-      littlefsState.status = 'LittleFS is read-only.';
+      littlefsState.readOnlyReason = t('filesystem.messages.readOnlyReason', { fs: fsLabel });
+      const detail = littlefsState.readOnlyReason || t('filesystem.readOnlyDefault');
+      littlefsState.status = t('filesystem.readOnly', { fs: fsLabel, detail });
     }
   } finally {
     littlefsState.loading = false;
@@ -1096,11 +1119,12 @@ function handleSelectLittlefsPartition(partitionId) {
   if (littlefsState.loading || littlefsState.busy || littlefsState.saving) {
     return;
   }
+  const fsLabel = t('filesystem.labels.littlefs');
   littlefsState.selectedId = partitionId;
   littlefsState.client = null;
   littlefsState.files = [];
   littlefsState.currentPath = '/';
-  littlefsState.status = 'Loading LittleFS...';
+  littlefsState.status = t('filesystem.messages.loading', { fs: fsLabel });
   const partition = littleFsPartitions.value.find(entry => entry.id === partitionId) ?? littleFsPartitions.value[0];
   if (partition) {
     void loadLittlefsPartition(partition);
@@ -1119,42 +1143,43 @@ async function handleRefreshLittlefs() {
 // Download a LittleFS backup image for the selected partition.
 async function handleLittlefsBackup() {
   const partition = littlefsSelectedPartition.value;
+  const fsLabel = t('filesystem.labels.littlefs');
   if (!partition) {
-    littlefsState.status = 'Select a LittleFS partition first.';
+    littlefsState.status = t('filesystem.messages.selectPartition', { fs: fsLabel });
     return;
   }
   if (!loader.value) {
-    littlefsState.status = 'Connect to a device first.';
+    littlefsState.status = t('filesystem.messages.connectFirst');
     return;
   }
   littlefsBackupDialog.visible = true;
   littlefsBackupDialog.value = 0;
-  littlefsBackupDialog.label = 'Preparing backup...';
+  littlefsBackupDialog.label = t('filesystem.messages.backupLabel', { fs: fsLabel });
   try {
     const baseLabel = `${partition.label || 'littlefs'}_${partition.offset.toString(16)}`;
     const safeBase = sanitizeFileName(baseLabel, 'littlefs');
     const stampedName = `${safeBase}_${formatBackupTimestamp()}.bin`;
     await downloadFlashRegion(partition.offset, partition.size, {
-      label: `${partition.label || 'LittleFS'} partition`,
+      label: `${partition.label || fsLabel}`,
       fileName: stampedName,
       suppressStatus: true,
       onProgress: progress => {
         littlefsBackupDialog.value = progress.value ?? 0;
-        littlefsBackupDialog.label = progress.label || 'Backing up LittleFS...';
+        littlefsBackupDialog.label = progress.label || t('filesystem.messages.backupLabel', { fs: fsLabel });
       },
     });
     littlefsState.backupDone = true;
     littlefsState.sessionBackupDone = true;
-    littlefsState.status = 'Backup downloaded. You can now save changes.';
-    appendLog('LittleFS backup downloaded.', '[ESPConnect-Debug]');
+    littlefsState.status = t('filesystem.messages.backupComplete', { fs: fsLabel });
+    appendLog(t('filesystem.messages.backupLog', { fs: fsLabel }), '[ESPConnect-Debug]');
   } catch (error) {
     const message = formatErrorMessage(error);
     if (message === 'Download cancelled by user') {
       littlefsState.error = null;
-      littlefsState.status = 'LittleFS backup cancelled.';
+      littlefsState.status = t('filesystem.messages.backupCancelled', { fs: fsLabel });
     } else {
       littlefsState.error = message;
-      littlefsState.status = 'LittleFS backup failed.';
+      littlefsState.status = t('filesystem.messages.backupFailed', { fs: fsLabel });
     }
   } finally {
     littlefsBackupDialog.visible = false;
@@ -1168,7 +1193,7 @@ function cancelLittlefsBackup() {
   if (!littlefsBackupDialog.visible) {
     return;
   }
-  littlefsBackupDialog.label = 'Stopping backup...';
+  littlefsBackupDialog.label = t('filesystem.messages.backupStopping');
   handleCancelDownload();
 }
 
@@ -1178,7 +1203,9 @@ function cancelLittlefsLoad() {
     return;
   }
   littlefsLoadCancelRequested.value = true;
-  littlefsLoadingDialog.label = 'Stopping LittleFS load...';
+  littlefsLoadingDialog.label = t('filesystem.messages.loadStopping', {
+    fs: t('filesystem.labels.littlefs'),
+  });
 }
 
 // Restore a LittleFS image to the selected partition.
@@ -1186,15 +1213,18 @@ async function handleLittlefsRestore(file) {
   const partition = littlefsSelectedPartition.value;
   if (!partition) return;
   if (!file) return;
+  const fsLabel = t('filesystem.labels.littlefs');
   const buffer = new Uint8Array(await file.arrayBuffer());
   if (buffer.length !== partition.size) {
-    littlefsState.status = `Restore file must be exactly ${formatBytes(partition.size) ?? `${partition.size} bytes`}.`;
+    littlefsState.status = t('filesystem.messages.restoreSizeMismatch', {
+      size: formatBytes(partition.size) ?? `${partition.size} bytes`,
+    });
     return;
   }
   const confirmed = await showConfirmation({
-    title: 'Restore LittleFS Partition',
-    message: 'This will overwrite the entire LittleFS partition with the selected image. Continue?',
-    confirmText: 'Restore',
+    title: t('filesystem.messages.restoreTitle', { fs: fsLabel }),
+    message: t('filesystem.messages.restoreMessage', { fs: fsLabel }),
+    confirmText: t('filesystem.messages.restoreConfirm'),
     destructive: true,
   });
   if (!confirmed) {
@@ -1205,28 +1235,28 @@ async function handleLittlefsRestore(file) {
     maintenanceBusy.value = true;
     littlefsRestoreDialog.visible = true;
     littlefsRestoreDialog.value = 0;
-    littlefsRestoreDialog.label = 'Writing LittleFS image...';
+    littlefsRestoreDialog.label = t('filesystem.messages.restoreLabel', { fs: fsLabel });
     await writeFilesystemImage(partition, buffer, {
-      label: 'LittleFS',
+      label: fsLabel,
       state: littlefsState,
       onProgress: progress => {
         littlefsRestoreDialog.value = progress.value ?? 0;
-        littlefsRestoreDialog.label = progress.label || 'Writing LittleFS image...';
+        littlefsRestoreDialog.label = progress.label || t('filesystem.messages.restoreLabel', { fs: fsLabel });
       },
     });
-    littlefsState.status = 'LittleFS image restored.';
+    littlefsState.status = t('filesystem.messages.restoreStatus', { fs: fsLabel });
     littlefsState.backupDone = true;
-    appendLog('LittleFS partition restored from backup.', '[ESPConnect-Debug]');
+    appendLog(t('filesystem.messages.restoreLog', { fs: fsLabel }), '[ESPConnect-Debug]');
     await loadLittlefsPartition(partition);
   } catch (error) {
     littlefsState.error = formatErrorMessage(error);
-    littlefsState.status = 'LittleFS restore failed.';
+    littlefsState.status = t('filesystem.messages.restoreFailed', { fs: fsLabel });
   } finally {
     littlefsState.saving = false;
     maintenanceBusy.value = false;
     littlefsRestoreDialog.visible = false;
     littlefsRestoreDialog.value = 0;
-    littlefsRestoreDialog.label = 'Restoring LittleFS image...';
+    littlefsRestoreDialog.label = t('filesystem.messages.restoreLabel', { fs: fsLabel });
   }
 }
 
@@ -1250,8 +1280,8 @@ function handleLittlefsUploadSelection(file) {
   const incomingFootprint = littlefsEstimateFileFootprint(file.size);
   const availableBytes = partitionSize ? partitionSize - usedBytes + existingFootprint : 0;
   if (partitionSize && incomingFootprint > availableBytes) {
-    const message =
-      'Not enough LittleFS space for this file. Delete files or format the partition, then try again.';
+    const fsLabel = t('filesystem.labels.littlefs');
+    const message = t('filesystem.messages.spaceError', { fs: fsLabel });
     littlefsState.uploadBlocked = true;
     littlefsState.uploadBlockedReason = message;
     littlefsState.status = message;
@@ -1282,12 +1312,14 @@ async function performLittlefsUpload(payload) {
   }
   if (!littlefsState.client) return;
   if (littlefsState.readOnly) {
-    littlefsState.status = littlefsState.readOnlyReason || 'LittleFS is read-only.';
+    const fsLabel = t('filesystem.labels.littlefs');
+    const detail = littlefsState.readOnlyReason || t('filesystem.readOnlyDefault');
+    littlefsState.status = t('filesystem.readOnly', { fs: fsLabel, detail });
     showToast(littlefsState.status, { color: 'info' });
     return;
   }
   if (littlefsState.uploadBlocked) {
-    littlefsState.status = littlefsState.uploadBlockedReason || 'Resolve blocked upload before continuing.';
+    littlefsState.status = littlefsState.uploadBlockedReason || t('filesystem.messages.uploadBlocked');
     if (littlefsState.uploadBlockedReason) {
       showUploadError(littlefsState.uploadBlockedReason);
     }
@@ -1306,7 +1338,7 @@ async function performLittlefsUpload(payload) {
     const exists =
       usageSource.find(entry => entry.path === targetDir && entry.type === 'dir') !== undefined;
     if (exists) {
-      const msg = `Folder "${targetDir}" already exists.`;
+      const msg = t('filesystem.messages.folderExistsPath', { path: targetDir });
       showToast(msg, { color: 'warning' });
       littlefsState.status = msg;
       return;
@@ -1332,7 +1364,7 @@ async function performLittlefsUpload(payload) {
   }
   const targetName = (file.name || '').trim();
   if (!targetName) {
-    littlefsState.status = 'Selected file has no name. Rename it and try again.';
+    littlefsState.status = t('filesystem.messages.fileNoName');
     showToast(littlefsState.status, { color: 'warning' });
     return;
   }
@@ -1346,8 +1378,7 @@ async function performLittlefsUpload(payload) {
   const incomingFootprint = littlefsEstimateFileFootprint(file.size);
   const availableBytes = partitionSize ? workingFreeBytes + existingFootprint : Number.POSITIVE_INFINITY;
   if (incomingFootprint > availableBytes) {
-    const message =
-      'Not enough LittleFS space for this upload. Delete files or format the partition, then try again.';
+    const message = t('filesystem.messages.spaceError', { fs: t('filesystem.labels.littlefs') });
     littlefsState.uploadBlocked = true;
     littlefsState.uploadBlockedReason = message;
     littlefsState.status = message;
@@ -1386,8 +1417,15 @@ async function performLittlefsUpload(payload) {
       littlefsState.client.addFile(target, data);
     }
     await refreshLittlefsListing();
-    markLittlefsDirty(`Staged ${target}. Remember to Save.`);
-    appendLog(`LittleFS staged ${target} (${data.length.toLocaleString()} bytes).`, '[ESPConnect-Debug]');
+    markLittlefsDirty(t('filesystem.messages.staged', { name: target }));
+    appendLog(
+      t('filesystem.messages.stagedLog', {
+        fs: t('filesystem.labels.littlefs'),
+        name: target,
+        size: data.length.toLocaleString(),
+      }),
+      '[ESPConnect-Debug]'
+    );
     workingFreeBytes = partitionSize
       ? Math.max(0, partitionSize - littlefsEstimateUsage(littlefsState.allFiles?.length ? littlefsState.allFiles : littlefsState.files))
       : workingFreeBytes;
@@ -1444,9 +1482,9 @@ async function handleLittlefsDelete(path) {
   const entry = littlefsState.files.find(f => normalizeFsPath(f.path) === targetPath);
   const isDir = entry?.type === 'dir';
   const confirmed = await showConfirmation({
-    title: isDir ? 'Delete Folder' : 'Delete File',
-    message: `Delete ${targetPath} from LittleFS? This cannot be undone.`,
-    confirmText: 'Delete',
+    title: isDir ? t('filesystem.messages.deleteFolderTitle') : t('filesystem.messages.deleteTitle'),
+    message: t('filesystem.messages.deleteMessage', { name: targetPath, fs: t('filesystem.labels.littlefs') }),
+    confirmText: t('filesystem.messages.deleteConfirm'),
     destructive: true,
   });
   if (!confirmed) {
@@ -1459,11 +1497,11 @@ async function handleLittlefsDelete(path) {
     } else if (!isDir && typeof littlefsState.client.deleteFile === 'function') {
       littlefsState.client.deleteFile(targetPath);
     } else {
-      throw new Error('Delete operation not supported by LittleFS client.');
+      throw new Error(t('filesystem.messages.deleteUnsupportedLittlefs'));
     }
     await refreshLittlefsListing();
-    markLittlefsDirty(`${targetPath} deleted. Save to persist.`);
-    appendLog(`LittleFS staged deletion of ${targetPath}.`, '[ESPConnect-Debug]');
+    markLittlefsDirty(t('filesystem.messages.deleted', { name: targetPath, fs: t('filesystem.labels.littlefs') }));
+    appendLog(t('filesystem.messages.deletedLog', { fs: t('filesystem.labels.littlefs'), name: targetPath }), '[ESPConnect-Debug]');
   } catch (error) {
     littlefsState.error = formatErrorMessage(error);
   } finally {
@@ -1492,10 +1530,10 @@ async function handleLittlefsNavigateUp() {
 // Create a new folder in the current LittleFS path.
 async function handleLittlefsNewFolder(name?: string) {
   if (!littlefsState.client || littlefsState.readOnly) return;
-  const folderName = (name || prompt('New folder name'))?.toString().trim();
+  const folderName = (name || prompt(t('filesystem.newFolderName')))?.toString().trim();
   if (!folderName) return;
   if (folderName.includes('/') || folderName.includes('..')) {
-    showToast('Folder name cannot contain slashes or "..".', { color: 'warning' });
+    showToast(t('filesystem.messages.folderNameInvalid'), { color: 'warning' });
     return;
   }
   const targetPath = joinFsPath(littlefsState.currentPath || '/', folderName);
@@ -1503,7 +1541,7 @@ async function handleLittlefsNewFolder(name?: string) {
     littlefsState.allFiles?.find(entry => entry.path === targetPath && entry.type === 'dir') ||
     littlefsState.files.find(entry => entry.path === targetPath && entry.type === 'dir');
   if (existingDir) {
-    const msg = `Folder "${folderName}" already exists here.`;
+    const msg = t('filesystem.messages.folderExistsHere', { name: folderName });
     showToast(msg, { color: 'warning' });
     littlefsState.status = msg;
     return;
@@ -1513,7 +1551,7 @@ async function handleLittlefsNewFolder(name?: string) {
     if (typeof littlefsState.client.mkdir === 'function') {
       littlefsState.client.mkdir(targetPath);
     } else {
-      showToast('mkdir is not available in the LittleFS client.', { color: 'error' });
+      showToast(t('filesystem.messages.mkdirUnavailable', { fs: t('filesystem.labels.littlefs') }), { color: 'error' });
       return;
     }
     await refreshLittlefsListing();
@@ -1531,9 +1569,9 @@ async function handleLittlefsFormat() {
     return;
   }
   const confirmed = await showConfirmation({
-    title: 'Format LittleFS',
-    message: 'Erase all files from the LittleFS image? You must Save to apply.',
-    confirmText: 'Format',
+    title: t('filesystem.messages.formatTitle', { fs: t('filesystem.labels.littlefs') }),
+    message: t('filesystem.messages.formatMessage', { fs: t('filesystem.labels.littlefs') }),
+    confirmText: t('filesystem.messages.formatConfirm'),
     destructive: true,
   });
   if (!confirmed) return;
@@ -1541,8 +1579,8 @@ async function handleLittlefsFormat() {
     littlefsState.busy = true;
     littlefsState.client.format();
     await refreshLittlefsListing();
-    markLittlefsDirty('LittleFS formatted. Save to apply.');
-    appendLog('LittleFS staged format operation.', '[ESPConnect-Debug]');
+    markLittlefsDirty(t('filesystem.messages.formatted', { fs: t('filesystem.labels.littlefs') }));
+    appendLog(t('filesystem.messages.formatLog', { fs: t('filesystem.labels.littlefs') }), '[ESPConnect-Debug]');
   } catch (error) {
     littlefsState.error = formatErrorMessage(error);
   } finally {
@@ -1553,39 +1591,43 @@ async function handleLittlefsFormat() {
 // Persist staged LittleFS changes back to flash.
 async function handleLittlefsSave() {
   if (!littlefsState.client) {
-    littlefsState.status = 'Load a LittleFS partition first.';
+    littlefsState.status = t('filesystem.messages.loadFirst', { fs: t('filesystem.labels.littlefs') });
     return;
   }
   if (littlefsState.readOnly) {
-    littlefsState.status = littlefsState.readOnlyReason || 'LittleFS is read-only.';
+    const detail = littlefsState.readOnlyReason || t('filesystem.readOnlyDefault');
+    littlefsState.status = t('filesystem.readOnly', {
+      fs: t('filesystem.labels.littlefs'),
+      detail,
+    });
     return;
   }
   if (!littlefsState.dirty) {
-    littlefsState.status = 'No staged changes to save.';
+    littlefsState.status = t('filesystem.messages.noChanges');
     return;
   }
   if (!hasLittlefsBackup()) {
-    littlefsState.status = 'Download a LittleFS backup before saving (one backup per session is enough).';
+    littlefsState.status = t('filesystem.messages.backupFirst', { fs: t('filesystem.labels.littlefs') });
     return;
   }
   const partition = littlefsSelectedPartition.value;
   if (!partition) {
-    littlefsState.status = 'Select a LittleFS partition.';
+    littlefsState.status = t('filesystem.messages.selectPartition', { fs: t('filesystem.labels.littlefs') });
     return;
   }
   const diff = computeLittlefsDiff();
   const summaryParts = [];
-  if (diff.added.length) summaryParts.push(`Added: ${diff.added.join(', ')}`);
-  if (diff.modified.length) summaryParts.push(`Modified: ${diff.modified.join(', ')}`);
-  if (diff.removed.length) summaryParts.push(`Removed: ${diff.removed.join(', ')}`);
+  if (diff.added.length) summaryParts.push(t('filesystem.messages.diffAdded', { list: diff.added.join(', ') }));
+  if (diff.modified.length) summaryParts.push(t('filesystem.messages.diffModified', { list: diff.modified.join(', ') }));
+  if (diff.removed.length) summaryParts.push(t('filesystem.messages.diffRemoved', { list: diff.removed.join(', ') }));
   const summary =
     summaryParts.length > 0
       ? summaryParts.join('\n')
-      : 'No file-level changes detected (still writing updated image).';
+      : t('filesystem.messages.diffNone');
   const confirmed = await showConfirmation({
-    title: 'Write LittleFS to Flash',
-    message: `${summary}\n\nWrite these changes to flash now?`,
-    confirmText: 'Save to Flash',
+    title: t('filesystem.messages.writeTitle', { fs: t('filesystem.labels.littlefs') }),
+    message: t('filesystem.messages.writeMessage', { summary }),
+    confirmText: t('filesystem.messages.writeConfirm'),
     destructive: true,
   });
   if (!confirmed) return;
@@ -1595,39 +1637,39 @@ async function handleLittlefsSave() {
     littlefsSaveDialog.visible = true;
     const image = littlefsState.client.toImage();
     if (image.length > partition.size) {
-      throw new Error('LittleFS image exceeds partition size.');
+      throw new Error(t('filesystem.messages.imageTooLarge', { fs: t('filesystem.labels.littlefs') }));
     }
     await writeFilesystemImage(partition, image, {
-      label: 'LittleFS',
+      label: t('filesystem.labels.littlefs'),
       state: littlefsState,
       onProgress: progress => {
         littlefsSaveDialog.value = progress.value ?? 0;
-        littlefsSaveDialog.label = progress.label || 'Writing LittleFS image...';
+        littlefsSaveDialog.label = progress.label || t('filesystem.messages.saveStatusLabel', { fs: t('filesystem.labels.littlefs') });
       },
     });
     littlefsState.dirty = false;
-    littlefsState.status = 'LittleFS saved to flash.';
-    appendLog('LittleFS partition updated on flash.', '[ESPConnect-Debug]');
+    littlefsState.status = t('filesystem.messages.saveStatus', { fs: t('filesystem.labels.littlefs') });
+    appendLog(t('filesystem.messages.saveLog', { fs: t('filesystem.labels.littlefs') }), '[ESPConnect-Debug]');
     await loadLittlefsPartition(partition);
   } catch (error) {
     littlefsState.error = formatErrorMessage(error);
-    littlefsState.status = 'LittleFS save failed.';
+    littlefsState.status = t('filesystem.messages.saveFailed', { fs: t('filesystem.labels.littlefs') });
   } finally {
     littlefsState.saving = false;
     maintenanceBusy.value = false;
     littlefsSaveDialog.visible = false;
     littlefsSaveDialog.value = 0;
-    littlefsSaveDialog.label = 'Saving LittleFS...';
+    littlefsSaveDialog.label = t('filesystem.messages.savingLabel', { fs: t('filesystem.labels.littlefs') });
   }
 }
 
 // Read a LittleFS file and return its raw bytes.
 async function readLittlefsFile(path) {
   if (!littlefsState.client) {
-    throw new Error('LittleFS client unavailable.');
+    throw new Error(t('filesystem.messages.littlefsUnavailable'));
   }
   if (!path) {
-    throw new Error('File path is required.');
+    throw new Error(t('filesystem.messages.filePathRequired'));
   }
   const reader =
     typeof littlefsState.client.readFile === 'function'
@@ -1636,12 +1678,12 @@ async function readLittlefsFile(path) {
         ? littlefsState.client.read
         : null;
   if (!reader) {
-    throw new Error('LittleFS module does not support per-file reads. Update the WASM bundle.');
+    throw new Error(t('filesystem.messages.littlefsReadUnsupported'));
   }
   const result = reader.call(littlefsState.client, path);
   const data = result instanceof Promise ? await result : result;
   if (!(data instanceof Uint8Array)) {
-    throw new Error('LittleFS read returned unexpected data.');
+    throw new Error(t('filesystem.messages.littlefsReadUnexpected'));
   }
   return data;
 }
@@ -1653,10 +1695,17 @@ async function handleLittlefsDownloadFile(path) {
     const data = await readLittlefsFile(path);
     const name = path.split('/').filter(Boolean).pop() || 'file.bin';
     saveBinaryFile(name, data);
-    appendLog(`LittleFS downloaded ${path} (${data.length.toLocaleString()} bytes).`, '[ESPConnect-Debug]');
+    appendLog(
+      t('filesystem.messages.downloadedLog', {
+        fs: t('filesystem.labels.littlefs'),
+        name: path,
+        bytes: data.length.toLocaleString(),
+      }),
+      '[ESPConnect-Debug]'
+    );
   } catch (error) {
     littlefsState.error = formatErrorMessage(error);
-    littlefsState.status = 'LittleFS download failed.';
+    littlefsState.status = t('filesystem.messages.downloadFailed', { fs: t('filesystem.labels.littlefs') });
   }
 }
 
@@ -1666,7 +1715,7 @@ async function handleLittlefsView(path) {
   const name = path.split('/').filter(Boolean).pop() || path;
   const viewInfo = resolveSpiffsViewInfo(name);
   if (!viewInfo) {
-    littlefsState.status = 'This file type cannot be previewed. Download it instead.';
+    littlefsState.status = t('filesystem.messages.unsupportedPreview');
     showToast(littlefsState.status, { color: 'info' });
     return;
   }
@@ -1681,9 +1730,8 @@ async function handleLittlefsView(path) {
   try {
     const data = await readLittlefsFile(path);
     if (data.length > SPIFFS_VIEWER_MAX_BYTES) {
-      throw new Error(
-        `File too large to preview (limit ${formatBytes(SPIFFS_VIEWER_MAX_BYTES) ?? SPIFFS_VIEWER_MAX_BYTES} bytes).`,
-      );
+      const limitText = formatBytes(SPIFFS_VIEWER_MAX_BYTES) ?? `${SPIFFS_VIEWER_MAX_BYTES} bytes`;
+      throw new Error(t('filesystem.messages.tooLargePreview', { limit: limitText }));
     }
     if (viewInfo.mode === 'image') {
       const blob = new Blob([toArrayBuffer(data)], { type: viewInfo.mime || 'image/*' });
@@ -1725,7 +1773,7 @@ async function ensureFatfsReady(options: EnsureFsOptions = {}) {
 // Read a FATFS partition image, build the client, and populate state.
 async function loadFatfsPartition(partition) {
   if (!loader.value || !partition) {
-    fatfsState.error = 'Connect to a device with a FATFS partition first.';
+    fatfsState.error = t('filesystem.messages.connectFirst');
     return;
   }
   fatfsLoadCancelRequested.value = false;
@@ -1737,12 +1785,14 @@ async function loadFatfsPartition(partition) {
   fatfsLoadingDialog.value = 0;
   fatfsState.loadCancelled = false;
   const baudLabel = currentBaud.value ? ` @ ${currentBaud.value.toLocaleString()} bps` : '';
-  fatfsState.status = `Reading FATFS @ 0x${partition.offset.toString(16).toUpperCase()}${baudLabel}...`;
+  const fsLabel = t('filesystem.labels.fatfs');
+  const readLabel = `${partition.label || fsLabel}${baudLabel}`;
+  fatfsState.status = t('filesystem.messages.loading', { fs: readLabel });
   fatfsLoadingDialog.visible = true;
-  fatfsLoadingDialog.label = `Reading ${partition.label || 'FATFS'}${baudLabel}...`;
+  fatfsLoadingDialog.label = t('filesystem.messages.loading', { fs: readLabel });
   try {
     const image = await readFlashToBuffer(partition.offset, partition.size, {
-      label: `${partition.label || 'FATFS'}${baudLabel}`,
+      label: readLabel,
       cancelSignal: fatfsLoadCancelRequested,
       onProgress: progress => {
         fatfsLoadingDialog.label = progress.label;
@@ -1753,7 +1803,7 @@ async function loadFatfsPartition(partition) {
     const createFatFSFromImage =
       typeof module.createFatFSFromImage === 'function' ? module.createFatFSFromImage : null;
     if (!createFatFSFromImage) {
-      throw new Error('FATFS module is missing createFatFSFromImage(). Update the WASM bundle.');
+      throw new Error(t('filesystem.messages.missingFatfsCreateFromImage'));
     }
     let blockSize = fatfsState.blockSize || FATFS_DEFAULT_BLOCK_SIZE;
     if (!Number.isFinite(blockSize) || blockSize <= 0) {
@@ -1780,9 +1830,8 @@ async function loadFatfsPartition(partition) {
           blockCount,
           formatOnInit: true,
         });
-        fatfsState.status =
-          'FATFS partition appears blank. Download a backup, click Format, then Save to Flash to initialize it.';
-        appendLog('FATFS partition appears blank/unformatted. Format then save to persist.', '[ESPConnect-Warn]');
+        fatfsState.status = t('filesystem.messages.blankPartition', { fs: fsLabel });
+        appendLog(t('filesystem.messages.blankPartitionLog', { fs: fsLabel }), '[ESPConnect-Warn]');
       } else {
         throw error;
       }
@@ -1795,9 +1844,9 @@ async function loadFatfsPartition(partition) {
     fatfsState.backupDone = false;
     updateFatfsUsage(partition);
     const count = fatfsState.files.length;
-    fatfsState.status = count === 1 ? 'Loaded 1 file.' : `Loaded ${count} files.`;
+    fatfsState.status = t('filesystem.messages.loadedCount', { count });
     appendLog(
-      `FATFS partition ${partition.label} loaded (${count} file${count === 1 ? '' : 's'}).`,
+      t('filesystem.messages.loadLog', { fs: fsLabel, label: partition.label, count }),
       '[ESPConnect-Debug]'
     );
   } catch (error) {
@@ -1813,7 +1862,7 @@ async function loadFatfsPartition(partition) {
       fatfsState.error = null;
       fatfsState.readOnly = false;
       fatfsState.readOnlyReason = '';
-      fatfsState.status = 'FATFS load cancelled. Use "Read" to fetch the partition again.';
+      fatfsState.status = t('filesystem.loadCancelled', { fs: fsLabel });
       return;
     } else {
       fatfsState.loadCancelled = false;
@@ -1823,8 +1872,9 @@ async function loadFatfsPartition(partition) {
       updateFatfsUsage(partition);
       fatfsState.error = message;
       fatfsState.readOnly = true;
-      fatfsState.readOnlyReason = 'FATFS image unreadable.';
-      fatfsState.status = 'FATFS is read-only.';
+      fatfsState.readOnlyReason = t('filesystem.messages.readOnlyReason', { fs: fsLabel });
+      const detail = fatfsState.readOnlyReason || t('filesystem.readOnlyDefault');
+      fatfsState.status = t('filesystem.readOnly', { fs: fsLabel, detail });
     }
   } finally {
     fatfsState.loading = false;
@@ -1852,7 +1902,7 @@ function handleSelectFatfsPartition(partitionId) {
   fatfsState.selectedId = partitionId;
   fatfsState.client = null;
   fatfsState.files = [];
-  fatfsState.status = 'Loading FATFS...';
+  fatfsState.status = t('filesystem.messages.loading', { fs: t('filesystem.labels.fatfs') });
   const partition = fatfsPartitions.value.find(entry => entry.id === partitionId) ?? fatfsPartitions.value[0];
   if (partition) {
     void loadFatfsPartition(partition);
@@ -1871,42 +1921,43 @@ async function handleRefreshFatfs() {
 // Download a FATFS backup image for the selected partition.
 async function handleFatfsBackup() {
   const partition = fatfsSelectedPartition.value;
+  const fsLabel = t('filesystem.labels.fatfs');
   if (!partition) {
-    fatfsState.status = 'Select a FATFS partition first.';
+    fatfsState.status = t('filesystem.messages.selectPartition', { fs: fsLabel });
     return;
   }
   if (!loader.value) {
-    fatfsState.status = 'Connect to a device first.';
+    fatfsState.status = t('filesystem.messages.connectFirst');
     return;
   }
   fatfsBackupDialog.visible = true;
   fatfsBackupDialog.value = 0;
-  fatfsBackupDialog.label = 'Preparing backup...';
+  fatfsBackupDialog.label = t('filesystem.messages.backupLabel', { fs: fsLabel });
   try {
     const baseLabel = `${partition.label || 'fatfs'}_${partition.offset.toString(16)}`;
     const safeBase = sanitizeFileName(baseLabel, 'fatfs');
     const stampedName = `${safeBase}_${formatBackupTimestamp()}.bin`;
     await downloadFlashRegion(partition.offset, partition.size, {
-      label: `${partition.label || 'FATFS'} partition`,
+      label: `${partition.label || fsLabel}`,
       fileName: stampedName,
       suppressStatus: true,
       onProgress: progress => {
         fatfsBackupDialog.value = progress.value ?? 0;
-        fatfsBackupDialog.label = progress.label || 'Backing up FATFS...';
+        fatfsBackupDialog.label = progress.label || t('filesystem.messages.backupLabel', { fs: fsLabel });
       },
     });
     fatfsState.backupDone = true;
     fatfsState.sessionBackupDone = true;
-    fatfsState.status = 'Backup downloaded. You can now save changes.';
-    appendLog('FATFS backup downloaded.', '[ESPConnect-Debug]');
+    fatfsState.status = t('filesystem.messages.backupComplete', { fs: fsLabel });
+    appendLog(t('filesystem.messages.backupLog', { fs: fsLabel }), '[ESPConnect-Debug]');
   } catch (error) {
     const message = formatErrorMessage(error);
     if (message === 'Download cancelled by user') {
       fatfsState.error = null;
-      fatfsState.status = 'FATFS backup cancelled.';
+      fatfsState.status = t('filesystem.messages.backupCancelled', { fs: fsLabel });
     } else {
       fatfsState.error = message;
-      fatfsState.status = 'FATFS backup failed.';
+      fatfsState.status = t('filesystem.messages.backupFailed', { fs: fsLabel });
     }
   } finally {
     fatfsBackupDialog.visible = false;
@@ -1920,7 +1971,7 @@ function cancelFatfsBackup() {
   if (!fatfsBackupDialog.visible) {
     return;
   }
-  fatfsBackupDialog.label = 'Stopping backup...';
+  fatfsBackupDialog.label = t('filesystem.messages.backupStopping');
   handleCancelDownload();
 }
 
@@ -1930,7 +1981,7 @@ function cancelFatfsLoad() {
     return;
   }
   fatfsLoadCancelRequested.value = true;
-  fatfsLoadingDialog.label = 'Stopping FATFS load...';
+  fatfsLoadingDialog.label = t('filesystem.messages.loadStopping', { fs: t('filesystem.labels.fatfs') });
 }
 
 // Restore a FATFS image to the selected partition.
@@ -1940,13 +1991,15 @@ async function handleFatfsRestore(file) {
   if (!file) return;
   const buffer = new Uint8Array(await file.arrayBuffer());
   if (buffer.length !== partition.size) {
-    fatfsState.status = `Restore file must be exactly ${formatBytes(partition.size) ?? `${partition.size} bytes`}.`;
+    fatfsState.status = t('filesystem.messages.restoreSizeMismatch', {
+      size: formatBytes(partition.size) ?? `${partition.size} bytes`,
+    });
     return;
   }
   const confirmed = await showConfirmation({
-    title: 'Restore FATFS Partition',
-    message: 'This will overwrite the entire FATFS partition with the selected image. Continue?',
-    confirmText: 'Restore',
+    title: t('filesystem.messages.restoreTitle', { fs: t('filesystem.labels.fatfs') }),
+    message: t('filesystem.messages.restoreMessage', { fs: t('filesystem.labels.fatfs') }),
+    confirmText: t('filesystem.messages.restoreConfirm'),
     destructive: true,
   });
   if (!confirmed) {
@@ -1957,28 +2010,28 @@ async function handleFatfsRestore(file) {
     maintenanceBusy.value = true;
     fatfsRestoreDialog.visible = true;
     fatfsRestoreDialog.value = 0;
-    fatfsRestoreDialog.label = 'Writing FATFS image...';
+    fatfsRestoreDialog.label = t('filesystem.messages.restoreLabel', { fs: t('filesystem.labels.fatfs') });
     await writeFilesystemImage(partition, buffer, {
-      label: 'FATFS',
+      label: t('filesystem.labels.fatfs'),
       state: fatfsState,
       onProgress: progress => {
         fatfsRestoreDialog.value = progress.value ?? 0;
-        fatfsRestoreDialog.label = progress.label || 'Writing FATFS image...';
+        fatfsRestoreDialog.label = progress.label || t('filesystem.messages.restoreLabel', { fs: t('filesystem.labels.fatfs') });
       },
     });
-    fatfsState.status = 'FATFS image restored.';
+    fatfsState.status = t('filesystem.messages.restoreStatus', { fs: t('filesystem.labels.fatfs') });
     fatfsState.backupDone = true;
-    appendLog('FATFS partition restored from backup.', '[ESPConnect-Debug]');
+    appendLog(t('filesystem.messages.restoreLog', { fs: t('filesystem.labels.fatfs') }), '[ESPConnect-Debug]');
     await loadFatfsPartition(partition);
   } catch (error) {
     fatfsState.error = formatErrorMessage(error);
-    fatfsState.status = 'FATFS restore failed.';
+    fatfsState.status = t('filesystem.messages.restoreFailed', { fs: t('filesystem.labels.fatfs') });
   } finally {
     fatfsState.saving = false;
     maintenanceBusy.value = false;
     fatfsRestoreDialog.visible = false;
     fatfsRestoreDialog.value = 0;
-    fatfsRestoreDialog.label = 'Restoring FATFS image...';
+    fatfsRestoreDialog.label = t('filesystem.messages.restoreLabel', { fs: t('filesystem.labels.fatfs') });
   }
 }
 
@@ -1995,8 +2048,7 @@ function handleFatfsUploadSelection(file) {
   const existingSize = fatfsState.files.find(entry => entry.name === file.name)?.size ?? 0;
   const availableBytes = partitionSize ? partitionSize - usedBytes + existingSize : 0;
   if (partitionSize && file.size > availableBytes) {
-    const message =
-      'Not enough FATFS space for this file. Delete files or format the partition, then try again.';
+    const message = t('filesystem.messages.spaceError', { fs: t('filesystem.labels.fatfs') });
     fatfsState.uploadBlocked = true;
     fatfsState.uploadBlockedReason = message;
     fatfsState.status = message;
@@ -2012,25 +2064,26 @@ function handleFatfsUploadSelection(file) {
 async function handleFatfsUpload({ file }) {
   if (!fatfsState.client) return;
   if (fatfsState.readOnly) {
-    fatfsState.status = fatfsState.readOnlyReason || 'FATFS is read-only.';
+    const detail = fatfsState.readOnlyReason || t('filesystem.readOnlyDefault');
+    fatfsState.status = t('filesystem.readOnly', { fs: t('filesystem.labels.fatfs'), detail });
     showToast(fatfsState.status, { color: 'info' });
     return;
   }
   if (fatfsState.uploadBlocked) {
-    fatfsState.status = fatfsState.uploadBlockedReason || 'Resolve blocked upload before continuing.';
+    fatfsState.status = fatfsState.uploadBlockedReason || t('filesystem.messages.uploadBlocked');
     if (fatfsState.uploadBlockedReason) {
       showUploadError(fatfsState.uploadBlockedReason);
     }
     return;
   }
   if (!file) {
-    fatfsState.status = 'Select a file to upload.';
+    fatfsState.status = t('filesystem.messages.selectFile', { fs: t('filesystem.labels.fatfs') });
     showToast(fatfsState.status, { color: 'info' });
     return;
   }
   const targetName = (file.name || '').trim();
   if (!targetName) {
-    fatfsState.status = 'Selected file has no name. Rename it and try again.';
+    fatfsState.status = t('filesystem.messages.fileNoName');
     showToast(fatfsState.status, { color: 'warning' });
     return;
   }
@@ -2039,8 +2092,11 @@ async function handleFatfsUpload({ file }) {
     const data = new Uint8Array(await file.arrayBuffer());
     fatfsState.client.writeFile(targetName, data);
     await refreshFatfsListing();
-    markFatfsDirty(`Staged ${targetName}. Remember to Save.`);
-    appendLog(`FATFS staged ${targetName} (${data.length.toLocaleString()} bytes).`, '[ESPConnect-Debug]');
+    markFatfsDirty(t('filesystem.messages.staged', { name: targetName }));
+    appendLog(
+      t('filesystem.messages.stagedLog', { fs: t('filesystem.labels.fatfs'), name: targetName, size: data.length.toLocaleString() }),
+      '[ESPConnect-Debug]'
+    );
   } catch (error) {
     fatfsState.error = formatErrorMessage(error);
     showToast(fatfsState.error, { color: 'error' });
@@ -2055,9 +2111,9 @@ async function handleFatfsDelete(name) {
     return;
   }
   const confirmed = await showConfirmation({
-    title: 'Delete File',
-    message: `Delete ${name} from FATFS? This cannot be undone.`,
-    confirmText: 'Delete',
+    title: t('filesystem.messages.deleteTitle'),
+    message: t('filesystem.messages.deleteMessage', { name, fs: t('filesystem.labels.fatfs') }),
+    confirmText: t('filesystem.messages.deleteConfirm'),
     destructive: true,
   });
   if (!confirmed) {
@@ -2067,8 +2123,8 @@ async function handleFatfsDelete(name) {
     fatfsState.busy = true;
     fatfsState.client.deleteFile(name);
     await refreshFatfsListing();
-    markFatfsDirty(`${name} deleted. Save to persist.`);
-    appendLog(`FATFS staged deletion of ${name}.`, '[ESPConnect-Debug]');
+    markFatfsDirty(t('filesystem.messages.deleted', { name, fs: t('filesystem.labels.fatfs') }));
+    appendLog(t('filesystem.messages.deletedLog', { fs: t('filesystem.labels.fatfs'), name }), '[ESPConnect-Debug]');
   } catch (error) {
     fatfsState.error = formatErrorMessage(error);
   } finally {
@@ -2082,9 +2138,9 @@ async function handleFatfsFormat() {
     return;
   }
   const confirmed = await showConfirmation({
-    title: 'Format FATFS',
-    message: 'Erase all files from the FATFS image? You must Save to apply.',
-    confirmText: 'Format',
+    title: t('filesystem.messages.formatTitle', { fs: t('filesystem.labels.fatfs') }),
+    message: t('filesystem.messages.formatMessage', { fs: t('filesystem.labels.fatfs') }),
+    confirmText: t('filesystem.messages.formatConfirm'),
     destructive: true,
   });
   if (!confirmed) return;
@@ -2092,8 +2148,8 @@ async function handleFatfsFormat() {
     fatfsState.busy = true;
     fatfsState.client.format();
     await refreshFatfsListing();
-    markFatfsDirty('FATFS formatted. Save to apply.');
-    appendLog('FATFS staged format operation.', '[ESPConnect-Debug]');
+    markFatfsDirty(t('filesystem.messages.formatted', { fs: t('filesystem.labels.fatfs') }));
+    appendLog(t('filesystem.messages.formatLog', { fs: t('filesystem.labels.fatfs') }), '[ESPConnect-Debug]');
   } catch (error) {
     fatfsState.error = formatErrorMessage(error);
   } finally {
@@ -2104,39 +2160,40 @@ async function handleFatfsFormat() {
 // Persist staged FATFS changes back to flash.
 async function handleFatfsSave() {
   if (!fatfsState.client) {
-    fatfsState.status = 'Load a FATFS partition first.';
+    fatfsState.status = t('filesystem.messages.loadFirst', { fs: t('filesystem.labels.fatfs') });
     return;
   }
   if (fatfsState.readOnly) {
-    fatfsState.status = fatfsState.readOnlyReason || 'FATFS is read-only.';
+    const detail = fatfsState.readOnlyReason || t('filesystem.readOnlyDefault');
+    fatfsState.status = t('filesystem.readOnly', { fs: t('filesystem.labels.fatfs'), detail });
     return;
   }
   if (!fatfsState.dirty) {
-    fatfsState.status = 'No staged changes to save.';
+    fatfsState.status = t('filesystem.messages.noChanges');
     return;
   }
   if (!hasFatfsBackup()) {
-    fatfsState.status = 'Download a FATFS backup before saving (one backup per session is enough).';
+    fatfsState.status = t('filesystem.messages.backupFirst', { fs: t('filesystem.labels.fatfs') });
     return;
   }
   const partition = fatfsSelectedPartition.value;
   if (!partition) {
-    fatfsState.status = 'Select a FATFS partition.';
+    fatfsState.status = t('filesystem.messages.selectPartition', { fs: t('filesystem.labels.fatfs') });
     return;
   }
   const diff = computeFatfsDiff();
   const summaryParts = [];
-  if (diff.added.length) summaryParts.push(`Added: ${diff.added.join(', ')}`);
-  if (diff.modified.length) summaryParts.push(`Modified: ${diff.modified.join(', ')}`);
-  if (diff.removed.length) summaryParts.push(`Removed: ${diff.removed.join(', ')}`);
+  if (diff.added.length) summaryParts.push(t('filesystem.messages.diffAdded', { list: diff.added.join(', ') }));
+  if (diff.modified.length) summaryParts.push(t('filesystem.messages.diffModified', { list: diff.modified.join(', ') }));
+  if (diff.removed.length) summaryParts.push(t('filesystem.messages.diffRemoved', { list: diff.removed.join(', ') }));
   const summary =
     summaryParts.length > 0
       ? summaryParts.join('\n')
-      : 'No file-level changes detected (still writing updated image).';
+      : t('filesystem.messages.diffNone');
   const confirmed = await showConfirmation({
-    title: 'Write FATFS to Flash',
-    message: `${summary}\n\nWrite these changes to flash now?`,
-    confirmText: 'Save to Flash',
+    title: t('filesystem.messages.writeTitle', { fs: t('filesystem.labels.fatfs') }),
+    message: t('filesystem.messages.writeMessage', { summary }),
+    confirmText: t('filesystem.messages.writeConfirm'),
     destructive: true,
   });
   if (!confirmed) return;
@@ -2146,39 +2203,39 @@ async function handleFatfsSave() {
     fatfsSaveDialog.visible = true;
     const image = await Promise.resolve(fatfsState.client.toImage());
     if (image.length > partition.size) {
-      throw new Error('FATFS image exceeds partition size.');
+      throw new Error(t('filesystem.messages.imageTooLarge', { fs: t('filesystem.labels.fatfs') }));
     }
     await writeFilesystemImage(partition, image, {
-      label: 'FATFS',
+      label: t('filesystem.labels.fatfs'),
       state: fatfsState,
       onProgress: progress => {
         fatfsSaveDialog.value = progress.value ?? 0;
-        fatfsSaveDialog.label = progress.label || 'Writing FATFS image...';
+        fatfsSaveDialog.label = progress.label || t('filesystem.messages.saveStatusLabel', { fs: t('filesystem.labels.fatfs') });
       },
     });
     fatfsState.dirty = false;
-    fatfsState.status = 'FATFS saved to flash.';
-    appendLog('FATFS partition updated on flash.', '[ESPConnect-Debug]');
+    fatfsState.status = t('filesystem.messages.saveStatus', { fs: t('filesystem.labels.fatfs') });
+    appendLog(t('filesystem.messages.saveLog', { fs: t('filesystem.labels.fatfs') }), '[ESPConnect-Debug]');
     await loadFatfsPartition(partition);
   } catch (error) {
     fatfsState.error = formatErrorMessage(error);
-    fatfsState.status = 'FATFS save failed.';
+    fatfsState.status = t('filesystem.messages.saveFailed', { fs: t('filesystem.labels.fatfs') });
   } finally {
     fatfsState.saving = false;
     maintenanceBusy.value = false;
     fatfsSaveDialog.visible = false;
     fatfsSaveDialog.value = 0;
-    fatfsSaveDialog.label = 'Saving FATFS...';
+    fatfsSaveDialog.label = t('filesystem.messages.savingLabel', { fs: t('filesystem.labels.fatfs') });
   }
 }
 
 // Read a FATFS file and return its raw bytes.
 async function readFatfsFile(name) {
   if (!fatfsState.client) {
-    throw new Error('FATFS client unavailable.');
+    throw new Error(t('filesystem.messages.fatfsUnavailable'));
   }
   if (!name) {
-    throw new Error('File name is required.');
+    throw new Error(t('filesystem.messages.filenameRequired'));
   }
   const reader =
     typeof fatfsState.client.readFile === 'function'
@@ -2187,12 +2244,12 @@ async function readFatfsFile(name) {
         ? fatfsState.client.read
         : null;
   if (!reader) {
-    throw new Error('FATFS module does not support per-file reads. Update the WASM bundle.');
+    throw new Error(t('filesystem.messages.fatfsReadUnsupported'));
   }
   const result = reader.call(fatfsState.client, name);
   const data = result instanceof Promise ? await result : result;
   if (!(data instanceof Uint8Array)) {
-    throw new Error('FATFS read returned unexpected data.');
+    throw new Error(t('filesystem.messages.fatfsReadUnexpected'));
   }
   return data;
 }
@@ -2203,10 +2260,17 @@ async function handleFatfsDownloadFile(name) {
   try {
     const data = await readFatfsFile(name);
     saveBinaryFile(name, data);
-    appendLog(`FATFS downloaded ${name} (${data.length.toLocaleString()} bytes).`, '[ESPConnect-Debug]');
+    appendLog(
+      t('filesystem.messages.downloadedLog', {
+        fs: t('filesystem.labels.fatfs'),
+        name,
+        bytes: data.length.toLocaleString(),
+      }),
+      '[ESPConnect-Debug]'
+    );
   } catch (error) {
     fatfsState.error = formatErrorMessage(error);
-    fatfsState.status = 'FATFS download failed.';
+    fatfsState.status = t('filesystem.messages.downloadFailed', { fs: t('filesystem.labels.fatfs') });
   }
 }
 
@@ -2215,7 +2279,7 @@ async function handleFatfsView(name) {
   if (!fatfsState.client) return;
   const viewInfo = resolveSpiffsViewInfo(name);
   if (!viewInfo) {
-    fatfsState.status = 'This file type cannot be previewed. Download it instead.';
+    fatfsState.status = t('filesystem.messages.unsupportedPreview');
     showToast(fatfsState.status, { color: 'info' });
     return;
   }
@@ -2230,9 +2294,8 @@ async function handleFatfsView(name) {
   try {
     const data = await readFatfsFile(name);
     if (data.length > SPIFFS_VIEWER_MAX_BYTES) {
-      throw new Error(
-        `File too large to preview (limit ${formatBytes(SPIFFS_VIEWER_MAX_BYTES) ?? SPIFFS_VIEWER_MAX_BYTES} bytes).`,
-      );
+      const limitText = formatBytes(SPIFFS_VIEWER_MAX_BYTES) ?? `${SPIFFS_VIEWER_MAX_BYTES} bytes`;
+      throw new Error(t('filesystem.messages.tooLargePreview', { limit: limitText }));
     }
     if (viewInfo.mode === 'image') {
       const blob = new Blob([toArrayBuffer(data)], { type: viewInfo.mime || 'image/*' });
@@ -2389,7 +2452,7 @@ function resetSpiffsState() {
   spiffsState.selectedId = null;
   spiffsState.client = null;
   spiffsState.files = [];
-  spiffsState.status = 'Load a SPIFFS partition to begin.';
+  spiffsState.status = t('filesystem.messages.loadPrompt', { fs: t('filesystem.labels.spiffs') });
   spiffsState.loading = false;
   spiffsState.busy = false;
   spiffsState.saving = false;
@@ -2431,7 +2494,7 @@ function resetLittlefsState() {
   littlefsState.client = null;
   littlefsState.files = [];
   littlefsState.currentPath = '/';
-  littlefsState.status = 'Load a LittleFS partition to begin.';
+  littlefsState.status = t('filesystem.messages.loadPrompt', { fs: t('filesystem.labels.littlefs') });
   littlefsState.loading = false;
   littlefsState.busy = false;
   littlefsState.saving = false;
@@ -2478,7 +2541,7 @@ function resetFatfsState() {
   fatfsState.selectedId = null;
   fatfsState.client = null;
   fatfsState.files = [];
-  fatfsState.status = 'Load a FATFS partition to begin.';
+  fatfsState.status = t('filesystem.messages.loadPrompt', { fs: t('filesystem.labels.fatfs') });
   fatfsState.loading = false;
   fatfsState.busy = false;
   fatfsState.saving = false;
@@ -2570,8 +2633,9 @@ async function ensureSpiffsReady(options: EnsureFsOptions = {}) {
 
 // Read SPIFFS from flash, build the client, and populate state.
 async function loadSpiffsPartition(partition) {
+  const fsLabel = t('filesystem.labels.spiffs');
   if (!loader.value || !partition) {
-    spiffsState.error = 'Connect to a device with a SPIFFS partition first.';
+    spiffsState.error = t('filesystem.messages.connectFsFirst', { fs: fsLabel });
     return;
   }
   spiffsLoadCancelRequested.value = false;
@@ -2583,12 +2647,20 @@ async function loadSpiffsPartition(partition) {
   spiffsLoadingDialog.value = 0;
   spiffsState.loadCancelled = false;
   const spiffsBaudLabel = currentBaud.value ? ` @ ${currentBaud.value.toLocaleString()} bps` : '';
-  spiffsState.status = `Reading SPIFFS @ 0x${partition.offset.toString(16).toUpperCase()}${spiffsBaudLabel}...`;
+  const offsetHex = partition.offset.toString(16).toUpperCase();
+  spiffsState.status = t('filesystem.messages.readingAtOffset', {
+    fs: fsLabel,
+    offset: offsetHex,
+    baud: spiffsBaudLabel,
+  });
   spiffsLoadingDialog.visible = true;
-  spiffsLoadingDialog.label = `Reading ${partition.label || 'SPIFFS'}${spiffsBaudLabel}...`;
+  spiffsLoadingDialog.label = t('filesystem.messages.readingLabel', {
+    label: partition.label || fsLabel,
+    baud: spiffsBaudLabel,
+  });
   try {
     const image = await readFlashToBuffer(partition.offset, partition.size, {
-      label: `${partition.label || 'SPIFFS'}${spiffsBaudLabel}`,
+      label: `${partition.label || fsLabel}${spiffsBaudLabel}`,
       cancelSignal: spiffsLoadCancelRequested,
       onProgress: progress => {
         spiffsLoadingDialog.label = progress.label;
@@ -2601,8 +2673,8 @@ async function loadSpiffsPartition(partition) {
     } catch (error) {
       spiffsState.error = formatErrorMessage(error);
       spiffsState.readOnly = true;
-      spiffsState.readOnlyReason = 'SPIFFS image unreadable (possibly encrypted).';
-      spiffsState.status = 'SPIFFS is read-only.';
+      spiffsState.readOnlyReason = t('filesystem.messages.readOnlyReasonEncrypted', { fs: fsLabel });
+      spiffsState.status = t('filesystem.messages.readOnlySimple', { fs: fsLabel });
       spiffsState.client = null;
       spiffsState.files = [];
       spiffsState.baselineFiles = [];
@@ -2619,9 +2691,13 @@ async function loadSpiffsPartition(partition) {
     spiffsState.backupDone = false;
     updateSpiffsUsage();
     const count = spiffsState.files.length;
-    spiffsState.status = count === 1 ? 'Loaded 1 file.' : `Loaded ${count} files.`;
+    spiffsState.status = t('filesystem.messages.loadedCount', { count });
     appendLog(
-      `SPIFFS partition ${partition.label} loaded (${count} file${count === 1 ? '' : 's'}).`,
+      t('filesystem.messages.loadLog', {
+        fs: fsLabel,
+        label: partition.label,
+        count,
+      }),
       '[ESPConnect-Debug]'
     );
   } catch (error) {
@@ -2637,12 +2713,12 @@ async function loadSpiffsPartition(partition) {
       spiffsState.error = null;
       spiffsState.readOnly = false;
       spiffsState.readOnlyReason = '';
-      spiffsState.status = 'SPIFFS load cancelled. Use "Read" to fetch the partition again.';
+      spiffsState.status = t('filesystem.messages.loadCancelled', { fs: fsLabel });
       return;
     } else {
       spiffsState.loadCancelled = false;
       spiffsState.error = message;
-      spiffsState.status = 'Failed to read SPIFFS.';
+      spiffsState.status = t('filesystem.messages.readFailed', { fs: fsLabel });
     }
   } finally {
     spiffsState.loading = false;
@@ -2713,10 +2789,11 @@ async function handleSelectSpiffsPartition(partitionId) {
   if (spiffsState.loading || spiffsState.busy || spiffsState.saving) {
     return;
   }
+  const fsLabel = t('filesystem.labels.spiffs');
   spiffsState.selectedId = partitionId;
   spiffsState.client = null;
   spiffsState.files = [];
-  spiffsState.status = 'Loading SPIFFS...';
+  spiffsState.status = t('filesystem.messages.loading', { fs: fsLabel });
   const partition =
     spiffsPartitions.value.find(entry => entry.id === partitionId) ?? spiffsPartitions.value[0];
   if (partition) {
@@ -2737,16 +2814,17 @@ async function handleRefreshSpiffs() {
 async function handleSpiffsBackup() {
   const partition = spiffsSelectedPartition.value;
   if (!partition) {
-    spiffsState.status = 'Select a SPIFFS partition first.';
+    spiffsState.status = t('filesystem.messages.selectPartition', { fs: t('filesystem.labels.spiffs') });
     return;
   }
   if (!loader.value) {
-    spiffsState.status = 'Connect to a device first.';
+    spiffsState.status = t('filesystem.messages.connectFsFirst', { fs: t('filesystem.labels.spiffs') });
     return;
   }
+  const fsLabel = t('filesystem.labels.spiffs');
   spiffsBackupDialog.visible = true;
   spiffsBackupDialog.value = 0;
-  spiffsBackupDialog.label = 'Preparing backup...';
+  spiffsBackupDialog.label = t('filesystem.messages.backupLabel', { fs: fsLabel });
   try {
     const baseLabel = `${partition.label || 'spiffs'}_${partition.offset.toString(16)}`;
     const safeBase = sanitizeFileName(baseLabel, 'spiffs');
@@ -2757,21 +2835,21 @@ async function handleSpiffsBackup() {
       suppressStatus: true,
       onProgress: progress => {
         spiffsBackupDialog.value = progress.value ?? 0;
-        spiffsBackupDialog.label = progress.label || 'Backing up SPIFFS...';
+        spiffsBackupDialog.label = progress.label || t('filesystem.messages.backupLabel', { fs: fsLabel });
       },
     });
     spiffsState.backupDone = true;
     spiffsState.sessionBackupDone = true;
-    spiffsState.status = 'Backup downloaded. You can now save changes.';
-    appendLog('SPIFFS backup downloaded.', '[ESPConnect-Debug]');
+    spiffsState.status = t('filesystem.messages.backupComplete', { fs: fsLabel });
+    appendLog(t('filesystem.messages.backupLog', { fs: fsLabel }), '[ESPConnect-Debug]');
   } catch (error) {
     const message = formatErrorMessage(error);
     if (message === 'Download cancelled by user') {
       spiffsState.error = null;
-      spiffsState.status = 'SPIFFS backup cancelled.';
+      spiffsState.status = t('filesystem.messages.backupCancelled', { fs: fsLabel });
     } else {
       spiffsState.error = message;
-      spiffsState.status = 'SPIFFS backup failed.';
+      spiffsState.status = t('filesystem.messages.backupFailed', { fs: fsLabel });
     }
   } finally {
     spiffsBackupDialog.visible = false;
@@ -2785,16 +2863,18 @@ async function handleSpiffsRestore(file) {
   const partition = spiffsSelectedPartition.value;
   if (!partition) return;
   if (!file) return;
+  const fsLabel = t('filesystem.labels.spiffs');
   const buffer = new Uint8Array(await file.arrayBuffer());
   if (buffer.length !== partition.size) {
-    spiffsState.status = `Restore file must be exactly ${formatBytes(partition.size) ?? `${partition.size} bytes`}.`;
+    spiffsState.status = t('filesystem.messages.restoreSizeMismatch', {
+      size: formatBytes(partition.size) ?? `${partition.size} bytes`,
+    });
     return;
   }
   const confirmed = await showConfirmation({
-    title: 'Restore SPIFFS Partition',
-    message:
-      'This will overwrite the entire SPIFFS partition with the selected image. Continue?',
-    confirmText: 'Restore',
+    title: t('filesystem.messages.restoreTitle', { fs: fsLabel }),
+    message: t('filesystem.messages.restoreMessage', { fs: fsLabel }),
+    confirmText: t('filesystem.messages.restoreConfirm'),
     destructive: true,
   });
   if (!confirmed) {
@@ -2805,28 +2885,28 @@ async function handleSpiffsRestore(file) {
     maintenanceBusy.value = true;
     spiffsRestoreDialog.visible = true;
     spiffsRestoreDialog.value = 0;
-    spiffsRestoreDialog.label = 'Writing SPIFFS image...';
+    spiffsRestoreDialog.label = t('filesystem.messages.restoreLabel', { fs: fsLabel });
     await writeFilesystemImage(partition, buffer, {
-      label: 'SPIFFS',
+      label: fsLabel,
       state: spiffsState,
       onProgress: progress => {
         spiffsRestoreDialog.value = progress.value ?? 0;
-        spiffsRestoreDialog.label = progress.label || 'Writing SPIFFS image...';
+        spiffsRestoreDialog.label = progress.label || t('filesystem.messages.restoreLabel', { fs: fsLabel });
       },
     });
-    spiffsState.status = 'SPIFFS image restored.';
+    spiffsState.status = t('filesystem.messages.restoreStatus', { fs: fsLabel });
     spiffsState.backupDone = true;
-    appendLog('SPIFFS partition restored from backup.', '[ESPConnect-Debug]');
+    appendLog(t('filesystem.messages.restoreLog', { fs: fsLabel }), '[ESPConnect-Debug]');
     await loadSpiffsPartition(partition);
   } catch (error) {
     spiffsState.error = formatErrorMessage(error);
-    spiffsState.status = 'Restore failed.';
+    spiffsState.status = t('filesystem.messages.restoreFailed', { fs: fsLabel });
   } finally {
     spiffsState.saving = false;
     maintenanceBusy.value = false;
     spiffsRestoreDialog.visible = false;
     spiffsRestoreDialog.value = 0;
-    spiffsRestoreDialog.label = 'Restoring SPIFFS image...';
+    spiffsRestoreDialog.label = t('filesystem.messages.restoreLabel', { fs: fsLabel });
   }
 }
 
@@ -2836,7 +2916,14 @@ async function handleSpiffsDownloadFile(name) {
   try {
     const data = await spiffsState.client.read(name);
     saveBinaryFile(name, data);
-    appendLog(`SPIFFS downloaded ${name} (${data.length.toLocaleString()} bytes).`, '[ESPConnect-Debug]');
+    appendLog(
+      t('filesystem.messages.downloadedLog', {
+        fs: t('filesystem.labels.spiffs'),
+        name,
+        bytes: data.length.toLocaleString(),
+      }),
+      '[ESPConnect-Debug]'
+    );
   } catch (error) {
     spiffsState.error = formatErrorMessage(error);
   }
@@ -2849,15 +2936,20 @@ function handleSpiffsUploadSelection(file) {
     spiffsState.uploadBlockedReason = '';
     return;
   }
+  const fsLabel = t('filesystem.labels.spiffs');
   const targetName = (file.name || '').trim();
   if (!targetName) {
+    const message = t('filesystem.messages.filenameRequired');
     spiffsState.uploadBlocked = true;
-    spiffsState.uploadBlockedReason = 'Selected file must have a name.';
-    showUploadError('Selected file must have a name.');
+    spiffsState.uploadBlockedReason = message;
+    showUploadError(message);
     return;
   }
   if (targetName.length > SPIFFS_MAX_FILENAME_LENGTH) {
-    const message = `SPIFFS filenames are limited to ${SPIFFS_MAX_FILENAME_LENGTH} characters.`;
+    const message = t('filesystem.messages.filenameTooLong', {
+      fs: fsLabel,
+      limit: SPIFFS_MAX_FILENAME_LENGTH,
+    });
     spiffsState.uploadBlocked = true;
     spiffsState.uploadBlockedReason = message;
     showUploadError(message);
@@ -2867,7 +2959,7 @@ function handleSpiffsUploadSelection(file) {
     typeof spiffsState.client.canFit === 'function' &&
     !spiffsState.client.canFit(targetName, file.size ?? 0)
   ) {
-    const message = 'Not enough SPIFFS space for this file. Delete files or format the partition, then try again.';
+    const message = t('filesystem.messages.spaceError', { fs: fsLabel });
     spiffsState.uploadBlocked = true;
     spiffsState.uploadBlockedReason = message;
     showUploadError(message);
@@ -2896,7 +2988,10 @@ function resetViewerMedia() {
 
 // Surface upload-related errors through the toast and dialog.
 function showUploadError(message) {
-  showToast(message || 'Not enough filesystem space to store this file.', { color: 'error', timeout: 6000 });
+  showToast(message || t('filesystem.messages.uploadSpaceGeneric', { fs: t('filesystem.labels.filesystem') }), {
+    color: 'error',
+    timeout: 6000,
+  });
 }
 
 // Show a transient toast message.
@@ -2918,8 +3013,8 @@ async function handleSpiffsView(name) {
   if (!spiffsState.client) return;
   const viewInfo = resolveSpiffsViewInfo(name);
   if (!viewInfo) {
-    spiffsState.status = 'This file type cannot be previewed. Download it instead.';
-    showToast('This file type cannot be previewed. Download it instead.', { color: 'info' });
+    spiffsState.status = t('filesystem.messages.unsupportedPreview');
+    showToast(spiffsState.status, { color: 'info' });
     return;
   }
   resetViewerMedia();
@@ -2933,9 +3028,8 @@ async function handleSpiffsView(name) {
   try {
     const data = await spiffsState.client.read(name);
     if (data.length > SPIFFS_VIEWER_MAX_BYTES) {
-      throw new Error(
-        `File too large to preview (limit ${formatBytes(SPIFFS_VIEWER_MAX_BYTES) ?? SPIFFS_VIEWER_MAX_BYTES} bytes).`,
-      );
+      const limitText = formatBytes(SPIFFS_VIEWER_MAX_BYTES) ?? `${SPIFFS_VIEWER_MAX_BYTES} bytes`;
+      throw new Error(t('filesystem.messages.tooLargePreview', { limit: limitText }));
     }
     if (viewInfo.mode === 'image') {
       const blob = new Blob([data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)], { type: viewInfo.mime || 'image/*' });
@@ -2984,7 +3078,7 @@ function cancelSpiffsBackup() {
   if (!spiffsBackupDialog.visible) {
     return;
   }
-  spiffsBackupDialog.label = 'Stopping backup...';
+  spiffsBackupDialog.label = t('filesystem.messages.backupStopping');
   handleCancelDownload();
 }
 
@@ -2994,32 +3088,36 @@ function cancelSpiffsLoad() {
     return;
   }
   spiffsLoadCancelRequested.value = true;
-  spiffsLoadingDialog.label = 'Stopping SPIFFS load...';
+  spiffsLoadingDialog.label = t('filesystem.messages.loadStopping', {
+    fs: t('filesystem.labels.spiffs'),
+  });
 }
 
 // Upload a file to SPIFFS with size checks and staging.
 async function handleSpiffsUpload({ file }) {
   if (!spiffsState.client) return;
+  const fsLabel = t('filesystem.labels.spiffs');
   if (spiffsState.readOnly) {
-    spiffsState.status = spiffsState.readOnlyReason || 'SPIFFS is read-only.';
+    const detail = spiffsState.readOnlyReason || t('filesystem.readOnlyDefault');
+    spiffsState.status = t('filesystem.readOnly', { fs: fsLabel, detail });
     showToast(spiffsState.status, { color: 'info' });
     return;
   }
   if (spiffsState.uploadBlocked) {
-    spiffsState.status = spiffsState.uploadBlockedReason || 'Resolve blocked upload before continuing.';
+    spiffsState.status = spiffsState.uploadBlockedReason || t('filesystem.messages.uploadBlocked');
     if (spiffsState.uploadBlockedReason) {
       showUploadError(spiffsState.uploadBlockedReason);
     }
     return;
   }
   if (!file) {
-    spiffsState.status = 'Select a file to upload.';
+    spiffsState.status = t('filesystem.messages.selectFile', { fs: fsLabel });
     showToast(spiffsState.status, { color: 'info' });
     return;
   }
   const targetName = (file.name || '').trim();
   if (!targetName) {
-    spiffsState.status = 'Selected file has no name. Rename it and try again.';
+    spiffsState.status = t('filesystem.messages.fileNoName');
     showToast(spiffsState.status, { color: 'warning' });
     return;
   }
@@ -3028,18 +3126,25 @@ async function handleSpiffsUpload({ file }) {
     const data = new Uint8Array(await file.arrayBuffer());
     await spiffsState.client.write(targetName, data);
     await refreshSpiffsListing();
-    markSpiffsDirty(`Staged ${targetName}. Remember to Save.`);
-    appendLog(`SPIFFS staged ${targetName} (${data.length.toLocaleString()} bytes).`, '[ESPConnect-Debug]');
+    markSpiffsDirty(t('filesystem.messages.staged', { name: targetName }));
+    appendLog(
+      t('filesystem.messages.stagedLog', {
+        fs: fsLabel,
+        name: targetName,
+        size: data.length.toLocaleString(),
+      }),
+      '[ESPConnect-Debug]'
+    );
     spiffsState.uploadBlocked = false;
     spiffsState.uploadBlockedReason = '';
   } catch (error) {
     const isSpaceError = typeof error?.message === 'string' && error.message.includes('Not enough SPIFFS space');
     const isNameTooLong = typeof error?.message === 'string' && error.message.includes('File name too long');
     const friendly = isSpaceError
-      ? 'Not enough SPIFFS space for this file. Delete files or format the partition, then try again.'
+      ? t('filesystem.messages.spaceError', { fs: fsLabel })
       : formatErrorMessage(error);
     if (!isNameTooLong) {
-      spiffsState.status = friendly || 'SPIFFS upload failed.';
+      spiffsState.status = friendly || t('filesystem.messages.uploadFailed', { fs: fsLabel });
     }
     if (!isSpaceError && !isNameTooLong) {
       spiffsState.error = friendly;
@@ -3047,7 +3152,7 @@ async function handleSpiffsUpload({ file }) {
     if (isSpaceError || isNameTooLong) {
       showUploadError(friendly);
     } else {
-      showToast(friendly || 'SPIFFS upload failed.', { color: 'error' });
+      showToast(friendly || t('filesystem.messages.uploadFailed', { fs: fsLabel }), { color: 'error' });
     }
   } finally {
     spiffsState.busy = false;
@@ -3059,10 +3164,11 @@ async function handleSpiffsDelete(name) {
   if (!spiffsState.client || spiffsState.readOnly) {
     return;
   }
+  const fsLabel = t('filesystem.labels.spiffs');
   const confirmed = await showConfirmation({
-    title: 'Delete File',
-    message: `Delete ${name} from SPIFFS? This cannot be undone.`,
-    confirmText: 'Delete',
+    title: t('filesystem.messages.deleteTitle'),
+    message: t('filesystem.messages.deleteMessage', { name, fs: fsLabel }),
+    confirmText: t('filesystem.messages.deleteConfirm'),
     destructive: true,
   });
   if (!confirmed) {
@@ -3072,8 +3178,8 @@ async function handleSpiffsDelete(name) {
     spiffsState.busy = true;
     await spiffsState.client.remove(name);
     await refreshSpiffsListing();
-    markSpiffsDirty(`${name} deleted. Save to persist.`);
-    appendLog(`SPIFFS staged deletion of ${name}.`, '[ESPConnect-Debug]');
+    markSpiffsDirty(t('filesystem.messages.deleted', { name, fs: fsLabel }));
+    appendLog(t('filesystem.messages.deletedLog', { fs: fsLabel, name }), '[ESPConnect-Debug]');
   } catch (error) {
     spiffsState.error = formatErrorMessage(error);
   } finally {
@@ -3086,10 +3192,11 @@ async function handleSpiffsFormat() {
   if (!spiffsState.client || spiffsState.readOnly) {
     return;
   }
+  const fsLabel = t('filesystem.labels.spiffs');
   const confirmed = await showConfirmation({
-    title: 'Format SPIFFS',
-    message: 'Erase all files from the SPIFFS image? You must Save to apply.',
-    confirmText: 'Format',
+    title: t('filesystem.messages.formatTitle', { fs: fsLabel }),
+    message: t('filesystem.messages.formatMessage', { fs: fsLabel }),
+    confirmText: t('filesystem.messages.formatConfirm'),
     destructive: true,
   });
   if (!confirmed) return;
@@ -3097,8 +3204,8 @@ async function handleSpiffsFormat() {
     spiffsState.busy = true;
     await spiffsState.client.format();
     await refreshSpiffsListing();
-    markSpiffsDirty('SPIFFS formatted. Save to apply.');
-    appendLog('SPIFFS staged format operation.', '[ESPConnect-Debug]');
+    markSpiffsDirty(t('filesystem.messages.formatted', { fs: fsLabel }));
+    appendLog(t('filesystem.messages.formatLog', { fs: fsLabel }), '[ESPConnect-Debug]');
   } catch (error) {
     spiffsState.error = formatErrorMessage(error);
   } finally {
@@ -3109,39 +3216,41 @@ async function handleSpiffsFormat() {
 // Persist staged SPIFFS changes back to flash.
 async function handleSpiffsSave() {
   if (!spiffsState.client) {
-    spiffsState.status = 'Load a SPIFFS partition first.';
+    spiffsState.status = t('filesystem.messages.loadFirst', { fs: t('filesystem.labels.spiffs') });
     return;
   }
   if (spiffsState.readOnly) {
-    spiffsState.status = spiffsState.readOnlyReason || 'SPIFFS is read-only.';
+    const detail = spiffsState.readOnlyReason || t('filesystem.readOnlyDefault');
+    spiffsState.status = t('filesystem.readOnly', {
+      fs: t('filesystem.labels.spiffs'),
+      detail,
+    });
     return;
   }
   if (!spiffsState.dirty) {
-    spiffsState.status = 'No staged changes to save.';
+    spiffsState.status = t('filesystem.messages.noChanges');
     return;
   }
   if (!hasSpiffsBackup()) {
-    spiffsState.status = 'Download a SPIFFS backup before saving (one backup per session is enough).';
+    spiffsState.status = t('filesystem.messages.backupFirst', { fs: t('filesystem.labels.spiffs') });
     return;
   }
   const partition = spiffsSelectedPartition.value;
   if (!partition) {
-    spiffsState.status = 'Select a SPIFFS partition.';
+    spiffsState.status = t('filesystem.messages.selectPartition', { fs: t('filesystem.labels.spiffs') });
     return;
   }
+  const fsLabel = t('filesystem.labels.spiffs');
   const diff = computeSpiffsDiff();
   const summaryParts = [];
-  if (diff.added.length) summaryParts.push(`Added: ${diff.added.join(', ')}`);
-  if (diff.modified.length) summaryParts.push(`Modified: ${diff.modified.join(', ')}`);
-  if (diff.removed.length) summaryParts.push(`Removed: ${diff.removed.join(', ')}`);
-  const summary =
-    summaryParts.length > 0
-      ? summaryParts.join('\n')
-      : 'No file-level changes detected (still writing updated image).';
+  if (diff.added.length) summaryParts.push(t('filesystem.messages.diffAdded', { list: diff.added.join(', ') }));
+  if (diff.modified.length) summaryParts.push(t('filesystem.messages.diffModified', { list: diff.modified.join(', ') }));
+  if (diff.removed.length) summaryParts.push(t('filesystem.messages.diffRemoved', { list: diff.removed.join(', ') }));
+  const summary = summaryParts.length > 0 ? summaryParts.join('\n') : t('filesystem.messages.diffNone');
   const confirmed = await showConfirmation({
-    title: 'Write SPIFFS to Flash',
-    message: `${summary}\n\nWrite these changes to flash now?`,
-    confirmText: 'Save to Flash',
+    title: t('filesystem.messages.writeTitle', { fs: fsLabel }),
+    message: t('filesystem.messages.writeMessage', { summary }),
+    confirmText: t('filesystem.messages.writeConfirm'),
     destructive: true,
   });
   if (!confirmed) return;
@@ -3151,29 +3260,29 @@ async function handleSpiffsSave() {
     spiffsSaveDialog.visible = true;
     const image = await spiffsState.client.toImage();
     if (image.length > partition.size) {
-      throw new Error('SPIFFS image exceeds partition size.');
+      throw new Error(t('filesystem.messages.imageTooLarge', { fs: fsLabel }));
     }
     await writeFilesystemImage(partition, image, {
-      label: 'SPIFFS',
+      label: fsLabel,
       state: spiffsState,
       onProgress: progress => {
         spiffsSaveDialog.value = progress.value ?? 0;
-        spiffsSaveDialog.label = progress.label || 'Writing SPIFFS image...';
+        spiffsSaveDialog.label = progress.label || t('filesystem.messages.saveStatusLabel', { fs: fsLabel });
       },
     });
     spiffsState.dirty = false;
-    spiffsState.status = 'SPIFFS saved to flash.';
-    appendLog('SPIFFS partition updated on flash.', '[ESPConnect-Debug]');
+    spiffsState.status = t('filesystem.messages.saveStatus', { fs: fsLabel });
+    appendLog(t('filesystem.messages.saveLog', { fs: fsLabel }), '[ESPConnect-Debug]');
     await loadSpiffsPartition(partition);
   } catch (error) {
     spiffsState.error = formatErrorMessage(error);
-    spiffsState.status = 'SPIFFS save failed.';
+    spiffsState.status = t('filesystem.messages.saveFailed', { fs: fsLabel });
   } finally {
     spiffsState.saving = false;
     maintenanceBusy.value = false;
     spiffsSaveDialog.visible = false;
     spiffsSaveDialog.value = 0;
-    spiffsSaveDialog.label = 'Saving SPIFFS...';
+    spiffsSaveDialog.label = t('filesystem.messages.savingLabel', { fs: fsLabel });
   }
 }
 
@@ -3246,15 +3355,21 @@ type CancelDownloadOptions = {
 
 // Write a filesystem image to flash with progress callbacks.
 async function writeFilesystemImage(partition: any, image: Uint8Array, options: WriteFilesystemOptions = {}) {
-  const { onProgress, label = 'filesystem', state, compress = true } = options;
+  const { onProgress, label = t('filesystem.labels.filesystem'), state, compress = true } = options;
   if (!loader.value) {
-    throw new Error('Loader unavailable.');
+    throw new Error(t('filesystem.messages.connectFirst'));
   }
   await loader.value.flashData(
     toArrayBuffer(image),
     (written, total) => {
       const progressValue = total ? Math.min(100, Math.floor((written / total) * 100)) : 0;
-      const statusLabel = `Writing ${label}... ${written.toLocaleString()} / ${total.toLocaleString()} bytes`;
+      const writtenLabel = written.toLocaleString();
+      const totalLabel = Number.isFinite(total) ? total.toLocaleString() : '0';
+      const statusLabel = t('filesystem.messages.writeStatus', {
+        fs: label,
+        written: writtenLabel,
+        total: totalLabel,
+      });
       if (state) {
         state.status = statusLabel;
       }
@@ -3277,16 +3392,16 @@ const FLASH_READ_MIN_CHUNK = 0x1000;
 // Read a region of flash into a buffer with chunked progress reporting.
 async function readFlashToBuffer(offset: number, length: number, options: ReadFlashOptions = {}) {
   if (!loader.value) {
-    throw new Error('Device not connected.');
+    throw new Error(t('flashDownload.connectFirst'));
   }
   if (!Number.isSafeInteger(offset) || offset < 0) {
-    throw new Error('Invalid flash offset.');
+    throw new Error(t('flashDownload.offsetInvalid'));
   }
   if (!Number.isSafeInteger(length) || length <= 0) {
-    throw new Error('Invalid flash length.');
+    throw new Error(t('flashDownload.lengthInvalid'));
   }
   const cancelSignal = options.cancelSignal;
-  const label = options.label || 'filesystem';
+  const label = options.label || t('filesystem.labels.filesystem');
   const chunkBuffers = [];
   const chunkSize = Math.max(FLASH_READ_MIN_CHUNK, Math.min(FLASH_READ_MAX_CHUNK, length));
   let totalReceived = 0;
@@ -3305,9 +3420,19 @@ async function readFlashToBuffer(offset: number, length: number, options: ReadFl
         const chunkReceived = Math.min(received, currentChunkSize);
         const overallReceived = chunkBase + chunkReceived;
         const progressValue = length ? Math.min(100, Math.floor((overallReceived / length) * 100)) : 0;
-        let progressLabel = `Reading ${label} - ${overallReceived.toLocaleString()} of ${length.toLocaleString()} bytes`;
+        const writtenLabel = overallReceived.toLocaleString();
+        const totalLabel = length.toLocaleString();
+        let progressLabel = t('filesystem.messages.readProgress', {
+          label,
+          written: writtenLabel,
+          total: totalLabel,
+        });
         if (cancelSignal?.value) {
-          progressLabel = `Stopping read of ${label} after current chunk... (${overallReceived.toLocaleString()} of ${length.toLocaleString()} bytes)`;
+          progressLabel = t('filesystem.messages.readStopping', {
+            label,
+            written: writtenLabel,
+            total: totalLabel,
+          });
         }
         if (typeof options.onProgress === 'function') {
           options.onProgress({
@@ -3522,7 +3647,7 @@ const appPartitions = ref([]);
 const appMetadataLoading = ref(false);
 const appMetadataError = ref(null);
 const activeAppSlotId = ref(null);
-const appActiveSummary = ref('Active slot unknown.');
+const appActiveSummary = ref(t('apps.activeSlotUnknown'));
 const appMetadataLoaded = ref(false);
 const { connectDialog, toast } = useDialogs();
 let connectDialogTimer = null;
@@ -3773,7 +3898,7 @@ async function setConnectionBaud(targetBaud: string | number, options: SetBaudOp
     try {
       baudChangeBusy.value = true;
       if (log) {
-        appendLog('Changing baud to ' + parsed.toLocaleString() + ' bps...', '[ESPConnect-Debug]');
+        appendLog(t('baud.changing', { baud: parsed.toLocaleString() }), '[ESPConnect-Debug]');
       }
       loader.value.baudrate = parsed;
       await loader.value.setBaudrate(parsed);
@@ -3781,11 +3906,12 @@ async function setConnectionBaud(targetBaud: string | number, options: SetBaudOp
         transport.value.baudrate = parsed;
       }
       if (log) {
-        appendLog('Baud changed to ' + parsed.toLocaleString() + ' bps.', '[ESPConnect-Debug]');
+        appendLog(t('baud.changed', { baud: parsed.toLocaleString() }), '[ESPConnect-Debug]');
       }
     } catch (error) {
       if (log) {
-        appendLog('Baud change failed: ' + (error?.message || error), '[ESPConnect-Warn]');
+        const friendlyError = formatErrorMessage(error);
+        appendLog(t('baud.changeFailed', { error: friendlyError }), '[ESPConnect-Warn]');
       }
       throw error;
     } finally {
@@ -3816,7 +3942,7 @@ watch(selectedBaud, async (value, oldValue) => {
   }
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed <= 0) {
-    appendLog('Ignoring invalid baud selection: ' + value, '[ESPConnect-Warn]');
+    appendLog(t('baud.invalidSelection', { value }), '[ESPConnect-Warn]');
     if (oldValue != null) {
       const previousSuspendState = suspendBaudWatcher;
       suspendBaudWatcher = true;
@@ -3844,10 +3970,7 @@ watch(selectedBaud, async (value, oldValue) => {
     return;
   }
   if (busy.value || flashInProgress.value || maintenanceBusy.value || baudChangeBusy.value || monitorActive.value) {
-    appendLog(
-      'Cannot change baud while operations are running. Keeping ' + currentBaud.value.toLocaleString() + ' bps.',
-      '[ESPConnect-Warn]'
-    );
+    appendLog(t('baud.busy', { baud: currentBaud.value.toLocaleString() }), '[ESPConnect-Warn]');
     const previousSuspendState = suspendBaudWatcher;
     suspendBaudWatcher = true;
     selectedBaud.value = currentBaud.value as BaudRate;
@@ -3975,7 +4098,7 @@ function decodeCString(bytes) {
   try {
     return asciiDecoder.decode(bytes.subarray(0, end)).trim();
   } catch (error) {
-    appendLog('Failed to decode string', error);
+    appendLog(t('apps.decodeFailed'), error);
     return '';
   }
 }
@@ -4014,7 +4137,7 @@ function extractAppDescriptor(buffer) {
 function detectActiveOtaSlot(otadata, otaEntries) {
   const otaCount = otaEntries?.length ?? 0;
   if (!otadata || !otadata.length || !otaCount) {
-    return { slotId: null, summary: 'Active slot unknown.' };
+    return { slotId: null, summary: t('apps.activeSlotUnknown') };
   }
   const entryCount = Math.min(Math.floor(otadata.length / OTA_SELECT_ENTRY_SIZE), otaCount > 1 ? 2 : 1);
   const entries = [];
@@ -4037,18 +4160,18 @@ function detectActiveOtaSlot(otadata, otaEntries) {
     });
   }
   if (!entries.length) {
-    return { slotId: null, summary: 'Active slot unknown.' };
+    return { slotId: null, summary: t('apps.activeSlotUnknown') };
   }
   entries.sort((a, b) => b.seq - a.seq);
   const winner = entries[0];
   const slotEntry = otaEntries[winner.slotIndex];
   if (!slotEntry) {
-    return { slotId: null, summary: 'Active slot unknown.' };
+    return { slotId: null, summary: t('apps.activeSlotUnknown') };
   }
   const slotId = `ota_${winner.slotIndex}`;
   return {
     slotId,
-    summary: `Active slot: ${slotId} (sequence ${winner.seq})`,
+    summary: t('apps.activeSlotWithSeq', { slot: slotId, seq: winner.seq }),
   };
 }
 
@@ -4057,7 +4180,7 @@ async function analyzeAppPartitions(loaderInstance, partitions) {
   appPartitions.value = [];
   activeAppSlotId.value = null;
   appMetadataError.value = null;
-  appActiveSummary.value = 'Active slot unknown.';
+  appActiveSummary.value = t('apps.activeSlotUnknown');
   if (!loaderInstance || !Array.isArray(partitions) || !partitions.length) {
     return;
   }
@@ -4077,7 +4200,7 @@ async function analyzeAppPartitions(loaderInstance, partitions) {
     .sort((a, b) => (a.subtype ?? 0) - (b.subtype ?? 0));
 
   let activeSlotId = null;
-  let activeSummary = 'Active slot unknown.';
+  let activeSummary = t('apps.activeSlotUnknown');
   const otadataEntry = partitions.find(entry => entry.type === 0x01 && entry.subtype === 0x02);
   if (otadataEntry && otaEntries.length) {
     try {
@@ -4089,17 +4212,17 @@ async function analyzeAppPartitions(loaderInstance, partitions) {
         activeSummary = detected.summary;
       }
     } catch (error) {
-      appendLog('Failed to read OTA data partition', error);
-      appMetadataError.value = 'Unable to read OTA metadata.';
+      appendLog(t('apps.otaReadFailedLog'), error);
+      appMetadataError.value = t('apps.otaMetadataError');
     }
   }
 
   if (!activeSlotId) {
     if (factoryEntry) {
       activeSlotId = 'factory';
-      activeSummary = 'Active slot: factory (fallback)';
+      activeSummary = t('apps.activeSlotFactory');
     } else {
-      activeSummary = 'Active slot unknown.';
+      activeSummary = t('apps.activeSlotUnknown');
     }
   }
 
@@ -4120,10 +4243,10 @@ async function analyzeAppPartitions(loaderInstance, partitions) {
         buffer = await loaderInstance.readFlash(entry.offset, readSize);
       } catch (error) {
         imageError = error?.message || String(error);
-        appendLog(`Failed to read app partition ${entry.label || slotLabel}`, error);
+        appendLog(t('apps.readPartitionFailed', { name: entry.label || slotLabel }), error);
       }
     } else {
-      imageError = 'Partition too small to contain app image header.';
+      imageError = t('apps.partitionTooSmall');
     }
 
     const offsetHex = `0x${entry.offset.toString(16).toUpperCase()}`;
@@ -4160,13 +4283,13 @@ async function analyzeAppPartitions(loaderInstance, partitions) {
     }
 
     if (!buffer || buffer.length < 8) {
-      appInfo.error = 'App header truncated.';
+      appInfo.error = t('apps.appHeaderTruncated');
       results.push(appInfo);
       continue;
     }
 
     if (buffer[0] !== APP_IMAGE_HEADER_MAGIC) {
-      appInfo.error = 'Encrypted or invalid image header.';
+      appInfo.error = t('apps.appHeaderInvalid');
       results.push(appInfo);
       continue;
     }
@@ -4213,11 +4336,14 @@ async function analyzeAppPartitions(loaderInstance, partitions) {
       resolvedSlotId = fallbackInfo.slotLabel;
       resolvedSummary =
         activeInfoCandidate && !activeInfoCandidate.valid
-          ? `Active slot ${activeInfoCandidate.slotLabel} invalid. Using ${fallbackInfo.slotLabel}.`
-          : `Active slot inferred: ${fallbackInfo.slotLabel}.`;
+          ? t('apps.activeSlotInvalidUse', {
+              slot: activeInfoCandidate.slotLabel,
+              fallback: fallbackInfo.slotLabel,
+            })
+          : t('apps.activeSlotInferred', { slot: fallbackInfo.slotLabel });
     } else if (activeInfoCandidate && !activeInfoCandidate.valid) {
       resolvedSlotId = null;
-      resolvedSummary = 'Active slot invalid.';
+      resolvedSummary = t('apps.activeSlotInvalid');
     }
   }
 
@@ -4237,7 +4363,7 @@ function resetAppMetadata() {
   appMetadataLoading.value = false;
   appMetadataError.value = null;
   activeAppSlotId.value = null;
-  appActiveSummary.value = 'Active slot unknown.';
+  appActiveSummary.value = t('apps.activeSlotUnknown');
   appMetadataLoaded.value = false;
 }
 
@@ -4263,8 +4389,8 @@ async function loadAppMetadata(options: LoadAppMetadataOptions = {}) {
   try {
     await analyzeAppPartitions(loader.value, partitions);
   } catch (error) {
-    appendLog('Failed to analyze app partitions', error);
-    appMetadataError.value = error?.message || String(error);
+    appendLog(t('apps.analyzeFailedLog'), error);
+    appMetadataError.value = t('apps.analyzeFailed', { error: formatErrorMessage(error) });
     appMetadataLoaded.value = false;
   } finally {
     appMetadataLoading.value = false;
@@ -4295,10 +4421,10 @@ function applyRegisterGuide(chipKey) {
 function showConfirmation(options: ConfirmationOptions = {}) {
   return new Promise<boolean>(resolve => {
     confirmationResolver = resolve;
-    confirmationDialog.title = options.title || 'Please confirm';
+    confirmationDialog.title = options.title || t('dialogs.confirm.title');
     confirmationDialog.message = options.message || '';
-    confirmationDialog.confirmText = options.confirmText || 'Confirm';
-    confirmationDialog.cancelText = options.cancelText || 'Cancel';
+    confirmationDialog.confirmText = options.confirmText || t('buttons.confirm');
+    confirmationDialog.cancelText = options.cancelText || t('buttons.cancel');
     confirmationDialog.destructive = !!options.destructive;
     confirmationDialog.visible = true;
   });
@@ -4356,27 +4482,27 @@ const partitionPalette = [
 
 const UNUSED_FLASH_ALERT_THRESHOLD = 64 * 1024;
 
-const PARTITION_TYPE_NAMES = {
-  0x00: 'Application',
-  0x01: 'Data',
+const PARTITION_TYPE_NAME_KEYS = {
+  0x00: 'partitions.type.application',
+  0x01: 'partitions.type.data',
 };
 
-const PARTITION_DATA_SUBTYPE_NAMES = {
-  0x00: 'OTA Data',
-  0x01: 'PHY Init Data',
-  0x02: 'NVS',
-  0x03: 'Core Dump',
-  0x04: 'NVS Keys',
-  0x05: 'EFuse Emulation',
-  0x06: 'Undefined Data',
-  0x80: 'ESPHTTPD Data',
-  0x81: 'FAT (FATFS)',
-  0x82: 'SPIFFS',
-  0x83: 'LittleFS',
-  0x84: 'Storage',
-  0x85: 'OTA Backup',
-  0x86: 'NimBLE Data',
-  0x87: 'Factory NVS',
+const PARTITION_DATA_SUBTYPE_NAME_KEYS = {
+  0x00: 'partitions.dataSubtype.ota',
+  0x01: 'partitions.dataSubtype.phy',
+  0x02: 'partitions.dataSubtype.nvs',
+  0x03: 'partitions.dataSubtype.coreDump',
+  0x04: 'partitions.dataSubtype.nvsKeys',
+  0x05: 'partitions.dataSubtype.efuseEmulation',
+  0x06: 'partitions.dataSubtype.undefined',
+  0x80: 'partitions.dataSubtype.esphttpd',
+  0x81: 'partitions.dataSubtype.fatfs',
+  0x82: 'partitions.dataSubtype.spiffs',
+  0x83: 'partitions.dataSubtype.littlefs',
+  0x84: 'partitions.dataSubtype.storage',
+  0x85: 'partitions.dataSubtype.otaBackup',
+  0x86: 'partitions.dataSubtype.nimble',
+  0x87: 'partitions.dataSubtype.factoryNvs',
 };
 
 // Format a number as a two-digit hex string with prefix.
@@ -4388,8 +4514,9 @@ function toPaddedHex(value) {
 // Build a label for a partition type value.
 function getPartitionTypeLabel(type) {
   const hex = toPaddedHex(type ?? 0);
-  const name = PARTITION_TYPE_NAMES[type];
-  return name ? `${name} (${hex})` : `Type ${hex}`;
+  const nameKey = PARTITION_TYPE_NAME_KEYS[type];
+  const name = nameKey ? t(nameKey) : null;
+  return name ? `${name} (${hex})` : t('partitions.type.fallback', { hex });
 }
 
 // Build a label for a partition subtype given its type.
@@ -4399,41 +4526,42 @@ function getPartitionSubtypeLabel(type, subtype) {
 
   if (type === 0x00) {
     if (subtype === 0x00) {
-      name = 'Factory App';
+      name = t('partitions.subtype.factory');
     } else if (subtype === 0x01) {
-      name = 'Test App';
+      name = t('partitions.subtype.test');
     } else if (subtype >= 0x10 && subtype <= 0x1f) {
-      name = `OTA ${subtype - 0x10}`;
+      name = t('partitions.subtype.ota', { index: subtype - 0x10 });
     } else if (subtype === 0x20) {
-      name = 'Any App';
+      name = t('partitions.subtype.any');
     } else if (subtype === 0x21) {
-      name = 'OTA App';
+      name = t('partitions.subtype.otaApp');
     }
   } else if (type === 0x01) {
-    name = PARTITION_DATA_SUBTYPE_NAMES[subtype];
+    const nameKey = PARTITION_DATA_SUBTYPE_NAME_KEYS[subtype];
+    name = nameKey ? t(nameKey) : undefined;
     if (!name && subtype >= 0x80 && subtype <= 0x9f) {
-      name = 'Custom Data';
+      name = t('partitions.subtype.customData');
     }
   }
 
-  return name ? `${name} (${hex})` : `Subtype ${hex}`;
+  return name ? `${name} (${hex})` : t('partitions.subtype.fallback', { hex });
 }
 
 const UNUSED_SEGMENT_COLOR = '#c62828';
 const UNUSED_SEGMENT_PATTERN =
   'repeating-linear-gradient(270deg, rgba(248, 113, 113, 0.65) 0px, rgba(248, 113, 113, 0.65) 12px, rgba(220, 38, 38, 0.65) 12px, rgba(220, 38, 38, 0.65) 24px)';
 
-const RESERVED_SEGMENTS = [
+const reservedSegments = () => [
   {
     key: 'bootloader',
-    label: 'Bootloader',
+    label: t('partitions.reserved.bootloader'),
     offset: 0x0,
     size: 0x8000,
     color: '#546e7a',
   },
   {
     key: 'partition-table',
-    label: 'Partition Table',
+    label: t('partitions.reserved.partitionTable'),
     offset: 0x8000,
     size: 0x1000,
     color: '#78909c',
@@ -4446,7 +4574,7 @@ const partitionSegments = computed(() => {
   if (!connected.value) {
     return [];
   }
-  if(partitionTable.value.length == 0) {
+  if (partitionTable.value.length == 0) {
     return [];
   }
   const sortedPartitions = [...partitionTable.value].sort((a, b) => a.offset - b.offset);
@@ -4470,7 +4598,7 @@ const partitionSegments = computed(() => {
     const gapSegments = [];
     let pointer = start;
 
-    const relevantReserved = RESERVED_SEGMENTS.filter(
+    const relevantReserved = reservedSegments().filter(
       block => block.offset < end && block.offset + block.size > start
     ).sort((a, b) => a.offset - b.offset);
 
@@ -4576,7 +4704,7 @@ const partitionSegments = computed(() => {
     if (segment.kind === 'unused') {
       return {
         key: segment.key,
-        label: 'Unused Flash',
+        label: t('partitions.unusedLabel'),
         width,
         color: UNUSED_SEGMENT_COLOR,
         backgroundImage: UNUSED_SEGMENT_PATTERN,
@@ -4587,13 +4715,17 @@ const partitionSegments = computed(() => {
         size: segment.size,
         typeHex: 'N/A',
         subtypeHex: 'N/A',
-        typeLabel: 'Not applicable',
-        subtypeLabel: 'Not applicable',
+        typeLabel: t('partitions.notApplicable'),
+        subtypeLabel: t('partitions.notApplicable'),
         isUnused: true,
         isReserved: false,
         showLabel,
         showMeta: false,
-        tooltipLines: [`Size: ${sizeText}`, `Start: ${offsetHex}`, `End: ${endHex}`],
+        tooltipLines: [
+          t('partitions.tooltip.size', { size: sizeText }),
+          t('partitions.tooltip.start', { start: offsetHex }),
+          t('partitions.tooltip.end', { end: endHex }),
+        ],
       };
     }
 
@@ -4611,13 +4743,17 @@ const partitionSegments = computed(() => {
         size: segment.size,
         typeHex: 'N/A',
         subtypeHex: 'N/A',
-        typeLabel: 'Reserved',
-        subtypeLabel: 'Reserved',
+        typeLabel: t('partitions.reservedLabel'),
+        subtypeLabel: t('partitions.reservedLabel'),
         isUnused: false,
         isReserved: true,
         showLabel,
         showMeta: widthValue >= 10,
-        tooltipLines: [`Size: ${sizeText}`, `Start: ${offsetHex}`, `End: ${endHex}`],
+        tooltipLines: [
+          t('partitions.tooltip.size', { size: sizeText }),
+          t('partitions.tooltip.start', { start: offsetHex }),
+          t('partitions.tooltip.end', { end: endHex }),
+        ],
       };
     }
 
@@ -4639,7 +4775,7 @@ const partitionSegments = computed(() => {
     partitionIndex += 1;
     return {
       key: segment.key,
-      label: entry.label || `type 0x${entry.type.toString(16)}`,
+      label: entry.label || t('partitions.fallbackLabel', { hex: typeHex }),
       width,
       color,
       backgroundImage: null,
@@ -4657,11 +4793,11 @@ const partitionSegments = computed(() => {
       showLabel,
       showMeta,
       tooltipLines: [
-        `Size: ${sizeText}`,
-        `Start: ${offsetHex}`,
-        `End: ${endHex}`,
-        `Type: ${typeLabel}`,
-        `Subtype: ${subtypeLabel}`,
+        t('partitions.tooltip.size', { size: sizeText }),
+        t('partitions.tooltip.start', { start: offsetHex }),
+        t('partitions.tooltip.end', { end: endHex }),
+        t('partitions.tooltip.type', { type: typeLabel }),
+        t('partitions.tooltip.subtype', { subtype: subtypeLabel }),
       ],
     };
   });
@@ -4693,13 +4829,13 @@ const formattedPartitions = computed(() => {
     }
   }
 
-  const reservedRows = RESERVED_SEGMENTS.map(segment => {
+  const reservedRows = reservedSegments().map(segment => {
     const offsetHex = `0x${segment.offset.toString(16).toUpperCase()}`;
     const sizeText = formatBytes(segment.size) ?? `${segment.size} bytes`;
     return {
       label: segment.label,
-      typeLabel: 'Reserved',
-      subtypeLabel: 'Reserved',
+      typeLabel: t('partitions.reservedLabel'),
+      subtypeLabel: t('partitions.reservedLabel'),
       typeHex: 'N/A',
       subtypeHex: 'N/A',
       offset: segment.offset,
@@ -4750,7 +4886,7 @@ const partitionDownloadOptions = computed(() => {
   return formattedPartitions.value
     .filter(row => !row.isUnused && row.size > 0)
     .map(row => {
-      const baseLabel = row.label && row.label.trim() ? row.label.trim() : 'Partition ' + row.typeHex;
+      const baseLabel = row.label && row.label.trim() ? row.label.trim() : t('partitions.partitionLabel', { type: row.typeHex });
       const displayLabel = baseLabel + ' • ' + row.offsetHex + ' • ' + row.sizeText;
       return {
         label: displayLabel,
@@ -4923,7 +5059,7 @@ function getPortIdentity(port) {
   try {
     return port.getInfo();
   } catch (error) {
-    appendLog('Unable to read serial port info', error);
+    appendLog(t('serialMonitor.portInfoError'), error);
     return null;
   }
 }
@@ -4958,9 +5094,9 @@ function appendMonitorChunk(bytes) {
           transport.value?.baudrate ||
           selectedBaud.value ||
           DEFAULT_ROM_BAUD;
-        monitorError.value =
-          `Monitor data looks binary. Check that the device UART baud matches the selected ` +
-          `rate (currently ${activeBaud.toLocaleString()} bps). Try switching to 115200 bps and reconnecting.`;
+        const baudText = Number(activeBaud).toLocaleString();
+        const binaryWarningMessage = t('serialMonitor.binaryDataWarning', { baud: baudText });
+        monitorError.value = binaryWarningMessage;
         monitorNoiseWarned = true;
       }
     } else {
@@ -4968,7 +5104,11 @@ function appendMonitorChunk(bytes) {
       if (
         monitorNoiseWarned &&
         monitorError.value &&
-        monitorError.value.startsWith('Monitor data looks binary.')
+        monitorError.value === t('serialMonitor.binaryDataWarning', {
+          baud: Number(
+            transport.value?.baudrate || selectedBaud.value || DEFAULT_ROM_BAUD
+          ).toLocaleString(),
+        })
       ) {
         monitorError.value = null;
       }
@@ -5001,11 +5141,11 @@ async function handleSerialDisconnectEvent(event) {
   if (!currentPort.value && !transport.value) {
     return;
   }
-  appendLog('Serial device disconnected from USB. Cleaning up connection.', '[ESPConnect-Warn]');
+  appendLog(t('serialMonitor.usbDisconnected'), '[ESPConnect-Warn]');
   if (busy.value) {
     await disconnectTransport();
     busy.value = false;
-    appendLog('Serial port disconnected.');
+    appendLog(t('serialMonitor.portDisconnected'));
   } else {
     await disconnect();
   }
@@ -5015,7 +5155,7 @@ async function handleSerialDisconnectEvent(event) {
 async function monitorLoop(signal) {
   const transportInstance = transport.value;
   if (!transportInstance) {
-    throw new Error('Serial monitor not supported by current transport.');
+    throw new Error(t('serialMonitor.notSupported'));
   }
   const iterator = transportInstance.rawRead();
   for await (const chunk of iterator) {
@@ -5032,7 +5172,7 @@ async function startMonitor() {
     return;
   }
   if (!transport.value) {
-    appendLog('Monitor unavailable: transport not ready.', '[ESPConnect-Warn]');
+    appendLog(t('serialMonitor.transportNotReady'), '[ESPConnect-Warn]');
     return;
   }
   previousMonitorBaud.value = currentBaud.value || lastFlashBaud.value || DEFAULT_FLASH_BAUD;
@@ -5041,13 +5181,16 @@ async function startMonitor() {
       await setConnectionBaud(MONITOR_BAUD, { remember: false, log: true });
     } catch (error) {
       appendLog(
-        `Continuing monitor at ${currentBaud.value.toLocaleString()} bps (switch failed: ${error?.message || error}).`,
+        t('serialMonitor.monitorContinueFallback', {
+          baud: currentBaud.value.toLocaleString(),
+          error: formatErrorMessage(error),
+        }),
         '[ESPConnect-Warn]'
       );
     }
   }
   if (!monitorAutoResetPerformed) {
-    appendLog('Auto-resetting board before starting serial monitor output.', '[ESPConnect-Debug]');
+    appendLog(t('serialMonitor.autoReset'), '[ESPConnect-Debug]');
     await resetBoard({ silent: true });
     monitorAutoResetPerformed = true;
   }
@@ -5061,14 +5204,14 @@ async function startMonitor() {
   const controller = new AbortController();
   monitorAbortController.value = controller;
   monitorActive.value = true;
-  appendLog('Serial monitor started.', '[ESPConnect-Debug]');
+  appendLog(t('serialMonitor.started'), '[ESPConnect-Debug]');
   (async () => {
     try {
       await monitorLoop(controller.signal);
     } catch (err) {
       if (!controller.signal.aborted) {
         monitorError.value = err?.message || String(err);
-        appendLog(`Monitor error: ${monitorError.value}`, '[ESPConnect-Warn]');
+        appendLog(t('serialMonitor.monitorError', { error: monitorError.value }), '[ESPConnect-Warn]');
       }
     } finally {
       if (monitorAbortController.value === controller) {
@@ -5093,11 +5236,11 @@ async function stopMonitor(options: StopMonitorOptions = {}) {
     try {
       monitorDecoder.decode(new Uint8Array(), { stream: false });
     } catch (err) {
-      appendLog('Monitor decoder flush failed', err);
+      appendLog(t('serialMonitor.decoderFlushFailed'), err);
     }
     monitorDecoder = null;
   }
-  appendLog('Serial monitor stopped.', '[ESPConnect-Debug]');
+  appendLog(t('serialMonitor.stopped'), '[ESPConnect-Debug]');
   if (closeConnection) {
     await disconnectTransport();
     serialMonitorClosedPrompt.value = true;
@@ -5109,7 +5252,10 @@ async function stopMonitor(options: StopMonitorOptions = {}) {
       await setConnectionBaud(lastFlashBaud.value, { remember: true, log: true });
     } catch (error) {
       appendLog(
-        `Failed to restore baud rate (${error?.message || error}). Remaining at ${currentBaud.value.toLocaleString()} bps.`,
+        t('serialMonitor.restoreBaudFailed', {
+          error: formatErrorMessage(error),
+          baud: currentBaud.value.toLocaleString(),
+        }),
         '[ESPConnect-Warn]'
       );
     }
@@ -5122,19 +5268,19 @@ async function resetBoard(options: ResetOptions = {}) {
   const { silent = false } = options;
   const currentLoader = loader.value;
   if (!currentLoader) {
-    appendLog('Cannot reset: loader not available.', '[ESPConnect-Warn]');
+    appendLog(t('serialMonitor.resetUnavailable'), '[ESPConnect-Warn]');
     return;
   }
   try {
     if (!silent) {
-      appendLog('Resetting board (toggle RTS).', '[ESPConnect-Debug]');
+      appendLog(t('serialMonitor.resettingBoard'), '[ESPConnect-Debug]');
     }
     await currentLoader.setDTR(false);
     await currentLoader.setRTS(true);
     await currentLoader.sleep(120);
     await currentLoader.setRTS(false);
   } catch (err) {
-    appendLog(`Board reset failed: ${err?.message || err}`, '[error]');
+    appendLog(t('serialMonitor.resetFailed', { error: formatErrorMessage(err) }), '[error]');
   }
 }
 
@@ -5157,7 +5303,7 @@ async function disconnectTransport() {
       await currentPort.value.close();
     }
   } catch (error) {
-    appendLog('Error disconnecting transport', error);
+    appendLog(t('serialMonitor.disconnectingTransportError'), error);
   } finally {
     transport.value = null;
     currentPort.value = null;
@@ -5185,7 +5331,7 @@ async function disconnectTransport() {
 // Open a serial connection, handshake the bootloader, and load device metadata.
 async function connect() {
   if (!serialSupported) {
-    appendLog('Web Serial API not available in this browser.');
+    appendLog(t('connectFlow.unsupportedSerial'));
     return;
   }
   if (busy.value) return;
@@ -5195,8 +5341,8 @@ async function connect() {
   serialMonitorClosedPrompt.value = false;
   resetMaintenanceState();
   connectDialog.visible = false;
-  connectDialog.label = 'Connecting to ESP device...';
-  connectDialog.message = 'Opening serial port...';
+  connectDialog.label = t('connectFlow.dialogLabel');
+  connectDialog.message = t('connectFlow.openingPort');
   if (connectDialogTimer) {
     clearTimeout(connectDialogTimer);
     connectDialogTimer = null;
@@ -5204,7 +5350,7 @@ async function connect() {
 
   logBuffer.value = '';
   partitionTable.value = [];
-  appendLog('Requesting serial port access...');
+  appendLog(t('connectFlow.requestPort'));
 
   try {
     showBusyDialog.value = false;
@@ -5222,7 +5368,7 @@ async function connect() {
 
     // Get port and usb bridge information
     const portDetails = currentPort.value?.getInfo ? currentPort.value.getInfo() : null;
-    const usbBridge = portDetails ? formatUsbBridge(portDetails) : "Unknown";
+    const usbBridge = portDetails ? formatUsbBridge(portDetails) : t('connectFlow.unknownBridge');
     const bridge = getUsbDeviceInfo(portDetails.usbVendorId, portDetails.usbProductId);
 
     if (bridge.productName === 'CH340' && desiredBaud > bridge.maxBaudrate) {
@@ -5237,8 +5383,9 @@ async function connect() {
       queueMicrotask(() => {
         suspendBaudWatcher = previousSuspendState;
       });
-      showToast('Detected CH340 bridge; lowering baud to ' + desiredBaud + ' bps for stability.', { color: 'warning' });
-      appendLog('Detected CH340 bridge; lowering baud to ' + desiredBaud + ' bps.', '[ESPConnect-Debug]');
+      const baudText = desiredBaud.toLocaleString();
+      showToast(t('connectFlow.ch340Toast', { baud: baudText }), { color: 'warning' });
+      appendLog(t('connectFlow.ch340Log', { baud: baudText }), '[ESPConnect-Debug]');
     }
 
     // Create the client to communicate and do operations on the MCU
@@ -5262,13 +5409,13 @@ async function connect() {
     // Flush any input remaining on the transport
     try {
       await transportInstance.flushInput();
-      appendLog('Serial input flushed before handshake.', '[ESPConnect-Debug]');
+      appendLog(t('connectFlow.flushInput'), '[ESPConnect-Debug]');
     } catch (err) {
-      appendLog(`Warning: unable to flush serial input before handshake (${formatErrorMessage(err)}).`, '[ESPConnect-Warn]');
+      appendLog(t('connectFlow.flushInputWarn', { error: formatErrorMessage(err) }), '[ESPConnect-Warn]');
     }
 
     // Open the serial port, talk to the ROM bootloader, load the stub flasher
-    connectDialog.message = 'Handshaking with ROM bootloader...';
+    connectDialog.message = t('connectFlow.handshaking');
     const esp = await esptool.connectAndHandshake();
     currentBaud.value = desiredBaud || connectBaud_defaultROM;
     transportInstance.baudrate = currentBaud.value;
@@ -5279,7 +5426,7 @@ async function connect() {
       suspendBaudWatcher = previousSuspendState;
     });
     connected.value = true;
-    appendLog(`Handshake complete with ${esp.chipName}. Collecting device details...`, '[ESPConnect-Debug]');
+    appendLog(t('connectFlow.handshakeComplete', { chip: esp.chipName }), '[ESPConnect-Debug]');
 
     lastFlashBaud.value = currentBaud.value;
 
@@ -5289,10 +5436,12 @@ async function connect() {
     const featuresRaw = metadata.features;
     const crystalFreq = metadata.crystalFreq;
 
-    connectDialog.message = `Reading Flash size...`;
+    connectDialog.message = t('connectFlow.readingFlash');
     const flashLabel = esp.flashSize;
     appendLog(
-      `Chip detectFlashSize: ${flashLabel === null ? 'undefined' : flashLabel}`,
+      t('connectFlow.detectFlashSize', {
+        size: flashLabel === null ? t('connectFlow.undefined') : flashLabel,
+      }),
       '[ESPConnect-Debug]'
     );
 
@@ -5304,20 +5453,29 @@ async function connect() {
     const capacityCodeRaw = id !== null ? (id >> 16) & 0xff : null;
 
     appendLog(
-      `Flash detect raw: getFlashSize=${flashLabel ?? 'n/a'}, flashId=${typeof flashId === 'number' && Number.isFinite(flashId) ? `0x${flashId
-        .toString(16)
-        .padStart(6, '0')
-        .toUpperCase()}` : 'n/a'} (manuf=0x${Number.isInteger(manufacturerCode)
-          ? manufacturerCode.toString(16).toUpperCase().padStart(2, '0')
-          : '??'}, type=0x${Number.isInteger(memoryTypeCode)
-            ? memoryTypeCode.toString(16).toUpperCase().padStart(2, '0')
-            : '??'}, cap=0x${Number.isInteger(capacityCodeRaw)
-              ? capacityCodeRaw.toString(16).toUpperCase().padStart(2, '0')
-              : '??'})`,
+      t('connectFlow.flashDetectRaw', {
+        flashSize: flashLabel ?? 'n/a',
+        flashId:
+          typeof flashId === 'number' && Number.isFinite(flashId)
+            ? `0x${flashId.toString(16).padStart(6, '0').toUpperCase()}`
+            : 'n/a',
+        manuf:
+          Number.isInteger(manufacturerCode)
+            ? `0x${manufacturerCode.toString(16).toUpperCase().padStart(2, '0')}`
+            : '??',
+        type:
+          Number.isInteger(memoryTypeCode)
+            ? `0x${memoryTypeCode.toString(16).toUpperCase().padStart(2, '0')}`
+            : '??',
+        cap:
+          Number.isInteger(capacityCodeRaw)
+            ? `0x${capacityCodeRaw.toString(16).toUpperCase().padStart(2, '0')}`
+            : '??',
+      }),
       '[ESPConnect-Debug]'
     );
 
-    connectDialog.message = `Preparing information...`;
+    connectDialog.message = t('connectFlow.preparingInfo');
     const featureList: string[] = Array.isArray(featuresRaw)
       ? (featuresRaw as string[])
       : typeof featuresRaw === 'string'
@@ -5326,7 +5484,7 @@ async function connect() {
 
     const crystalLabel =
       typeof crystalFreq === 'number' ? `${Number(crystalFreq).toFixed(0)} MHz` : null;
-    const macLabel = esp.macAddress ?? "unknown";
+    const macLabel = esp.macAddress ?? t('deviceInfo.unknown');
 
     applyRegisterGuide(esp.chipName);
     const facts = [];
@@ -5348,7 +5506,10 @@ async function connect() {
     // if (macLabel && macLabel !== 'Unavailable') {
     //   pushFact('MAC Address', macLabel);
     // }
-    pushFact('Revision', resolveRevisionLabel(esp.chipName, metadata.chipRevision, metadata.majorVersion, metadata.minorVersion));
+    pushFact(
+      'Revision',
+      resolveRevisionLabel(esp.chipName, metadata.chipRevision, metadata.majorVersion, metadata.minorVersion)
+    );
     // pushFact('Flash Size', flashLabel);
 
     const embeddedFlash = resolveEmbeddedFlash(esp.chipName, metadata.flashCap, metadata.flashVendor, featureList);
@@ -5367,12 +5528,22 @@ async function connect() {
     if (pwmEntry) {
       let pwmLabel = '';
       if (pwmEntry.hasLedc === false) {
-        pwmLabel = pwmEntry.notes || 'Software PWM only';
+        const noteKey = PWM_NOTE_KEYS[esp.chipName];
+        const noteText = noteKey ? t(noteKey) : pwmEntry.notes;
+        pwmLabel = noteText || t('facts.pwmSoftwareOnly');
       } else {
         const parts = [];
-        if (pwmEntry.ledcChannels) parts.push(`${pwmEntry.ledcChannels} channels`);
-        if (pwmEntry.ledcTimers) parts.push(`${pwmEntry.ledcTimers} timers`);
-        if (pwmEntry.notes) parts.push(pwmEntry.notes);
+        if (pwmEntry.ledcChannels) {
+          const unit = pwmEntry.ledcChannels === 1 ? t('facts.channelSingular') : t('facts.channelPlural');
+          parts.push(`${pwmEntry.ledcChannels} ${unit}`);
+        }
+        if (pwmEntry.ledcTimers) {
+          const unit = pwmEntry.ledcTimers === 1 ? t('facts.timerSingular') : t('facts.timerPlural');
+          parts.push(`${pwmEntry.ledcTimers} ${unit}`);
+        }
+        const noteKey = PWM_NOTE_KEYS[esp.chipName];
+        const noteText = noteKey ? t(noteKey) : pwmEntry.notes;
+        if (noteText) parts.push(noteText);
         pwmLabel = parts.join(' · ');
       }
       pushFact('PWM/LEDC', pwmLabel);
@@ -5417,12 +5588,12 @@ async function connect() {
     }
 
     if (
-      typeof  metadata.blockVersionMajor === 'number' &&
-      !Number.isNaN( metadata.blockVersionMajor) &&
-      typeof  metadata.blockVersionMinor === 'number' &&
-      !Number.isNaN( metadata.blockVersionMinor)
+      typeof metadata.blockVersionMajor === 'number' &&
+      !Number.isNaN(metadata.blockVersionMajor) &&
+      typeof metadata.blockVersionMinor === 'number' &&
+      !Number.isNaN(metadata.blockVersionMinor)
     ) {
-      pushFact('eFuse Block Version', `v${ metadata.blockVersionMajor}.${ metadata.blockVersionMinor}`);
+      pushFact('eFuse Block Version', `v${metadata.blockVersionMajor}.${metadata.blockVersionMinor}`);
     }
 
     const docs = esp.chipName ? findChipDocs(esp.chipName) : undefined;
@@ -5443,12 +5614,12 @@ async function connect() {
     try {
       await transport.value?.flushInput();
     } catch (err) {
-      appendLog(`Warning: failed to flush serial input before partition read (${formatErrorMessage(err)}).`, '[ESPConnect-Warn]');
+      appendLog(t('connectFlow.flushPartitionWarn', { error: formatErrorMessage(err) }), '[ESPConnect-Warn]');
     }
 
-    connectDialog.message = `Reading partition table...`;
+    connectDialog.message = t('connectFlow.readingPartition');
     if (esp.chipName?.includes('ESP8266')) {
-      appendLog('Skipping partition table read for ESP8266 (not supported).', '[ESPConnect-Debug]');
+      appendLog(t('connectFlow.skipPartitionEsp8266'), '[ESPConnect-Debug]');
       partitionTable.value = [];
       appMetadataLoaded.value = false;
     } else {
@@ -5479,7 +5650,7 @@ async function connect() {
     };
     activeTab.value = 'info';
     appendLog(
-      `Loaded device details: ${chipDetails.value.name}, ${facts.length} facts.`,
+      t('connectFlow.loadedDetails', { name: chipDetails.value.name, count: facts.length }),
       '[ESPConnect-Debug]'
     );
 
@@ -5487,12 +5658,12 @@ async function connect() {
     showBusyDialog.value = false;
     showBootDialog.value = false;
     showGeneralErrorDialog.value = false;
-    appendLog(`Connection established. Ready to flash.`);
+    appendLog(t('connectFlow.readyToFlash'));
   } catch (error) {
     if (error?.name === 'AbortError' || error?.name === 'NotFoundError') {
-      appendLog('Port selection was cancelled.');
+      appendLog(t('connectFlow.portCancelled'));
     } else if (error?.name === 'NetworkError') {
-      const busyMessage = 'Selected port is busy or in use. Close other apps or tabs using it and try again.';
+      const busyMessage = t('connectFlow.portBusy');
       appendLog(busyMessage, '[warn]');
       lastErrorMessage.value = busyMessage;
       busyDialogMessage.value = busyMessage;
@@ -5500,15 +5671,15 @@ async function connect() {
       showBootDialog.value = false;
       showGeneralErrorDialog.value = false;
     } else if (error?.message === "Couldn't sync to ESP. Try resetting.") {
-      const message = formatErrorMessage(error);
+      const message = t('connectFlow.syncFailed');
       lastErrorMessage.value = message;
       busyDialogMessage.value = '';
       showBusyDialog.value = false;
       showBootDialog.value = true;
       showGeneralErrorDialog.value = false;
     } else {
-      appendLog(`General code error: ${error?.message}`, '[error]');
-      lastErrorMessage.value = error?.message || 'Unknown error';
+      appendLog(t('connectFlow.generalErrorLog', { error: formatErrorMessage(error) }), '[error]');
+      lastErrorMessage.value = formatErrorMessage(error) || t('connectFlow.unknownError');
       busyDialogMessage.value = '';
       connectDialog.visible = false;
       connectDialog.message = '';
@@ -5525,7 +5696,7 @@ async function connect() {
     connectDialog.visible = false;
     connectDialog.message = '';
     busy.value = false;
-    appendLog(`Connect flow finished (busy=${busy.value}).`, '[ESPConnect-Debug]');
+    appendLog(t('connectFlow.finished', { busy: String(busy.value) }), '[ESPConnect-Debug]');
   }
 }
 
@@ -5533,21 +5704,21 @@ async function connect() {
 async function disconnect() {
   busy.value = true;
   await disconnectTransport();
-  appendLog('Serial port disconnected.');
+  appendLog(t('serialMonitor.portDisconnected'));
   busy.value = false;
 }
 
 // Parse a flash offset value from hex or decimal input.
 function parseOffset(value) {
   if (!value) {
-    throw new Error('Flash offset is required.');
+    throw new Error(t('flashInput.offsetRequired'));
   }
   const trimmed = value.trim().toLowerCase();
   const parsed = trimmed.startsWith('0x')
     ? Number.parseInt(trimmed, 16)
     : Number.parseInt(trimmed, 10);
   if (Number.isNaN(parsed)) {
-    throw new Error('Invalid flash offset value.');
+    throw new Error(t('flashInput.offsetInvalid'));
   }
   return parsed;
 }
@@ -5555,14 +5726,14 @@ function parseOffset(value) {
 // Parse a numeric input (hex or decimal) with validation.
 function parseNumericInput(value, label) {
   if (!value || !value.toString().trim()) {
-    throw new Error(`${label} is required.`);
+    throw new Error(t('flashInput.valueRequired', { label }));
   }
   const trimmed = value.toString().trim().toLowerCase();
   const parsed = trimmed.startsWith('0x')
     ? Number.parseInt(trimmed, 16)
     : Number.parseInt(trimmed, 10);
   if (!Number.isSafeInteger(parsed) || parsed < 0) {
-    throw new Error(`Invalid ${label.toLowerCase()} value.`);
+    throw new Error(t('flashInput.valueInvalid', { label }));
   }
   return parsed;
 }
@@ -5570,7 +5741,7 @@ function parseNumericInput(value, label) {
 // Flash the selected firmware image to the device.
 async function flashFirmware() {
   if (!loader.value || !firmwareBuffer.value) {
-    appendLog('Select a firmware binary and connect to a device first.', '[ESPConnect-Warn]');
+    appendLog(t('flashOps.selectFirmware'), '[ESPConnect-Warn]');
     return;
   }
   if (flashInProgress.value || busy.value) return;
@@ -5583,7 +5754,7 @@ async function flashFirmware() {
     return;
   }
 
-  const firmwareLabel = firmwareName.value || 'selected firmware';
+  const firmwareLabel = firmwareName.value || t('dialogs.flash.defaultName');
   const activeBaudRaw =
     transport.value?.baudrate ||
     currentBaud.value ||
@@ -5592,16 +5763,17 @@ async function flashFirmware() {
   const flashBaud = Number.isFinite(activeBaudRaw) ? activeBaudRaw : DEFAULT_ROM_BAUD;
   const flashBaudLabel = flashBaud.toLocaleString() + ' bps';
   const confirmFlash = await showConfirmation({
-    title: 'Confirm Flash',
-    message:
-      `Flash ${firmwareLabel} at 0x${offsetNumber.toString(16).toUpperCase()}?\n` +
-      'This will overwrite the target region and may erase existing data.',
-    confirmText: 'Flash',
-    cancelText: 'Cancel',
+    title: t('dialogs.flash.confirmTitle'),
+    message: t('dialogs.flash.confirmMessage', {
+      name: firmwareLabel,
+      offset: `0x${offsetNumber.toString(16).toUpperCase()}`,
+    }),
+    confirmText: t('dialogs.flash.confirm'),
+    cancelText: t('buttons.cancel'),
     destructive: true,
   });
   if (!confirmFlash) {
-    appendLog('Firmware flash cancelled by user.', '[ESPConnect-Warn]');
+    appendLog(t('flashOps.cancelledLog'), '[ESPConnect-Warn]');
     return;
   }
 
@@ -5611,16 +5783,16 @@ async function flashFirmware() {
   flashCancelRequested.value = false;
   flashProgressDialog.visible = true;
   flashProgressDialog.value = 0;
-  flashProgressDialog.label = `Preparing ${firmwareLabel} @ ${flashBaudLabel}...`;
+  flashProgressDialog.label = t('dialogs.flash.preparing', { name: firmwareLabel, baud: flashBaudLabel });
 
-  appendLog(`Flashing ${firmwareLabel} at 0x${offsetNumber.toString(16)}...`);
+  appendLog(t('flashOps.startLog', { name: firmwareLabel, offset: `0x${offsetNumber.toString(16)}` }));
 
   try {
     const bytes = new Uint8Array(firmwareBuffer.value);
     const startTime = performance.now();
 
     if (eraseFlash.value && typeof loader.value.eraseFlash === 'function') {
-      flashProgressDialog.label = `Erasing flash @ ${flashBaudLabel}...`;
+      flashProgressDialog.label = t('dialogs.flash.erasing', { baud: flashBaudLabel });
       await loader.value.eraseFlash();
     }
 
@@ -5628,7 +5800,7 @@ async function flashFirmware() {
       bytes.buffer,
       (written, total) => {
         if (flashCancelRequested.value) {
-          throw new Error('Flash cancelled by user');
+          throw new Error(t('flashOps.cancelledError'));
         }
         const pct = total ? Math.floor((written / total) * 100) : 0;
         const clamped = Math.min(100, Math.max(0, pct));
@@ -5638,8 +5810,17 @@ async function flashFirmware() {
         const writtenLabel = written.toLocaleString();
         const totalLabel = total ? total.toLocaleString() : '';
         flashProgressDialog.label = total
-          ? `Flashing ${firmwareLabel} - ${writtenLabel} of ${totalLabel} bytes @ ${flashBaudLabel}`
-          : `Flashing ${firmwareLabel} - ${writtenLabel} bytes @ ${flashBaudLabel}`;
+          ? t('dialogs.flash.progressWithTotal', {
+            name: firmwareLabel,
+            written: writtenLabel,
+            total: totalLabel,
+            baud: flashBaudLabel,
+          })
+          : t('dialogs.flash.progressNoTotal', {
+            name: firmwareLabel,
+            written: writtenLabel,
+            baud: flashBaudLabel,
+          });
       },
       offsetNumber,
       true
@@ -5648,13 +5829,13 @@ async function flashFirmware() {
     await loader.value.hardReset();
     const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
     flashProgressDialog.value = 100;
-    flashProgressDialog.label = `Flash complete in ${elapsed}s @ ${flashBaudLabel}. Finalizing...`;
+    flashProgressDialog.label = t('dialogs.flash.complete', { seconds: elapsed, baud: flashBaudLabel });
     appendLog(`Flashing complete in ${elapsed}s. Device rebooted.`);
   } catch (error) {
-    if (error?.message === 'Flash cancelled by user') {
-      appendLog('Flash cancelled by user.', '[ESPConnect-Warn]');
+    if (error?.message === t('flashOps.cancelledError')) {
+      appendLog(t('flashOps.cancelledShort'), '[ESPConnect-Warn]');
     } else {
-      appendLog(`Flashing failed: ${error?.message || error}`, '[error]');
+      appendLog(t('flashOps.failed', { error: error?.message || error }), '[error]');
     }
   } finally {
     flashProgress.value = 0;
@@ -5713,30 +5894,33 @@ function handleSelectRegister(address) {
     registerReadResult.value = null;
     registerStatusType.value = 'info';
     registerStatus.value = guide.description
-      ? `${guide.label}: ${guide.description}`
-      : `${guide.label} selected.`;
-    appendLog(`Quick-selected register ${guide.label} (${guide.address}).`, '[ESPConnect-Debug]');
+      ? t('register.statusWithDescription', { label: guide.label, description: guide.description })
+      : t('register.statusSelected', { label: guide.label });
+    appendLog(t('register.quickSelectedLog', { label: guide.label, address: guide.address }), '[ESPConnect-Debug]');
   }
 }
 
 // Read a register value via the loader.
 async function handleReadRegister() {
   if (!loader.value) {
-    registerStatus.value = 'Connect to a device first.';
+    registerStatus.value = t('register.connectFirst');
     registerStatusType.value = 'warning';
     return;
   }
   try {
     maintenanceBusy.value = true;
     registerStatus.value = null;
-    const address = parseNumericInput(registerAddress.value, 'Register address');
+    const address = parseNumericInput(registerAddress.value, t('register.addressLabel'));
     const value = await loader.value.readReg(address);
     registerReadResult.value = `0x${value.toString(16).toUpperCase().padStart(8, '0')}`;
     registerStatusType.value = 'success';
-    registerStatus.value = `Read 0x${address.toString(16).toUpperCase()} = ${registerReadResult.value}`;
+    registerStatus.value = t('register.readSuccess', {
+      address: `0x${address.toString(16).toUpperCase()}`,
+      value: registerReadResult.value,
+    });
   } catch (error) {
     registerStatusType.value = 'error';
-    registerStatus.value = `Read failed: ${error?.message || error}`;
+    registerStatus.value = t('register.readFailed', { error: formatErrorMessage(error) });
   } finally {
     maintenanceBusy.value = false;
     downloadProgress.visible = false;
@@ -5746,28 +5930,32 @@ async function handleReadRegister() {
 // Write a value to the selected register via the loader.
 async function handleWriteRegister() {
   if (!loader.value) {
-    registerStatus.value = 'Connect to a device first.';
+    registerStatus.value = t('register.connectFirst');
     registerStatusType.value = 'warning';
     return;
   }
   try {
     maintenanceBusy.value = true;
     registerStatus.value = null;
-    const address = parseNumericInput(registerAddress.value, 'Register address');
-    const value = parseNumericInput(registerValue.value, 'Register value');
+    const address = parseNumericInput(registerAddress.value, t('register.addressLabel'));
+    const value = parseNumericInput(registerValue.value, t('register.valueLabel'));
     await loader.value.writeReg(address, value);
     registerReadResult.value = `0x${value.toString(16).toUpperCase().padStart(8, '0')}`;
     registerStatusType.value = 'success';
-    registerStatus.value = `Wrote ${registerReadResult.value} to 0x${address
-      .toString(16)
-      .toUpperCase()}.`;
+    registerStatus.value = t('register.writeSuccess', {
+      address: `0x${address.toString(16).toUpperCase()}`,
+      value: registerReadResult.value,
+    });
     appendLog(
-      `Register write completed at 0x${address.toString(16).toUpperCase()} = ${registerReadResult.value}.`,
+      t('register.writeLog', {
+        address: `0x${address.toString(16).toUpperCase()}`,
+        value: registerReadResult.value,
+      }),
       '[ESPConnect-Debug]'
     );
   } catch (error) {
     registerStatusType.value = 'error';
-    registerStatus.value = `Write failed: ${error?.message || error}`;
+    registerStatus.value = t('register.writeFailed', { error: formatErrorMessage(error) });
   } finally {
     maintenanceBusy.value = false;
   }
@@ -5776,7 +5964,7 @@ async function handleWriteRegister() {
 // Compute an MD5 checksum over the specified flash region.
 async function handleComputeMd5() {
   if (!loader.value) {
-    md5Status.value = 'Connect to a device first.';
+    md5Status.value = t('md5.connectFirst');
     md5StatusType.value = 'warning';
     md5Result.value = null;
     return;
@@ -5785,23 +5973,27 @@ async function handleComputeMd5() {
     maintenanceBusy.value = true;
     md5Status.value = null;
     md5Result.value = null;
-    const offset = parseNumericInput(md5Offset.value, 'MD5 offset');
-    const length = parseNumericInput(md5Length.value, 'MD5 length');
+    const offset = parseNumericInput(md5Offset.value, t('md5.offsetLabel'));
+    const length = parseNumericInput(md5Length.value, t('md5.lengthLabel'));
     if (length <= 0) {
-      throw new Error('MD5 length must be greater than zero.');
+      throw new Error(t('md5.lengthPositive'));
     }
     md5StatusType.value = 'info';
-    md5Status.value = 'Calculating MD5 checksum...';
+    md5Status.value = t('md5.calculating');
     const result = await loader.value.flashMd5sum(offset, length);
     md5Status.value = null;
     md5Result.value = result;
     appendLog(
-      `Computed MD5 for 0x${offset.toString(16).toUpperCase()} (${length} bytes): ${result}`,
+      t('md5.resultLog', {
+        offset: `0x${offset.toString(16).toUpperCase()}`,
+        length,
+        result,
+      }),
       '[ESPConnect-Debug]'
     );
   } catch (error) {
     md5StatusType.value = 'error';
-    md5Status.value = `MD5 calculation failed: ${error?.message || error}`;
+    md5Status.value = t('md5.failed', { error: error?.message || error });
     md5Result.value = null;
   } finally {
     maintenanceBusy.value = false;
@@ -5831,22 +6023,22 @@ function formatBackupTimestamp(date = new Date()) {
 // Read a flash region and trigger a download with optional progress handling.
 async function downloadFlashRegion(offset: number, length: number, options: DownloadFlashOptions = {}) {
   if (!loader.value) {
-    throw new Error('Device not connected.');
+    throw new Error(t('flashDownload.connectFirst'));
   }
   if (!Number.isSafeInteger(offset) || offset < 0) {
-    throw new Error('Invalid flash offset.');
+    throw new Error(t('flashDownload.offsetInvalid'));
   }
   if (!Number.isSafeInteger(length) || length <= 0) {
-    throw new Error('Invalid flash length.');
+    throw new Error(t('flashDownload.lengthInvalid'));
   }
   if (flashSizeBytes.value && offset + length > flashSizeBytes.value) {
-    throw new Error('Requested region exceeds detected flash size.');
+    throw new Error(t('flashDownload.exceedsFlashSize', { size: formatBytes(flashSizeBytes.value) }));
   }
 
   const { label, fileName, suppressStatus = false, onProgress } = options;
   const offsetHex = '0x' + offset.toString(16).toUpperCase();
   const lengthHex = '0x' + length.toString(16).toUpperCase();
-  const displayLabel = label || 'flash region (' + offsetHex + ' / ' + lengthHex + ')';
+  const displayLabel = label || t('flashDownload.defaultLabel', { offset: offsetHex, length: lengthHex });
   const activeBaudRaw =
     transport.value?.baudrate ||
     currentBaud.value ||
@@ -5854,16 +6046,16 @@ async function downloadFlashRegion(offset: number, length: number, options: Down
     DEFAULT_ROM_BAUD;
   const baudNumber = Number.isFinite(activeBaudRaw) ? activeBaudRaw : DEFAULT_ROM_BAUD;
   const baudLabel = baudNumber.toLocaleString() + ' bps';
-  appendLog('Downloading ' + displayLabel + ' at ' + baudLabel + '.', '[ESPConnect-Debug]');
+  appendLog(t('flashDownload.startLog', { label: displayLabel, baud: baudLabel }), '[ESPConnect-Debug]');
 
   const CANCEL_ERROR_MESSAGE = 'Download cancelled by user';
   const MAX_CHUNK_SIZE = 0x10000;
   if (!suppressStatus) {
     flashReadStatusType.value = 'info';
-    flashReadStatus.value = 'Downloading ' + displayLabel + ' @ ' + baudLabel + '...';
+    flashReadStatus.value = t('flashDownload.downloadingStatus', { label: displayLabel, baud: baudLabel });
     downloadProgress.visible = true;
     downloadProgress.value = 0;
-    downloadProgress.label = 'Preparing download @ ' + baudLabel + '...';
+    downloadProgress.label = t('flashDownload.preparingLabel', { baud: baudLabel });
   }
 
   downloadCancelRequested.value = false;
@@ -5892,25 +6084,18 @@ async function downloadFlashRegion(offset: number, length: number, options: Down
           const progressValue = length
             ? Math.min(100, Math.floor((overallReceived / length) * 100))
             : 0;
-          let progressLabel =
-            'Downloading ' +
-            displayLabel +
-            ' @ ' +
-            baudLabel +
-            ' — ' +
-            overallReceived.toLocaleString() +
-            ' of ' +
-            length.toLocaleString() +
-            ' bytes';
+          let progressLabel = t('flashDownload.progressLabel', {
+            label: displayLabel,
+            baud: baudLabel,
+            written: overallReceived.toLocaleString(),
+            total: length.toLocaleString(),
+          });
           if (downloadCancelRequested.value) {
-            progressLabel =
-              'Stopping download of ' +
-              displayLabel +
-              ' after current chunk... (' +
-              overallReceived.toLocaleString() +
-              ' of ' +
-              length.toLocaleString() +
-              ' bytes)';
+            progressLabel = t('flashDownload.progressStopping', {
+              label: displayLabel,
+              written: overallReceived.toLocaleString(),
+              total: length.toLocaleString(),
+            });
           }
           if (!suppressStatus) {
             downloadProgress.visible = true;
@@ -5931,11 +6116,10 @@ async function downloadFlashRegion(offset: number, length: number, options: Down
       );
       if (chunkBuffer.length !== currentChunkSize) {
         throw new Error(
-          'Incomplete flash chunk (expected ' +
-          currentChunkSize +
-          ' bytes, received ' +
-          chunkBuffer.length +
-          ').'
+          t('flashDownload.incompleteChunk', {
+            expected: currentChunkSize,
+            received: chunkBuffer.length,
+          })
         );
       }
       chunkBuffers.push(chunkBuffer);
@@ -5952,11 +6136,10 @@ async function downloadFlashRegion(offset: number, length: number, options: Down
 
     if (totalReceived !== length) {
       throw new Error(
-        'Incomplete flash read (expected ' +
-        length +
-        ' bytes, received ' +
-        totalReceived +
-        ').'
+        t('flashDownload.incompleteRead', {
+          expected: length,
+          received: totalReceived,
+        })
       );
     }
 
@@ -5995,27 +6178,24 @@ async function downloadFlashRegion(offset: number, length: number, options: Down
   if (!suppressStatus) {
     downloadProgress.visible = false;
     downloadProgress.value = 100;
-    downloadProgress.label = 'Download complete @ ' + baudLabel;
+    downloadProgress.label = t('flashDownload.completeLabel', { baud: baudLabel });
     flashReadStatusType.value = 'success';
-    flashReadStatus.value =
-      'Downloaded ' +
-      finalName +
-      ' (' +
-      length.toLocaleString() +
-      ' bytes) @ ' +
-      baudLabel +
-      '.';
+    flashReadStatus.value = t('flashDownload.completeStatus', {
+      name: finalName,
+      bytes: length.toLocaleString(),
+      baud: baudLabel,
+    });
   }
   if (typeof onProgress === 'function') {
     onProgress({
       value: 100,
-      label: 'Download complete.',
+      label: t('flashDownload.progressComplete'),
       written: length,
       total: length,
     });
   }
   appendLog(
-    'Downloaded ' + displayLabel + ' to ' + finalName + ' @ ' + baudLabel + '.',
+    t('flashDownload.downloadedLog', { label: displayLabel, file: finalName, baud: baudLabel }),
     '[ESPConnect-Debug]'
   );
   return finalName;
@@ -6024,7 +6204,7 @@ async function downloadFlashRegion(offset: number, length: number, options: Down
 // Handle flash download flows (manual, partition, all, used, custom).
 async function handleDownloadFlash(payload: DownloadFlashPayload = { mode: 'manual' }) {
   if (!loader.value) {
-    flashReadStatus.value = 'Connect to a device first.';
+    flashReadStatus.value = t('flashDownload.connectFirst');
     flashReadStatusType.value = 'warning';
     return;
   }
@@ -6036,9 +6216,9 @@ async function handleDownloadFlash(payload: DownloadFlashPayload = { mode: 'manu
     maintenanceBusy.value = true;
 
     if (mode === 'manual') {
-      const offset = parseNumericInput(flashReadOffset.value, 'Flash offset');
-      const length = parseNumericInput(flashReadLength.value, 'Flash length');
-      await downloadFlashRegion(offset, length, { label: 'manual flash region' });
+      const offset = parseNumericInput(flashReadOffset.value, t('flash.flashOffset'));
+      const length = parseNumericInput(flashReadLength.value, t('flash.lengthBytes'));
+      await downloadFlashRegion(offset, length, { label: t('flashDownload.manualLabel') });
       return;
     }
 
@@ -6048,7 +6228,7 @@ async function handleDownloadFlash(payload: DownloadFlashPayload = { mode: 'manu
         partitionOptionLookup.value.get(selectedPartitionDownload.value);
       if (!option) {
         flashReadStatusType.value = 'warning';
-        flashReadStatus.value = 'Select a partition to download.';
+        flashReadStatus.value = t('flashDownload.selectPartition');
         return;
       }
       await downloadFlashRegion(option.offset, option.size, {
@@ -6064,12 +6244,12 @@ async function handleDownloadFlash(payload: DownloadFlashPayload = { mode: 'manu
       );
       if (!partitions.length) {
         flashReadStatusType.value = 'warning';
-        flashReadStatus.value = 'No partitions available to download.';
+        flashReadStatus.value = t('flashDownload.noPartitions');
         return;
       }
       downloadProgress.visible = true;
       downloadProgress.value = 0;
-      downloadProgress.label = `Preparing ${partitions.length} partition download${partitions.length === 1 ? '' : 's'}...`;
+      downloadProgress.label = t('flashDownload.preparingPartitions', { count: partitions.length });
       let completed = 0;
       for (const option of partitions) {
         const partitionIndex = completed;
@@ -6087,20 +6267,27 @@ async function handleDownloadFlash(payload: DownloadFlashPayload = { mode: 'manu
             const progressLabel = progress?.label
               ? progress.label
               : `${partValue.toFixed(0)}%`;
-            downloadProgress.label = `Partition ${partitionIndex + 1} of ${totalPartitions}: ${option.baseLabel} - ${progressLabel}`;
+            downloadProgress.label = t('flashDownload.partitionProgress', {
+              index: partitionIndex + 1,
+              total: totalPartitions,
+              label: option.baseLabel,
+              progress: progressLabel,
+            });
           },
         });
         completed += 1;
         downloadProgress.value = Math.min(100, (completed / totalPartitions) * 100);
-        downloadProgress.label = `Partition ${completed} of ${totalPartitions}: ${option.baseLabel} complete.`;
+        downloadProgress.label = t('flashDownload.partitionComplete', {
+          index: completed,
+          total: totalPartitions,
+          label: option.baseLabel,
+        });
       }
       downloadProgress.value = 100;
-      downloadProgress.label =
-        'Downloaded ' + partitions.length + ' partition' + (partitions.length === 1 ? '' : 's') + '.';
+      downloadProgress.label = t('flashDownload.partitionsDownloaded', { count: partitions.length });
       downloadProgress.visible = false;
       flashReadStatusType.value = 'success';
-      flashReadStatus.value =
-        'Downloaded ' + partitions.length + ' partition' + (partitions.length === 1 ? '' : 's') + '.';
+      flashReadStatus.value = t('flashDownload.partitionsDownloaded', { count: partitions.length });
       return;
     }
 
@@ -6108,7 +6295,7 @@ async function handleDownloadFlash(payload: DownloadFlashPayload = { mode: 'manu
       const usedSegments = partitionSegments.value.filter(segment => !segment.isUnused);
       if (!usedSegments.length) {
         flashReadStatusType.value = 'warning';
-        flashReadStatus.value = 'No flash usage detected.';
+        flashReadStatus.value = t('flashDownload.noUsage');
         return;
       }
       const minOffset = usedSegments.reduce(
@@ -6121,7 +6308,7 @@ async function handleDownloadFlash(payload: DownloadFlashPayload = { mode: 'manu
       );
       const length = maxEnd - minOffset;
       await downloadFlashRegion(minOffset, length, {
-        label: 'used flash',
+        label: t('flashDownload.usedFlashLabel'),
         fileName: sanitizeFileName('used_flash_' + ('0x' + minOffset.toString(16).toUpperCase()), 'used_flash'),
       });
       return;
@@ -6131,7 +6318,7 @@ async function handleDownloadFlash(payload: DownloadFlashPayload = { mode: 'manu
       const offset = payload && payload.offset;
       const length = payload && payload.length;
       if (!Number.isInteger(offset) || !Number.isInteger(length)) {
-        throw new Error('Custom download requires numeric offset and length.');
+        throw new Error(t('flashDownload.customNumeric'));
       }
       await downloadFlashRegion(offset, length, {
         label: payload && payload.label,
@@ -6141,15 +6328,15 @@ async function handleDownloadFlash(payload: DownloadFlashPayload = { mode: 'manu
     }
 
     flashReadStatusType.value = 'warning';
-    flashReadStatus.value = 'Unsupported download mode.';
+    flashReadStatus.value = t('flashDownload.unsupported');
   } catch (error) {
     downloadProgress.visible = false;
     if (error && error.message === 'Download cancelled by user') {
       flashReadStatusType.value = 'warning';
-      flashReadStatus.value = 'Download cancelled.';
+      flashReadStatus.value = t('flashDownload.cancelled');
     } else {
       flashReadStatusType.value = 'error';
-      flashReadStatus.value = 'Download failed: ' + (error && error.message ? error.message : error);
+      flashReadStatus.value = t('flashDownload.failed', { error: error && error.message ? error.message : error });
     }
   } finally {
     maintenanceBusy.value = false;
@@ -6161,7 +6348,7 @@ async function handleDownloadPartition() {
   const option = partitionOptionLookup.value.get(selectedPartitionDownload.value);
   if (!option) {
     flashReadStatusType.value = 'warning';
-    flashReadStatus.value = 'Select a partition to download.';
+    flashReadStatus.value = t('flashDownload.selectPartition');
     return;
   }
   await handleDownloadFlash({ mode: 'partition', partition: option });
@@ -6172,7 +6359,7 @@ async function handleDownloadAllPartitions() {
   const partitions = partitionDownloadOptions.value.filter(option => option.size > 0);
   if (!partitions.length) {
     flashReadStatusType.value = 'warning';
-    flashReadStatus.value = 'No partitions available to download.';
+    flashReadStatus.value = t('flashDownload.noPartitions');
     return;
   }
   await handleDownloadFlash({ mode: 'all-partitions', partitions });
@@ -6190,8 +6377,8 @@ function handleCancelFlash() {
   }
   if (!flashCancelRequested.value) {
     flashCancelRequested.value = true;
-    flashProgressDialog.label = 'Stopping flash...';
-    appendLog('Flash cancellation requested by user.', '[ESPConnect-Warn]');
+    flashProgressDialog.label = t('flashOps.stopping');
+    appendLog(t('flashOps.cancelRequest'), '[ESPConnect-Warn]');
   }
 }
 
@@ -6201,7 +6388,7 @@ function handleCancelDownload(options: CancelDownloadOptions = {}) {
     return;
   }
   downloadCancelRequested.value = true;
-  const label = options?.label || 'Stopping download...';
+  const label = options?.label || t('flashDownload.stopping');
   if (downloadProgress.visible) {
     downloadProgress.label = label;
     flashReadStatusType.value = 'info';
@@ -6233,14 +6420,18 @@ function handleSelectIntegrityPartition(value) {
     md5Result.value = null;
     md5StatusType.value = 'info';
     appendLog(
-      `Flash integrity region set to ${option.baseLabel} (${option.offsetHex}, ${md5Length.value}).`,
+      t('md5.integritySetLog', {
+        label: option.baseLabel,
+        offset: option.offsetHex,
+        length: md5Length.value,
+      }),
       '[ESPConnect-Debug]'
     );
   } else if (value == null) {
-    appendLog('Flash integrity partition selection cleared.', '[ESPConnect-Debug]');
+    appendLog(t('md5.integrityClearedLog'), '[ESPConnect-Debug]');
   } else {
     md5StatusType.value = 'warning';
-    md5Status.value = 'Selected partition is unavailable.';
+    md5Status.value = t('md5.partitionUnavailable');
     md5Result.value = null;
   }
 }
@@ -6251,41 +6442,41 @@ function handleSelectIntegrityPartition(value) {
 // Erase flash (currently full-chip only) with confirmation.
 async function handleEraseFlash(payload = { mode: 'full' }) {
   if (!loader.value) {
-    flashReadStatus.value = 'Connect to a device first.';
+    flashReadStatus.value = t('flashErase.connectFirst');
     flashReadStatusType.value = 'warning';
     return;
   }
   if (payload?.mode !== 'full') {
     flashReadStatusType.value = 'warning';
-    flashReadStatus.value = 'Selective erase is not yet supported in this interface.';
+    flashReadStatus.value = t('flashErase.unsupportedMode');
     return;
   }
 
   const confirmErase = await showConfirmation({
-    title: 'Erase Entire Flash',
-    message: 'Erase the entire flash? This removes all data and cannot be undone.',
-    confirmText: 'Erase Flash',
-    cancelText: 'Cancel',
+    title: t('flashErase.confirmTitle'),
+    message: t('flashErase.confirmMessage'),
+    confirmText: t('flashErase.confirm'),
+    cancelText: t('buttons.cancel'),
     destructive: true,
   });
   if (!confirmErase) {
     flashReadStatusType.value = 'info';
-    flashReadStatus.value = 'Flash erase cancelled.';
-    appendLog('Flash erase cancelled by user.', '[ESPConnect-Warn]');
+    flashReadStatus.value = t('flashErase.cancelled');
+    appendLog(t('flashErase.cancelledLog'), '[ESPConnect-Warn]');
     return;
   }
 
   try {
     maintenanceBusy.value = true;
     flashReadStatusType.value = 'info';
-    flashReadStatus.value = 'Erasing entire flash...';
+    flashReadStatus.value = t('flashErase.inProgress');
     await loader.value.eraseFlash();
     flashReadStatusType.value = 'success';
-    flashReadStatus.value = 'Flash erase complete.';
-    appendLog('Entire flash erased.', '[ESPConnect-Debug]');
+    flashReadStatus.value = t('flashErase.complete');
+    appendLog(t('flashErase.completeLog'), '[ESPConnect-Debug]');
   } catch (error) {
     flashReadStatusType.value = 'error';
-    flashReadStatus.value = `Erase failed: ${error?.message || error}`;
+    flashReadStatus.value = t('flashErase.failed', { error: error?.message || error });
   } finally {
     maintenanceBusy.value = false;
   }
