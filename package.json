@@ -34,7 +34,7 @@
     "@electron-forge/maker-zip": "^7.6.0",
     "@electron-forge/plugin-auto-unpack-natives": "^7.6.0",
     "@electron-forge/plugin-fuses": "^7.6.0",
-    "@electron/fuses": "^1.8.0",
+    "@electron/fuses": "^2.0.0",
     "@vitejs/plugin-vue": "^6.0.1",
     "electron": "^39.2.7",
     "sass": "^1.80.0",
