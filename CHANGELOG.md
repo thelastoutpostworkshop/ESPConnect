@@ -1,7 +1,9 @@
 # Changelog
 
-## 1.0.12
+## 1.1.0
+- New Feature : NVS Inspector
 - Filesystem backups now reuse the last partition read (avoids re-downloading the same flash region twice) ([issue #51](https://github.com/thelastoutpostworkshop/ESPConnect/issues/51)).
+- Added Chinese i18n support by iKalyes ([PR #67](https://github.com/thelastoutpostworkshop/ESPConnect/pull/67)).
 - Moved WASM modules from public/ to src/ to ensure proper Vite module handling and eliminate dev/build import errors.
 - Renamed "Download used flash" to "Download flash backup" in Flash Tools.
 - Added a responsible disclosure policy (SECURITY.md). 

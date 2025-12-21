@@ -48,6 +48,8 @@ ESPConnect is a browser-based control center for ESP32- and ESP8266-class boards
 - **Serial Monitor tab** – stream UART output, send commands, clear the console, change baud rate, or reset the board right from the browser.  
 - **Session Log tab** – chronological ledger of connects, flashes, downloads, and warnings. Clear it whenever you want a clean slate.
 
+## Note on localization
+- ESPConnect currently supports community translations via a DOM-based translation shim. This is a low-intrusion solution intended to enable quick language support. It is not a full internationalization framework, and UI text changes may require translation updates.
 ## Tips & Troubleshooting
 - If automatic boot entry fails, hold **BOOT**, tap **RESET**, keep holding **BOOT** while clicking **Connect**, then release when you see the ESP-ROM banner.  
 - Only one application can use the USB serial bridge at a time. Close Arduino IDE, PlatformIO, or other tools before connecting.  
