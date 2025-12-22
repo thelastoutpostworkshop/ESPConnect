@@ -343,6 +343,8 @@ export const translations = {
   'Both NL & CR': '换行+回车',
   'Console run at 115200 bps automatically for reliable output. Flashing uses the baud rate selected in the toolbar.':
     '串口终端自动以 115200 bps 运行以确保可靠输出。烧录使用工具栏中选择的波特率。',
+  'Starting the serial monitor resets the board into normal firmware mode so you can view UART output. Stopping the serial monitor automatically re-enters bootloader (stub) mode for maintenance (flash, partition tools, etc.).':
+    '启动串口监视器会将开发板复位到正常固件模式以查看 UART 输出。停止串口监视器会自动重新进入 Bootloader（stub）维护模式（刷写、分区工具等）。',
   'Starting the serial monitor closes the bootloader connection, resets the board into normal firmware mode, and releases the USB port so the browser stops access once you exit. Reconnect with the main':
     '启动串口终端将关闭 Bootloader 连接，将开发板重置为正常固件模式，并释放 USB 端口，退出后浏览器将停止访问。请使用主',
   'button before running maintenance (flash, partition tools, etc.).':

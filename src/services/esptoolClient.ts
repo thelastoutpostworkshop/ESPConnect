@@ -130,9 +130,12 @@ export class CompatibleTransport {
     }
   }
 
-  async *rawRead() {
+  async *rawRead(signal?: AbortSignal) {
     // Stream raw bytes from the loader's shared input buffer without fighting the bootloader reader lock.
     while (true) {
+      if (signal?.aborted) {
+        break;
+      }
       if (!this.loader) {
         break;
       }
@@ -142,6 +145,9 @@ export class CompatibleTransport {
       }
       const buffer = getInputBuffer(this.loader);
       if (buffer && buffer.length > 0) {
+        if (signal?.aborted) {
+          break;
+        }
         const chunk = new Uint8Array(buffer.splice(0));
         if (chunk.length > 0) {
           yield chunk;

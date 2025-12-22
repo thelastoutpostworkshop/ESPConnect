@@ -205,7 +205,7 @@
             <v-window-item value="console">
               <SerialMonitorTab :monitor-text="monitorText" :monitor-active="monitorActive"
                 :monitor-error="monitorError" :can-start="canStartMonitor" :can-command="canIssueMonitorCommands"
-                @start-monitor="startMonitor" @stop-monitor="stopMonitor({ closeConnection: true })"
+                @start-monitor="startMonitor" @stop-monitor="stopMonitor()"
                 @clear-monitor="clearMonitorOutput" @reset-board="resetBoard" />
             </v-window-item>
 
@@ -3350,6 +3350,7 @@ type ResetOptions = {
 
 type StopMonitorOptions = {
   closeConnection?: boolean;
+  returnToMaintenance?: boolean;
 };
 
 type BaudRate = (typeof SUPPORTED_BAUDRATES)[number];
@@ -3780,7 +3781,10 @@ const monitorActive = ref<boolean>(false);
 const monitorError = ref<SerialMonitorError>(null);
 const monitorAbortController = ref<AbortController | null>(null);
 const serialMonitorClosedPrompt = ref(false);
-const maintenanceNavigationLocked = computed(() => monitorActive.value);
+const maintenanceReturnInProgress = ref(false);
+const maintenanceNavigationLocked = computed(
+  () => monitorActive.value || maintenanceReturnInProgress.value
+);
 const MONITOR_BUFFER_LIMIT = 20000;
 let monitorPendingText = '';
 let monitorFlushHandle = null;
@@ -5048,6 +5052,7 @@ let monitorDecoder = null;
 let monitorNoiseChunks = 0;
 let monitorNoiseWarned = false;
 let monitorAutoResetPerformed = false;
+let monitorTask: Promise<void> | null = null;
 
 // Cancel any scheduled serial monitor flush.
 function cancelMonitorFlush() {
@@ -5190,12 +5195,12 @@ async function handleSerialDisconnectEvent(event) {
 }
 
 // Read serial data in a loop, pushing it into the monitor until aborted.
-async function monitorLoop(signal) {
+async function monitorLoop(signal: AbortSignal) {
   const transportInstance = transport.value;
   if (!transportInstance) {
     throw new Error('Serial monitor not supported by current transport.');
   }
-  const iterator = transportInstance.rawRead();
+  const iterator = transportInstance.rawRead(signal);
   for await (const chunk of iterator) {
     if (signal.aborted) break;
     if (!chunk || !chunk.length) continue;
@@ -5240,7 +5245,7 @@ async function startMonitor() {
   monitorAbortController.value = controller;
   monitorActive.value = true;
   appendLog('Serial monitor started.', '[ESPConnect-Debug]');
-  (async () => {
+  monitorTask = (async () => {
     try {
       await monitorLoop(controller.signal);
     } catch (err) {
@@ -5253,17 +5258,34 @@ async function startMonitor() {
         monitorAbortController.value = null;
       }
       monitorActive.value = false;
+      monitorTask = null;
     }
   })();
 }
 
 // Stop the serial monitor and optionally disconnect from the device.
 async function stopMonitor(options: StopMonitorOptions = {}) {
-  if (!monitorActive.value) return;
-  const { closeConnection = false } = options;
-  monitorAbortController.value?.abort();
-  monitorActive.value = false;
+  const { closeConnection = false, returnToMaintenance = true } = options;
+
+  const controller = monitorAbortController.value;
+  const task = monitorTask;
+
+  if (!monitorActive.value && !controller && !task) {
+    return;
+  }
+
+  controller?.abort();
   monitorAbortController.value = null;
+  monitorActive.value = false;
+
+  if (task) {
+    try {
+      await task;
+    } catch {
+      // errors are surfaced in the monitor loop/log
+    }
+  }
+
   cancelMonitorFlush();
   flushPendingMonitorText();
   monitorPendingText = '';
@@ -5275,24 +5297,53 @@ async function stopMonitor(options: StopMonitorOptions = {}) {
     }
     monitorDecoder = null;
   }
+
   appendLog('Serial monitor stopped.', '[ESPConnect-Debug]');
+
   if (closeConnection) {
     await disconnectTransport();
     serialMonitorClosedPrompt.value = true;
-  }
-  // const restoreBaud =
-  //   previousMonitorBaud.value || lastFlashBaud.value || DEFAULT_FLASH_BAUD;
-  if (lastFlashBaud.value) {
-    try {
-      await setConnectionBaud(lastFlashBaud.value, { remember: true, log: true });
-    } catch (error) {
-      appendLog(
-        `Failed to restore baud rate (${error?.message || error}). Remaining at ${currentBaud.value.toLocaleString()} bps.`,
-        '[ESPConnect-Warn]'
-      );
-    }
+    return;
   }
 
+  if (!returnToMaintenance) {
+    return;
+  }
+
+  if (!connected.value || !loader.value) {
+    return;
+  }
+
+  busy.value = true;
+  maintenanceReturnInProgress.value = true;
+  connectDialog.label = 'Returning to maintenance mode...';
+  connectDialog.message = 'Re-entering ROM bootloader...';
+  connectDialog.visible = true;
+  try {
+    await loader.value.reconnect();
+    monitorAutoResetPerformed = false;
+
+    if (lastFlashBaud.value) {
+      connectDialog.message = `Restoring baud to ${lastFlashBaud.value.toLocaleString()} bps...`;
+      await setConnectionBaud(lastFlashBaud.value, { remember: true, log: true });
+    }
+  } catch (error) {
+    if (error?.message === "Couldn't sync to ESP. Try resetting.") {
+      lastErrorMessage.value = formatErrorMessage(error);
+      busyDialogMessage.value = '';
+      showBusyDialog.value = false;
+      showBootDialog.value = true;
+      showGeneralErrorDialog.value = false;
+    } else {
+      appendLog(`Failed to return to maintenance mode: ${formatErrorMessage(error)}`, '[ESPConnect-Warn]');
+    }
+    await disconnectTransport();
+  } finally {
+    connectDialog.visible = false;
+    connectDialog.message = '';
+    maintenanceReturnInProgress.value = false;
+    busy.value = false;
+  }
 }
 
 // Pulse RTS/DTR to reset the target board.
@@ -5320,7 +5371,7 @@ async function resetBoard(options: ResetOptions = {}) {
 async function disconnectTransport() {
   try {
     if (monitorActive.value) {
-      await stopMonitor();
+      await stopMonitor({ returnToMaintenance: false });
     } else {
       monitorAbortController.value?.abort();
       monitorAbortController.value = null;
@@ -5347,6 +5398,7 @@ async function disconnectTransport() {
     monitorText.value = '';
     monitorAutoResetPerformed = false;
     serialMonitorClosedPrompt.value = false;
+    maintenanceReturnInProgress.value = false;
     resetMaintenanceState();
     resetSpiffsState();
     spiffsState.selectedId = null;

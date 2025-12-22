@@ -93,7 +93,7 @@
         class="monitor-card__info"
         icon="mdi-information-outline"
       >
-        Starting the serial monitor closes the bootloader connection, resets the board into normal firmware mode, and releases the USB port so the browser stops access once you exit. Reconnect with the main <strong>Connect</strong> button before running maintenance (flash, partition tools, etc.).
+        Starting the serial monitor resets the board into normal firmware mode so you can view UART output. Stopping the serial monitor automatically re-enters bootloader (stub) mode for maintenance (flash, partition tools, etc.).
       </v-alert>
       <v-divider />
       <v-card-text ref="terminalEl" class="monitor-terminal">

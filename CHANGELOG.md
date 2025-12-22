@@ -2,6 +2,7 @@
 
 ## 1.1.1
 - Fixed LittleFS now use client getUsage for uploads
+- Serial Monitor: stopping the monitor now automatically returns to maintenance mode (ROM bootloader + stub); use Disconnect to fully close the port.
 - Refactor components to typescript
 - Move SPIFFS utilities from src/utils to src/lib
 - Build: Upgrade `@electron/fuses` to v2.0.0 (requires Node.js >= 22.12.0) and update Forge fuses integration for ESM compatibility
