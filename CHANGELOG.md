@@ -3,6 +3,7 @@
 ## 1.1.1
 - Fixed LittleFS now use client getUsage for uploads
 - Refactor components to typescript
+- Move SPIFFS utilities from src/utils to src/lib
 
 ## 1.1.0
 - New Feature : NVS Inspector

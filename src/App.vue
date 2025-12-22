@@ -638,7 +638,7 @@ import SessionLogTab from './components/SessionLogTab.vue';
 import SerialMonitorTab from './components/SerialMonitorTab.vue';
 import DisconnectedState from './components/DisconnectedState.vue';
 import registerGuides from './data/register-guides.json';
-import { InMemorySpiffsClient } from './utils/spiffs/spiffsClient';
+import { InMemorySpiffsClient } from './lib/spiffs/spiffsClient';
 import { useFatfsManager, useLittlefsManager, useSpiffsManager } from './composables/useFilesystemManagers';
 import { useDialogs } from './composables/useDialogs';
 import { readPartitionTable } from './utils/partitions';
