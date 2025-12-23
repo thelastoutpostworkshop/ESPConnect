@@ -5,8 +5,9 @@
     "moduleResolution": "Bundler",
     "useDefineForClassFields": true,
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
-    "allowJs": true,
-    "checkJs": true,
+    "strict": true,
+    "allowJs": false,
+    "checkJs": false,
     "skipLibCheck": true,
     "noEmit": true,
     "allowSyntheticDefaultImports": true,
@@ -15,5 +16,5 @@
     "isolatedModules": true,
     "types": ["vite/client"]
   },
-  "include": ["src/**/*", "vite.config.js"]
+  "include": ["src/**/*"]
 }

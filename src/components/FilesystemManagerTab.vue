@@ -180,6 +180,7 @@ import type {
 type FileCategory = 'all' | 'text' | 'image' | 'audio' | 'other';
 type FileFilterOption = { value: FileCategory; label: string };
 type DataTableSlotItem<T> = { raw?: T };
+type FilesystemTableEntry = FilesystemEntry & { name: string; size: number };
 
 const props = withDefaults(
   defineProps<{
@@ -508,15 +509,20 @@ function formatSize(size: unknown): string {
   return `${(value / (1024 * 1024)).toFixed(2)} MB`;
 }
 
-function unwrapItem(item: unknown): FilesystemEntry {
-  if (!item || typeof item !== 'object') {
-    return {};
+function unwrapItem(item: unknown): FilesystemTableEntry {
+  let entry: FilesystemEntry = {};
+  if (item && typeof item === 'object') {
+    const raw = (item as DataTableSlotItem<FilesystemEntry>).raw;
+    if (raw && typeof raw === 'object') {
+      entry = raw;
+    } else {
+      entry = item as FilesystemEntry;
+    }
   }
-  const raw = (item as DataTableSlotItem<FilesystemEntry>).raw;
-  if (raw && typeof raw === 'object') {
-    return raw;
-  }
-  return item as FilesystemEntry;
+  const name = typeof entry.name === 'string' ? entry.name : '';
+  const sizeValue = typeof entry.size === 'number' ? entry.size : Number(entry.size);
+  const size = Number.isFinite(sizeValue) ? sizeValue : 0;
+  return { ...entry, name, size };
 }
 
 function isPreviewMode(value: unknown): value is FilePreviewMode {
@@ -533,7 +539,7 @@ function toPreviewInfo(value: unknown): FilePreviewInfo | null {
   if (value === true) {
     return { mode: 'text' };
   }
-  if (typeof value === 'object' && value.mode) {
+  if (typeof value === 'object' && value !== null && 'mode' in value) {
     const mode = (value as { mode?: unknown }).mode;
     if (!isPreviewMode(mode)) {
       return null;

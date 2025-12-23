@@ -13,12 +13,12 @@ export interface LittleFSEntry {
 }
 
 export type SpiffsClient = {
-  list: () => any;
-  read: (path: string) => any;
-  write: (path: string, data: any) => any;
-  remove: (path: string) => any;
-  format: () => any;
-  toImage: () => Uint8Array;
+  list: () => Promise<Array<{ name: string; size: number; type: 'file' | 'dir' }>>;
+  read: (path: string) => Promise<Uint8Array>;
+  write: (path: string, data: Uint8Array) => Promise<void>;
+  remove: (path: string) => Promise<void>;
+  format: () => Promise<void>;
+  toImage: () => Promise<Uint8Array>;
   getUsage?: () => { capacityBytes: number; usedBytes: number; freeBytes: number };
   canFit?: (path: string, size: number) => boolean;
 };
@@ -32,8 +32,8 @@ export type LittlefsClient = {
   delete?: (path: string, options?: { recursive?: boolean }) => any;
   deleteFile?: (path: string) => any;
   mkdir?: (path: string) => any;
-  format?: () => any;
-  toImage?: () => Uint8Array;
+  format: () => any;
+  toImage: () => Uint8Array;
   getUsage?: () => { capacityBytes: number; usedBytes: number; freeBytes: number };
   canFit?: (path: string, size: number) => boolean;
   getDiskVersion?: () => number;
@@ -42,10 +42,10 @@ export type LittlefsClient = {
 
 export type FatfsClient = {
   list?: () => FatFSEntry[];
-  writeFile?: (path: string, data: any) => any;
-  deleteFile?: (path: string) => any;
-  format?: () => any;
-  toImage?: () => Uint8Array;
+  writeFile: (path: string, data: any) => any;
+  deleteFile: (path: string) => any;
+  format: () => any;
+  toImage: () => Uint8Array;
   readFile?: (path: string) => Uint8Array;
   read?: (path: string) => any;
 };

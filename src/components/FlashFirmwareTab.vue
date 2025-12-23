@@ -115,7 +115,7 @@
       </v-row>
 
       <v-checkbox :model-value="eraseFlash" label="Erase entire flash before writing" density="comfortable" hide-details
-        :disabled="busy || maintenanceBusy" @update:model-value="value => emit('update:eraseFlash', value)" />
+        :disabled="busy || maintenanceBusy" @update:model-value="value => emit('update:eraseFlash', value === true)" />
 
       <p class="flash-tools__hint text-medium-emphasis">
         Flashing runs at 921,600&nbsp;bps by default. Drop the baud if the device struggles to sync.

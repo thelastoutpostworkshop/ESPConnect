@@ -4,6 +4,9 @@
 - Fixed LittleFS now use client getUsage for uploads
 - Serial Monitor: stopping the monitor now automatically returns to maintenance mode (ROM bootloader + stub); use Disconnect to fully close the port.
 - Refactor components to typescript
+- Turn on `strict` TypeScript settings and add `vue-tsc` typecheck script
+- Fix strict-mode issues across App.vue, filesystem/flash tabs, and composables
+- Add missing i18n module declaration for TS resolution
 - Move SPIFFS utilities from src/utils to src/lib
 - Build: Upgrade `@electron/fuses` to v2.0.0 (requires Node.js >= 22.12.0) and update Forge fuses integration for ESM compatibility
 - CI/Docker: Bump Node to 22.12.0+ for builds

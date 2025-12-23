@@ -14,6 +14,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json",
     "preview": "vite preview",
     "test": "vitest run",
     "start": "electron-forge start",
@@ -42,6 +43,8 @@
     "sass": "^1.80.0",
     "vitest": "^4.0.16",
     "vite": "^7.1.12",
-    "vite-plugin-vuetify": "^2.0.3"
+    "vite-plugin-vuetify": "^2.0.3",
+    "typescript": "^5.9.3",
+    "vue-tsc": "^3.2.1"
   }
 }
