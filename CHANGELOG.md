@@ -2,6 +2,8 @@
 
 ## 1.1.2-preview
 ### Improvement
+- Internationalization: Migrated UI translations to the standard Vue I18n + Vuetify integration.
+This replaces the previous DOM-based translation shim with a fully reactive, maintainable solution.
 - Add reconnect after flashing operations so the ROM has time to finalize
 - File systems restore now show the filename in the confirmation dialog
 - Append app version + timestamp to every log entry  
