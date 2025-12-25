@@ -488,6 +488,7 @@
     entryMapUnavailable: '条目映射不可用。',
     pageTooltipErrors: '错误：{count}',
     entryCellTitle: '条目 #{entry}（字 {word} / 位 {bitStart}-{bitEnd}）：{state}',
+
     filters: {
       all: '全部',
     },

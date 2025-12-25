@@ -490,6 +490,7 @@
     entryMapUnavailable: 'Entry map unavailable.',
     pageTooltipErrors: 'Errors: {count}',
     entryCellTitle: 'Entry #{entry} (word {word} / bits {bitStart}-{bitEnd}): {state}',
+
     filters: {
       all: 'All',
     },
