@@ -136,7 +136,7 @@
           v-model:items-per-page="filesPerPage" v-model:page="filesPage" :items-per-page-options="filesPerPageOptions"
           density="compact" class="filesystem-table mt-4">
           <template #item.name="{ item }">
-            <code>{{ unwrapItem(item).name }}</code>
+            <code>{{ formatFileName(unwrapItem(item).name) }}</code>
           </template>
           <template #item.size="{ item }">
             {{ formatSize(unwrapItem(item).size) }}
@@ -524,6 +524,14 @@ function formatSize(size: unknown): string {
   if (value < 1024) return `${value} B`;
   if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
   return `${(value / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function formatFileName(name?: string): string {
+  if (!name) {
+    return '';
+  }
+  const stripped = name.replace(/^\/+/, '');
+  return stripped || name;
 }
 
 function unwrapItem(item: unknown): FilesystemTableEntry {
