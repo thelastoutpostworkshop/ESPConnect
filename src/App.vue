@@ -667,7 +667,8 @@ import { useFatfsManager, useLittlefsManager, useSpiffsManager } from './composa
 import { useDialogs } from './composables/useDialogs';
 import { getLanguage, setLanguage, SupportedLocale } from './plugins/i18n';
 import { readPartitionTable } from './utils/partitions';
-import { createEsptoolClient, requestSerialPort, type CompatibleLoader, type CompatibleTransport, type EsptoolClient, type StatusPayload } from './services/esptoolClient';
+import type { ESPLoader } from 'tasmota-webserial-esptool';
+import { createEsptoolClient, requestSerialPort, type CompatibleTransport, type EsptoolClient, type StatusPayload } from './services/esptoolClient';
 import {
   SPIFFS_AUDIO_EXTENSIONS,
   SPIFFS_AUDIO_MIME_MAP,
@@ -3712,10 +3713,11 @@ type CancelDownloadOptions = {
 // Write a filesystem image to flash with progress callbacks.
 async function writeFilesystemImage(partition: any, image: Uint8Array, options: WriteFilesystemOptions = {}) {
   const { onProgress, label = 'filesystem', state, compress = true } = options;
-  if (!loader.value) {
+  const loaderInstance = loader.value;
+  if (!loaderInstance) {
     throw new Error('Loader unavailable.');
   }
-  await loader.value.flashData(
+  await runLoaderOperation(() => loaderInstance.flashData(
     toArrayBuffer(image),
     (written, total) => {
       const progressValue = total ? Math.min(100, Math.floor((written / total) * 100)) : 0;
@@ -3732,7 +3734,7 @@ async function writeFilesystemImage(partition: any, image: Uint8Array, options: 
     },
     partition.offset,
     compress
-  );
+  ));
   const finishingLabel = `Finalizing ${label}...`;
   if (state) {
     state.status = finishingLabel;
@@ -3752,7 +3754,8 @@ const FLASH_READ_MIN_CHUNK = 0x1000;
 
 // Read a region of flash into a buffer with chunked progress reporting.
 async function readFlashToBuffer(offset: number, length: number, options: ReadFlashOptions = {}) {
-  if (!loader.value) {
+  const loaderInstance = loader.value;
+  if (!loaderInstance) {
     throw new Error('Device not connected.');
   }
   if (!Number.isSafeInteger(offset) || offset < 0) {
@@ -3763,54 +3766,56 @@ async function readFlashToBuffer(offset: number, length: number, options: ReadFl
   }
   const cancelSignal = options.cancelSignal;
   const label = options.label || 'filesystem';
-  const chunkBuffers = [];
-  const chunkSize = Math.max(FLASH_READ_MIN_CHUNK, Math.min(FLASH_READ_MAX_CHUNK, length));
-  let totalReceived = 0;
-  while (totalReceived < length) {
+  return await runLoaderOperation(async () => {
+    const chunkBuffers = [];
+    const chunkSize = Math.max(FLASH_READ_MIN_CHUNK, Math.min(FLASH_READ_MAX_CHUNK, length));
+    let totalReceived = 0;
+    while (totalReceived < length) {
+      if (cancelSignal?.value) {
+        throw new Error(FILESYSTEM_LOAD_CANCELLED_MESSAGE);
+      }
+      const remaining = length - totalReceived;
+      const currentChunkSize = Math.min(chunkSize, remaining);
+      const chunkOffset = offset + totalReceived;
+      const chunkBase = totalReceived;
+      const chunk = await loaderInstance.readFlash(
+        chunkOffset,
+        currentChunkSize,
+        (_packet, received) => {
+          const chunkReceived = Math.min(received, currentChunkSize);
+          const overallReceived = chunkBase + chunkReceived;
+          const progressValue = length ? Math.min(100, Math.floor((overallReceived / length) * 100)) : 0;
+          let progressLabel = `Reading ${label} - ${overallReceived.toLocaleString()} of ${length.toLocaleString()} bytes`;
+          if (cancelSignal?.value) {
+            progressLabel = `Stopping read of ${label} after current chunk... (${overallReceived.toLocaleString()} of ${length.toLocaleString()} bytes)`;
+          }
+          if (typeof options.onProgress === 'function') {
+            options.onProgress({
+              value: progressValue,
+              label: progressLabel,
+              written: overallReceived,
+              total: length,
+            });
+          }
+        }
+      );
+      chunkBuffers.push(chunk);
+      totalReceived += chunk.length;
+    }
     if (cancelSignal?.value) {
       throw new Error(FILESYSTEM_LOAD_CANCELLED_MESSAGE);
     }
-    const remaining = length - totalReceived;
-    const currentChunkSize = Math.min(chunkSize, remaining);
-    const chunkOffset = offset + totalReceived;
-    const chunkBase = totalReceived;
-    const chunk = await loader.value.readFlash(
-      chunkOffset,
-      currentChunkSize,
-      (_packet, received) => {
-        const chunkReceived = Math.min(received, currentChunkSize);
-        const overallReceived = chunkBase + chunkReceived;
-        const progressValue = length ? Math.min(100, Math.floor((overallReceived / length) * 100)) : 0;
-        let progressLabel = `Reading ${label} - ${overallReceived.toLocaleString()} of ${length.toLocaleString()} bytes`;
-        if (cancelSignal?.value) {
-          progressLabel = `Stopping read of ${label} after current chunk... (${overallReceived.toLocaleString()} of ${length.toLocaleString()} bytes)`;
-        }
-        if (typeof options.onProgress === 'function') {
-          options.onProgress({
-            value: progressValue,
-            label: progressLabel,
-            written: overallReceived,
-            total: length,
-          });
-        }
-      }
-    );
-    chunkBuffers.push(chunk);
-    totalReceived += chunk.length;
-  }
-  if (cancelSignal?.value) {
-    throw new Error(FILESYSTEM_LOAD_CANCELLED_MESSAGE);
-  }
-  if (chunkBuffers.length === 1) {
-    return chunkBuffers[0];
-  }
-  const buffer = new Uint8Array(totalReceived);
-  let writeOffset = 0;
-  for (const chunk of chunkBuffers) {
-    buffer.set(chunk, writeOffset);
-    writeOffset += chunk.length;
-  }
-  return buffer;
+    if (chunkBuffers.length === 1) {
+      return chunkBuffers[0];
+    }
+    const buffer = new Uint8Array(totalReceived);
+    let writeOffset = 0;
+    for (const chunk of chunkBuffers) {
+      buffer.set(chunk, writeOffset);
+      writeOffset += chunk.length;
+    }
+    return buffer;
+  });
 }
 
 // Map chip package codes to human-friendly labels.
@@ -4166,8 +4171,15 @@ const confirmationDialog = reactive({
 let confirmationResolver: ((confirmed: boolean) => void) | null = null;
 const currentPort = ref<SerialPort | null>(null);
 const transport = shallowRef<CompatibleTransport | null>(null);
-const loader = shallowRef<CompatibleLoader | null>(null);
+const loader = shallowRef<ESPLoader | null>(null);
 const esptoolClient = shallowRef<EsptoolClient | null>(null);
+async function runLoaderOperation<T>(operation: () => Promise<T>): Promise<T> {
+  const client = esptoolClient.value;
+  if (client?.runWithBusy) {
+    return await client.runWithBusy(operation);
+  }
+  return await operation();
+}
 const firmwareBuffer = ref<ArrayBuffer | null>(null);
 const firmwareName = ref('');
 const chipDetails = ref<DeviceDetails | null>(null);
@@ -4335,14 +4347,16 @@ async function setConnectionBaud(targetBaud: string | number, options: SetBaudOp
   }
 
   if (connected.value && loader.value) {
+    const loaderInstance = loader.value;
     try {
       baudChangeBusy.value = true;
       if (log) {
         appendLog('Changing baud to ' + parsed.toLocaleString() + ' bps...', '[ESPConnect-Debug]');
       }
-      loader.value.baudrate = parsed;
-      await loader.value.setBaudrate(parsed);
-      await loader.value.sleep(300); // Fix needed for Native USB (0x1001), otherwise an error is raised 
+      await runLoaderOperation(async () => {
+        await loaderInstance.setBaudrate(parsed);
+        await loaderInstance.sleep(300); // Fix needed for Native USB (0x1001), otherwise an error is raised
+      });
       if (transport.value) {
         transport.value.baudrate = parsed;
       }
@@ -4635,7 +4649,7 @@ function detectActiveOtaSlot(otadata: Uint8Array, otaEntries: PartitionTableEntr
 }
 
 // Scan application partitions to build metadata and identify the active slot.
-async function analyzeAppPartitions(loaderInstance: CompatibleLoader, partitions: PartitionTableEntry[]) {
+async function analyzeAppPartitions(loaderInstance: ESPLoader, partitions: PartitionTableEntry[]) {
   appPartitions.value = [];
   activeAppSlotId.value = null;
   appMetadataError.value = null;
@@ -4842,7 +4856,7 @@ async function loadAppMetadata(options: LoadAppMetadataOptions = {}) {
   appMetadataError.value = null;
   appMetadataLoaded.value = false;
   try {
-    await analyzeAppPartitions(loaderInstance, partitions);
+    await runLoaderOperation(() => analyzeAppPartitions(loaderInstance, partitions));
   } catch (error) {
     appendLog('Failed to analyze app partitions', error);
     appMetadataError.value = formatErrorMessage(error);
@@ -5771,7 +5785,8 @@ async function stopMonitor(options: StopMonitorOptions = {}) {
     return;
   }
 
-  if (!connected.value || !loader.value) {
+  const loaderInstance = loader.value;
+  if (!connected.value || !loaderInstance) {
     return;
   }
 
@@ -5782,7 +5797,7 @@ async function stopMonitor(options: StopMonitorOptions = {}) {
   connectDialog.message = t('dialogs.reEnteringBootloader');
   connectDialog.visible = true;
   try {
-    await loader.value.reconnect();
+    await runLoaderOperation(() => loaderInstance.reconnect());
     monitorAutoResetPerformed = false;
 
     if (lastFlashBaud.value) {
@@ -5826,7 +5841,7 @@ async function enterUserFirmware() {
   }
   try {
     appendLog('Board Hard Reset', '[ESPConnect-Debug]');
-    await currentLoader.hardReset(false);
+    await runLoaderOperation(() => currentLoader.hardReset(false));
   } catch (err) {
     appendLog(`Board reset failed: ${formatErrorMessage(err)}`, '[error]');
   }
@@ -6016,7 +6031,7 @@ async function connect() {
     let flashId: number | null = null;
     let id: number | null = null;
     try {
-      const detectedFlashId = await client.loader.flashId();
+      const detectedFlashId = await runLoaderOperation(() => client.loader.flashId());
       flashId = detectedFlashId;
       id = Number.isFinite(detectedFlashId) ? detectedFlashId : null;
     } catch (error) {
@@ -6179,9 +6194,13 @@ async function connect() {
       appendLog('Skipping partition table read for ESP8266 (not supported).', '[ESPConnect-Debug]');
       partitionTable.value = [];
       appMetadataLoaded.value = false;
-    } else {
-      const partitions = await readPartitionTable(loader.value, undefined, undefined, appendLog);
+    } else if (loader.value) {
+      const loaderInstance = loader.value;
+      const partitions = await runLoaderOperation(() => readPartitionTable(loaderInstance, undefined, undefined, appendLog));
       partitionTable.value = partitions;
+      appMetadataLoaded.value = false;
+    } else {
+      partitionTable.value = [];
       appMetadataLoaded.value = false;
     }
 
@@ -6312,7 +6331,8 @@ function parseNumericInput(value: string | number | null | undefined, label: str
 
 // Flash the selected firmware image to the device.
 async function flashFirmware() {
-  if (!loader.value || !firmwareBuffer.value) {
+  const loaderInstance = loader.value;
+  if (!loaderInstance || !firmwareBuffer.value) {
     appendLog('Select a firmware binary and connect to a device first.', '[ESPConnect-Warn]');
     return;
   }
@@ -6362,31 +6382,34 @@ async function flashFirmware() {
     const bytes = new Uint8Array(firmwareBuffer.value);
     const startTime = performance.now();
 
-    if (eraseFlash.value && typeof loader.value.eraseFlash === 'function') {
-      flashProgressDialog.label = `Erasing flash @ ${flashBaudLabel}...`;
-      await loader.value.eraseFlash();
-    }
+    await runLoaderOperation(async () => {
+      const eraseFlashFn = (loaderInstance as ESPLoader & { eraseFlash?: () => Promise<void> }).eraseFlash;
+      if (eraseFlash.value && typeof eraseFlashFn === 'function') {
+        flashProgressDialog.label = `Erasing flash @ ${flashBaudLabel}...`;
+        await eraseFlashFn.call(loaderInstance);
+      }
 
-    await loader.value.flashData(
-      bytes.buffer,
-      (written, total) => {
-        if (flashCancelRequested.value) {
-          throw new Error('Flash cancelled by user');
-        }
-        const pct = total ? Math.floor((written / total) * 100) : 0;
-        const clamped = Math.min(100, Math.max(0, pct));
-        flashProgress.value = clamped;
-        flashProgressDialog.visible = true;
-        flashProgressDialog.value = clamped;
-        const writtenLabel = written.toLocaleString();
-        const totalLabel = total ? total.toLocaleString() : '';
-        flashProgressDialog.label = total
-          ? `Flashing ${firmwareLabel} - ${writtenLabel} of ${totalLabel} bytes @ ${flashBaudLabel}`
-          : `Flashing ${firmwareLabel} - ${writtenLabel} bytes @ ${flashBaudLabel}`;
-      },
-      offsetNumber,
-      true
-    );
+      await loaderInstance.flashData(
+        bytes.buffer,
+        (written, total) => {
+          if (flashCancelRequested.value) {
+            throw new Error('Flash cancelled by user');
+          }
+          const pct = total ? Math.floor((written / total) * 100) : 0;
+          const clamped = Math.min(100, Math.max(0, pct));
+          flashProgress.value = clamped;
+          flashProgressDialog.visible = true;
+          flashProgressDialog.value = clamped;
+          const writtenLabel = written.toLocaleString();
+          const totalLabel = total ? total.toLocaleString() : '';
+          flashProgressDialog.label = total
+            ? `Flashing ${firmwareLabel} - ${writtenLabel} of ${totalLabel} bytes @ ${flashBaudLabel}`
+            : `Flashing ${firmwareLabel} - ${writtenLabel} bytes @ ${flashBaudLabel}`;
+        },
+        offsetNumber,
+        true
+      );
+    });
     flashProgressDialog.value = 100;
     flashProgressDialog.label = 'Finalizing Flash...'
     await esptoolClient.value?.syncWithStub();
@@ -6465,7 +6488,8 @@ function handleSelectRegister(address: string) {
 
 // Read a register value via the loader.
 async function handleReadRegister() {
-  if (!loader.value) {
+  const loaderInstance = loader.value;
+  if (!loaderInstance) {
     registerStatus.value = 'Connect to a device first.';
     registerStatusType.value = 'warning';
     return;
@@ -6474,7 +6498,7 @@ async function handleReadRegister() {
     maintenanceBusy.value = true;
     registerStatus.value = null;
     const address = parseNumericInput(registerAddress.value, 'Register address');
-    const value = await loader.value.readReg(address);
+    const value = await runLoaderOperation(() => loaderInstance.readRegister(address));
     registerReadResult.value = `0x${value.toString(16).toUpperCase().padStart(8, '0')}`;
     registerStatusType.value = 'success';
     registerStatus.value = `Read 0x${address.toString(16).toUpperCase()} = ${registerReadResult.value}`;
@@ -6489,7 +6513,8 @@ async function handleReadRegister() {
 
 // Write a value to the selected register via the loader.
 async function handleWriteRegister() {
-  if (!loader.value) {
+  const loaderInstance = loader.value;
+  if (!loaderInstance) {
     registerStatus.value = 'Connect to a device first.';
     registerStatusType.value = 'warning';
     return;
@@ -6499,7 +6524,7 @@ async function handleWriteRegister() {
     registerStatus.value = null;
     const address = parseNumericInput(registerAddress.value, 'Register address');
     const value = parseNumericInput(registerValue.value, 'Register value');
-    await loader.value.writeReg(address, value);
+    await runLoaderOperation(() => loaderInstance.writeRegister(address, value));
     registerReadResult.value = `0x${value.toString(16).toUpperCase().padStart(8, '0')}`;
     registerStatusType.value = 'success';
     registerStatus.value = `Wrote ${registerReadResult.value} to 0x${address
@@ -6536,7 +6561,11 @@ async function handleComputeMd5() {
     }
     md5StatusType.value = 'info';
     md5Status.value = 'Calculating MD5 checksum...';
-    const result = await loader.value.flashMd5sum(offset, length);
+    const client = esptoolClient.value;
+    if (!client) {
+      throw new Error('ESPLoader client not available.');
+    }
+    const result = await client.flashMd5sum(offset, length);
     md5Status.value = null;
     md5Result.value = result;
     appendLog(
@@ -6574,7 +6603,8 @@ function formatBackupTimestamp(date = new Date()) {
 
 // Read a flash region and trigger a download with optional progress handling.
 async function downloadFlashRegion(offset: number, length: number, options: DownloadFlashOptions = {}) {
-  if (!loader.value) {
+  const loaderInstance = loader.value;
+  if (!loaderInstance) {
     throw new Error('Device not connected.');
   }
   if (!Number.isSafeInteger(offset) || offset < 0) {
@@ -6617,152 +6647,154 @@ async function downloadFlashRegion(offset: number, length: number, options: Down
   let totalReceived = 0;
   let buffer = null;
   let cancelled = false;
-  try {
-    while (totalReceived < length) {
-      if (downloadCancelRequested.value) {
-        cancelled = true;
-        break;
-      }
-      const remaining = length - totalReceived;
-      const currentChunkSize = Math.min(chunkSize, remaining);
-      const chunkOffset = offset + totalReceived;
-      const chunkBase = totalReceived;
-      const chunkBuffer = await loader.value.readFlash(
-        chunkOffset,
-        currentChunkSize,
-        (_packet, received) => {
-          const chunkReceived = Math.min(received, currentChunkSize);
-          const overallReceived = chunkBase + chunkReceived;
-          const progressValue = length
-            ? Math.min(100, Math.floor((overallReceived / length) * 100))
-            : 0;
-          let progressLabel =
-            'Downloading ' +
-            displayLabel +
-            ' @ ' +
-            baudLabel +
-            ' — ' +
-            overallReceived.toLocaleString() +
-            ' of ' +
-            length.toLocaleString() +
-            ' bytes';
-          if (downloadCancelRequested.value) {
-            progressLabel =
-              'Stopping download of ' +
+  return await runLoaderOperation(async () => {
+    try {
+      while (totalReceived < length) {
+        if (downloadCancelRequested.value) {
+          cancelled = true;
+          break;
+        }
+        const remaining = length - totalReceived;
+        const currentChunkSize = Math.min(chunkSize, remaining);
+        const chunkOffset = offset + totalReceived;
+        const chunkBase = totalReceived;
+        const chunkBuffer = await loaderInstance.readFlash(
+          chunkOffset,
+          currentChunkSize,
+          (_packet, received) => {
+            const chunkReceived = Math.min(received, currentChunkSize);
+            const overallReceived = chunkBase + chunkReceived;
+            const progressValue = length
+              ? Math.min(100, Math.floor((overallReceived / length) * 100))
+              : 0;
+            let progressLabel =
+              'Downloading ' +
               displayLabel +
-              ' after current chunk... (' +
+              ' @ ' +
+              baudLabel +
+              ' - ' +
               overallReceived.toLocaleString() +
               ' of ' +
               length.toLocaleString() +
-              ' bytes)';
+              ' bytes';
+            if (downloadCancelRequested.value) {
+              progressLabel =
+                'Stopping download of ' +
+                displayLabel +
+                ' after current chunk... (' +
+                overallReceived.toLocaleString() +
+                ' of ' +
+                length.toLocaleString() +
+                ' bytes)';
+            }
+            if (!suppressStatus) {
+              downloadProgress.visible = true;
+              downloadProgress.value = progressValue;
+              downloadProgress.label = progressLabel;
+              flashReadStatusType.value = 'info';
+              flashReadStatus.value = progressLabel;
+            }
+            if (typeof onProgress === 'function') {
+              onProgress({
+                value: progressValue,
+                label: progressLabel,
+                written: overallReceived,
+                total: length,
+              });
+            }
           }
-          if (!suppressStatus) {
-            downloadProgress.visible = true;
-            downloadProgress.value = progressValue;
-            downloadProgress.label = progressLabel;
-            flashReadStatusType.value = 'info';
-            flashReadStatus.value = progressLabel;
-          }
-          if (typeof onProgress === 'function') {
-            onProgress({
-              value: progressValue,
-              label: progressLabel,
-              written: overallReceived,
-              total: length,
-            });
-          }
+        );
+        if (chunkBuffer.length !== currentChunkSize) {
+          throw new Error(
+            'Incomplete flash chunk (expected ' +
+            currentChunkSize +
+            ' bytes, received ' +
+            chunkBuffer.length +
+            ').'
+          );
         }
-      );
-      if (chunkBuffer.length !== currentChunkSize) {
+        chunkBuffers.push(chunkBuffer);
+        totalReceived += chunkBuffer.length;
+        if (downloadCancelRequested.value) {
+          cancelled = true;
+          break;
+        }
+      }
+
+      if (cancelled) {
+        throw new Error(CANCEL_ERROR_MESSAGE);
+      }
+
+      if (totalReceived !== length) {
         throw new Error(
-          'Incomplete flash chunk (expected ' +
-          currentChunkSize +
+          'Incomplete flash read (expected ' +
+          length +
           ' bytes, received ' +
-          chunkBuffer.length +
+          totalReceived +
           ').'
         );
       }
-      chunkBuffers.push(chunkBuffer);
-      totalReceived += chunkBuffer.length;
-      if (downloadCancelRequested.value) {
-        cancelled = true;
-        break;
+
+      if (chunkBuffers.length === 1) {
+        buffer = chunkBuffers[0];
+      } else {
+        buffer = new Uint8Array(totalReceived);
+        let writeOffset = 0;
+        for (const chunk of chunkBuffers) {
+          buffer.set(chunk, writeOffset);
+          writeOffset += chunk.length;
+        }
       }
-    }
-
-    if (cancelled) {
-      throw new Error(CANCEL_ERROR_MESSAGE);
-    }
-
-    if (totalReceived !== length) {
-      throw new Error(
-        'Incomplete flash read (expected ' +
-        length +
-        ' bytes, received ' +
-        totalReceived +
-        ').'
-      );
-    }
-
-    if (chunkBuffers.length === 1) {
-      buffer = chunkBuffers[0];
-    } else {
-      buffer = new Uint8Array(totalReceived);
-      let writeOffset = 0;
-      for (const chunk of chunkBuffers) {
-        buffer.set(chunk, writeOffset);
-        writeOffset += chunk.length;
+    } finally {
+      if (cancelled && !suppressStatus) {
+        downloadProgress.visible = false;
       }
+      downloadCancelRequested.value = false;
     }
-  } finally {
-    if (cancelled && !suppressStatus) {
+
+    const blob = new Blob([toArrayBuffer(buffer)], { type: 'application/octet-stream' });
+    const baseName =
+      fileName ||
+      sanitizeFileName((label || 'flash') + '_' + offsetHex + '_' + lengthHex, 'flash_' + offsetHex + '_' + lengthHex);
+    const finalName = baseName.endsWith('.bin') ? baseName : baseName + '.bin';
+
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = finalName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+    if (!suppressStatus) {
       downloadProgress.visible = false;
+      downloadProgress.value = 100;
+      downloadProgress.label = 'Download complete @ ' + baudLabel;
+      flashReadStatusType.value = 'success';
+      flashReadStatus.value =
+        'Downloaded ' +
+        finalName +
+        ' (' +
+        length.toLocaleString() +
+        ' bytes) @ ' +
+        baudLabel +
+        '.';
     }
-    downloadCancelRequested.value = false;
-  }
-
-  const blob = new Blob([toArrayBuffer(buffer)], { type: 'application/octet-stream' });
-  const baseName =
-    fileName ||
-    sanitizeFileName((label || 'flash') + '_' + offsetHex + '_' + lengthHex, 'flash_' + offsetHex + '_' + lengthHex);
-  const finalName = baseName.endsWith('.bin') ? baseName : baseName + '.bin';
-
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = finalName;
-  document.body.appendChild(anchor);
-  anchor.click();
-  document.body.removeChild(anchor);
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-
-  if (!suppressStatus) {
-    downloadProgress.visible = false;
-    downloadProgress.value = 100;
-    downloadProgress.label = 'Download complete @ ' + baudLabel;
-    flashReadStatusType.value = 'success';
-    flashReadStatus.value =
-      'Downloaded ' +
-      finalName +
-      ' (' +
-      length.toLocaleString() +
-      ' bytes) @ ' +
-      baudLabel +
-      '.';
-  }
-  if (typeof onProgress === 'function') {
-    onProgress({
-      value: 100,
-      label: 'Download complete.',
-      written: length,
-      total: length,
-    });
-  }
-  appendLog(
-    'Downloaded ' + displayLabel + ' to ' + finalName + ' @ ' + baudLabel + '.',
-    '[ESPConnect-Debug]'
-  );
-  return finalName;
+    if (typeof onProgress === 'function') {
+      onProgress({
+        value: 100,
+        label: 'Download complete.',
+        written: length,
+        total: length,
+      });
+    }
+    appendLog(
+      'Downloaded ' + displayLabel + ' to ' + finalName + ' @ ' + baudLabel + '.',
+      '[ESPConnect-Debug]'
+    );
+    return finalName;
+  });
 }
 
 // Handle flash download flows (manual, partition, all, used, custom).
@@ -7001,7 +7033,8 @@ async function handleEraseFlash(payload = { mode: 'full' }) {
     flashReadStatusType.value = 'warning';
     return;
   }
-  if (!loaderInstance.eraseFlash) {
+  const eraseFlashFn = (loaderInstance as ESPLoader & { eraseFlash?: () => Promise<void> }).eraseFlash;
+  if (!eraseFlashFn) {
     flashReadStatusType.value = 'warning';
     flashReadStatus.value = 'Full flash erase is not supported by this loader.';
     return;
@@ -7030,7 +7063,7 @@ async function handleEraseFlash(payload = { mode: 'full' }) {
     maintenanceBusy.value = true;
     flashReadStatusType.value = 'info';
     flashReadStatus.value = 'Erasing entire flash...';
-    await loaderInstance.eraseFlash();
+    await runLoaderOperation(() => eraseFlashFn.call(loaderInstance));
     flashReadStatusType.value = 'success';
     flashReadStatus.value = 'Flash erase complete.';
     appendLog('Entire flash erased.', '[ESPConnect-Debug]');

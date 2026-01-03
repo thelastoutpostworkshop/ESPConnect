@@ -1,4 +1,5 @@
 import type { ChipMetadata } from './types';
+import type { ESPLoader } from 'tasmota-webserial-esptool';
 
 // ESP32 constants and metadata readers (mirrors legacy target structure)
 export const CHIP_NAME = 'ESP32';
@@ -68,8 +69,8 @@ export const SPI_MISO_DLEN_OFFS = 0x2c;
 //   readReg: (addr: number) => Promise<number>;
 // };
 
-export async function readEsp32Metadata(loader: any): Promise<ChipMetadata> {
-  const readEfuse = async (offset: number) => loader.readReg(EFUSE_RD_REG_BASE + 4 * offset);
+export async function readEsp32Metadata(loader: ESPLoader): Promise<ChipMetadata> {
+  const readEfuse = async (offset: number) => loader.readRegister(EFUSE_RD_REG_BASE + 4 * offset);
 
   const getPkgVersion = async () => {
     const word3 = await readEfuse(3);
@@ -81,7 +82,7 @@ export async function readEsp32Metadata(loader: any): Promise<ChipMetadata> {
   const getChipRevision = async () => {
     const word3 = await readEfuse(3);
     const word5 = await readEfuse(5);
-    const apbCtlDate = await loader.readReg(DR_REG_SYSCON_BASE + 0x7c);
+    const apbCtlDate = await loader.readRegister(DR_REG_SYSCON_BASE + 0x7c);
 
     const revBit0 = (word3 >> 15) & 0x1;
     const revBit1 = (word5 >> 20) & 0x1;
@@ -176,7 +177,7 @@ export async function readEsp32Metadata(loader: any): Promise<ChipMetadata> {
   };
 
   const getCrystalFreq = async () => {
-    const uartDiv = (await loader.readReg(UART_CLKDIV_REG)) & UART_CLKDIV_MASK;
+    const uartDiv = (await loader.readRegister(UART_CLKDIV_REG)) & UART_CLKDIV_MASK;
     // const baud = loader.transport?.baudrate ?? 115200;
     const baud = 115200;
     const etsXtal = (baud * uartDiv) / 1000000 / XTAL_CLK_DIVIDER;

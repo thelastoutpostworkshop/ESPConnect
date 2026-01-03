@@ -75,20 +75,14 @@ export interface ConnectHandshakeResult {
 }
 
 export interface EsptoolClient {
-  loader: CompatibleLoader;
+  loader: ESPLoader;
   transport: CompatibleTransport;
   connectAndHandshake: () => Promise<ConnectHandshakeResult>;
   readChipMetadata: () => Promise<ChipMetadata>;
   syncWithStub: () => Promise<void>;
-}
-
-export type CompatibleLoader = ESPLoader & {
-  baudrate: number;
-  readReg: (addr: number) => Promise<number>;
-  writeReg: (addr: number, value: number, mask?: number, delayUs?: number) => Promise<void>;
+  runWithBusy: <T>(fn: () => Promise<T>) => Promise<T>;
   flashMd5sum: (addr: number, size: number) => Promise<string>;
-  eraseFlash?: () => Promise<void>;
-};
+}
 
 const MD5_TIMEOUT_PER_MB = 8000;
 const sleep = (ms = 50) => new Promise(resolve => setTimeout(resolve, ms));
@@ -97,13 +91,13 @@ export class CompatibleTransport {
   device: SerialPort;
   baudrate: number;
   tracing: boolean;
-  loader: CompatibleLoader;
+  loader: ESPLoader;
   private readonly isBusy: BusyGetter;
 
   constructor(
     device: SerialPort,
     tracing: boolean,
-    loader: CompatibleLoader,
+    loader: ESPLoader,
     isBusy: BusyGetter,
   ) {
     this.device = device;
@@ -198,51 +192,12 @@ function md5ToHex(md5: Uint8Array) {
     .join('');
 }
 
-function getInputBuffer(loader: CompatibleLoader | null | undefined) {
+function getInputBuffer(loader: ESPLoader | null | undefined) {
   try {
     return (loader as any)?._inputBuffer as number[] | undefined;
   } catch {
     return undefined;
   }
-}
-
-function decorateLoader(loader: ESPLoader, setBusy: BusySetter): CompatibleLoader {
-  const decorated = loader as CompatibleLoader;
-  decorated.baudrate = decorated.baudrate ?? DEFAULT_ROM_BAUD;
-
-  const runBusy = async <T>(fn: () => Promise<T>) => {
-    setBusy(true);
-    try {
-      return await fn();
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const baseReadFlash = loader.readFlash.bind(loader);
-  decorated.readFlash = async (...args: Parameters<ESPLoader['readFlash']>) =>
-    runBusy(() => baseReadFlash(...args));
-
-  decorated.readReg = async (addr: number) => runBusy(() => loader.readRegister(addr));
-
-  decorated.writeReg = async (addr: number, value: number, mask = 0xffffffff, delayUs = 0) =>
-    runBusy(() => loader.writeRegister(addr, value, mask, delayUs));
-
-  decorated.flashMd5sum = async (addr: number, size: number) =>
-    runBusy(async () => {
-      const timeout = timeoutPerMb(MD5_TIMEOUT_PER_MB, size);
-      const payload = pack('<IIII', addr, size, 0, 0);
-      const [, res] = await loader.checkCommand(ESP_SPI_FLASH_MD5, payload, 0, timeout);
-      const md5 = new Uint8Array(res ?? []);
-      return md5ToHex(md5);
-    });
-
-  const baseEraseFlash = (loader as any).eraseFlash?.bind(loader);
-  if (baseEraseFlash) {
-    (decorated as any).eraseFlash = async () => runBusy(() => baseEraseFlash());
-  }
-
-  return decorated;
 }
 
 export function createEsptoolClient({
@@ -253,18 +208,27 @@ export function createEsptoolClient({
   debugLogging = false,
   onStatus,
 }: EsptoolOptions): EsptoolClient {
-  let busy = false;
+  let busyCount = 0;
   const setBusy: BusySetter = value => {
-    busy = value;
+    busyCount = Math.max(0, busyCount + (value ? 1 : -1));
   };
-  const isBusy: BusyGetter = () => busy;
+  const isBusy: BusyGetter = () => busyCount > 0;
+
+  const runWithBusy = async <T>(fn: () => Promise<T>) => {
+    setBusy(true);
+    try {
+      return await fn();
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const logger = createLogger(terminal, debugLogging);
   const esp_loader = new ESPLoader(port, logger);
-  let loader = decorateLoader(esp_loader, setBusy);
+  let loader = esp_loader;
   loader.debug = debugLogging;
 
-  const loaderProxy = new Proxy({} as CompatibleLoader, {
+  const loaderProxy = new Proxy({} as ESPLoader, {
     get(_target, prop) {
       const value = (loader as any)[prop];
       if (typeof value === 'function') {
@@ -304,28 +268,27 @@ export function createEsptoolClient({
   let client: EsptoolClient;
 
   async function syncWithStub(): Promise<void> {
-    try {
-      status({
-        translationKey: 'dialogs.reconnectingStub',
-        message: 'Reconnect and sync with the stub',
-        showInDialog: false,
-      });
-      await loader.reconnect();
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      status({ message: `Could not reconnect (${message})`, showInDialog: false });
-      console.error("Reconnect");
-      console.error(e);
-    } finally {
-      setBusy(false);
-    }
+    await runWithBusy(async () => {
+      try {
+        status({
+          translationKey: 'dialogs.reconnectingStub',
+          message: 'Reconnect and sync with the stub',
+          showInDialog: false,
+        });
+        await loader.reconnect();
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        status({ message: `Could not reconnect (${message})`, showInDialog: false });
+        console.error("Reconnect");
+        console.error(e);
+      }
+    });
   }
 
   // Open the serial port, talk to the ROM bootloader, load the stub flasher, optionally raise baud,
   // and return the detected chip name plus MAC/security metadata.
   async function connectAndHandshake(): Promise<ConnectHandshakeResult> {
-    setBusy(true);
-    try {
+    return await runWithBusy(async () => {
       status({
         translationKey: 'dialogs.openingSerialPort',
         message: 'Opening serial port...',
@@ -334,7 +297,6 @@ export function createEsptoolClient({
       if (!port.readable || !port.writable) {
         await port.open({ baudRate: DEFAULT_ROM_BAUD });
       }
-      loader.baudrate = DEFAULT_ROM_BAUD;
       transport.baudrate = DEFAULT_ROM_BAUD;
 
       status({
@@ -353,11 +315,11 @@ export function createEsptoolClient({
         showInDialog: true,
       });
       const stub = await loader.runStub();
-      loader = decorateLoader(stub, setBusy);
+      loader = stub;
+      transport.loader = loader;
       loader.debug = debugLogging;
 
       if (desiredBaud && desiredBaud !== DEFAULT_ROM_BAUD) {
-        loader.baudrate = desiredBaud;
         await loader.setBaudrate(desiredBaud);
         transport.baudrate = desiredBaud;
       }
@@ -378,14 +340,11 @@ export function createEsptoolClient({
 
       const result: ConnectHandshakeResult = { chipName, macAddress, securityFacts, flashSize: loader.flashSize };
       return result;
-    } finally {
-      setBusy(false);
-    }
+    });
   }
 
   async function readChipMetadata(): Promise<ChipMetadata> {
-    setBusy(true);
-    try {
+    return await runWithBusy(async () => {
       const chipFamily = loader.getChipFamily();
 
       if (chipFamily === CHIP_FAMILY_ESP32S3) {
@@ -447,9 +406,17 @@ export function createEsptoolClient({
         blockVersionMajor: undefined,
         blockVersionMinor: undefined,
       };
-    } finally {
-      setBusy(false);
-    }
+    });
+  }
+
+  async function flashMd5sum(addr: number, size: number): Promise<string> {
+    return await runWithBusy(async () => {
+      const timeout = timeoutPerMb(MD5_TIMEOUT_PER_MB, size);
+      const payload = pack('<IIII', addr, size, 0, 0);
+      const [, res] = await loader.checkCommand(ESP_SPI_FLASH_MD5, payload, 0, timeout);
+      const md5 = new Uint8Array(res ?? []);
+      return md5ToHex(md5);
+    });
   }
 
   client = {
@@ -458,6 +425,8 @@ export function createEsptoolClient({
     connectAndHandshake,
     readChipMetadata,
     syncWithStub,
+    runWithBusy,
+    flashMd5sum,
   };
 
   return client;

@@ -1,4 +1,5 @@
 import type { ChipMetadata } from './types';
+import type { ESPLoader } from 'tasmota-webserial-esptool';
 
 // ESP32-S3 register and layout constants (mirrors original target structure)
 export const IMAGE_CHIP_ID = 9;
@@ -45,18 +46,18 @@ export const MEMORY_MAP: Array<[number, number, string]> = [
 //   chipName?: string;
 // };
 
-export async function readEsp32S3Metadata(loader: any): Promise<ChipMetadata> {
-  const readReg = (addr: number) => loader.readReg(addr);
+export async function readEsp32S3Metadata(loader: ESPLoader): Promise<ChipMetadata> {
+  const readRegister = (addr: number) => loader.readRegister(addr);
 
-  const getPkgVersion = async () => ((await readReg(EFUSE_BLOCK1_ADDR + 4 * 3)) >> 21) & 0x07;
-  const getBlkVersionMajor = async () => ((await readReg(EFUSE_BLOCK2_ADDR + 4 * 4)) >> 0) & 0x03;
-  const getBlkVersionMinor = async () => ((await readReg(EFUSE_BLOCK1_ADDR + 4 * 3)) >> 24) & 0x07;
+  const getPkgVersion = async () => ((await readRegister(EFUSE_BLOCK1_ADDR + 4 * 3)) >> 21) & 0x07;
+  const getBlkVersionMajor = async () => ((await readRegister(EFUSE_BLOCK2_ADDR + 4 * 4)) >> 0) & 0x03;
+  const getBlkVersionMinor = async () => ((await readRegister(EFUSE_BLOCK1_ADDR + 4 * 3)) >> 24) & 0x07;
   const getRawMinor = async () => {
-    const hi = ((await readReg(EFUSE_BLOCK1_ADDR + 4 * 5)) >> 23) & 0x01;
-    const low = ((await readReg(EFUSE_BLOCK1_ADDR + 4 * 3)) >> 18) & 0x07;
+    const hi = ((await readRegister(EFUSE_BLOCK1_ADDR + 4 * 5)) >> 23) & 0x01;
+    const low = ((await readRegister(EFUSE_BLOCK1_ADDR + 4 * 3)) >> 18) & 0x07;
     return (hi << 3) + low;
   };
-  const getRawMajor = async () => ((await readReg(EFUSE_BLOCK1_ADDR + 4 * 5)) >> 24) & 0x03;
+  const getRawMajor = async () => ((await readRegister(EFUSE_BLOCK1_ADDR + 4 * 5)) >> 24) & 0x03;
   const isEco0 = async (minorRaw: number) =>
     (minorRaw & 0x7) === 0 && (await getBlkVersionMajor()) === 1 && (await getBlkVersionMinor()) === 1;
   const getMinorChipVersion = async () => {
@@ -71,11 +72,11 @@ export async function readEsp32S3Metadata(loader: any): Promise<ChipMetadata> {
   };
 
   const getFlashCap = async () => {
-    const registerValue = await readReg(EFUSE_BASE + 0x044 + 4 * 3);
+    const registerValue = await readRegister(EFUSE_BASE + 0x044 + 4 * 3);
     return (registerValue >> 27) & 0x07;
   };
   const getFlashVendor = async () => {
-    const registerValue = await readReg(EFUSE_BASE + 0x044 + 4 * 4);
+    const registerValue = await readRegister(EFUSE_BASE + 0x044 + 4 * 4);
     const vendorId = (registerValue >> 0) & 0x07;
     const vendorMap: Record<number, string> = {
       1: 'XMC',
@@ -87,11 +88,11 @@ export async function readEsp32S3Metadata(loader: any): Promise<ChipMetadata> {
     return vendorMap[vendorId] || '';
   };
   const getPsramCap = async () => {
-    const registerValue = await readReg(EFUSE_BASE + 0x044 + 4 * 4);
+    const registerValue = await readRegister(EFUSE_BASE + 0x044 + 4 * 4);
     return (registerValue >> 3) & 0x03;
   };
   const getPsramVendor = async () => {
-    const registerValue = await readReg(EFUSE_BASE + 0x044 + 4 * 4);
+    const registerValue = await readRegister(EFUSE_BASE + 0x044 + 4 * 4);
     const vendorId = (registerValue >> 7) & 0x03;
     const vendorMap: Record<number, string> = {
       1: 'AP_3v3',
@@ -158,9 +159,9 @@ export async function readEsp32S3Metadata(loader: any): Promise<ChipMetadata> {
           .join(':');
       }
     }
-    let mac0 = await readReg(MAC_EFUSE_REG);
+    let mac0 = await readRegister(MAC_EFUSE_REG);
     mac0 = mac0 >>> 0;
-    let mac1 = await readReg(MAC_EFUSE_REG + 4);
+    let mac1 = await readRegister(MAC_EFUSE_REG + 4);
     mac1 = (mac1 >>> 0) & 0x0000ffff;
     const mac = new Uint8Array(6);
     mac[0] = (mac1 >> 8) & 0xff;

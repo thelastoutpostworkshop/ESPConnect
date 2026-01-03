@@ -1,4 +1,5 @@
 import type { ChipMetadata } from './types';
+import type { ESPLoader } from 'tasmota-webserial-esptool';
 
 // ESP32-C5 constants and metadata helpers (mirrors legacy target structure)
 export const CHIP_NAME = 'ESP32-C5';
@@ -106,8 +107,8 @@ export const KEY_PURPOSES: Record<number, string> = {
 //   // info?: (msg: string) => void;
 // };
 
-export async function readEsp32C5Metadata(loader: any): Promise<ChipMetadata> {
-  const readEfuse = async (wordIndex: number) => loader.readReg(EFUSE_BLOCK1_ADDR + 4 * wordIndex);
+export async function readEsp32C5Metadata(loader: ESPLoader): Promise<ChipMetadata> {
+  const readEfuse = async (wordIndex: number) => loader.readRegister(EFUSE_BLOCK1_ADDR + 4 * wordIndex);
 
   const getPkgVersion = async () => {
     const word2 = await readEfuse(2);
@@ -135,7 +136,7 @@ export async function readEsp32C5Metadata(loader: any): Promise<ChipMetadata> {
   const getChipFeatures = async () => ['Wi-Fi 6 (dual-band)', 'BT 5 (LE)'];
 
   const getCrystalFreq = async () => {
-    const uartDiv = (await loader.readReg(UART_CLKDIV_REG)) & 0xfffff;
+    const uartDiv = (await loader.readRegister(UART_CLKDIV_REG)) & 0xfffff;
     // const baud = loader.transport?.baudrate ?? 115200;
     const baud = 115200;
     const etsXtal = (baud * uartDiv) / 1000000 / XTAL_CLK_DIVIDER;

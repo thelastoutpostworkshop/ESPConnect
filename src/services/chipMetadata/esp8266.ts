@@ -1,4 +1,5 @@
 import type { ChipMetadata } from './types';
+import type { ESPLoader } from 'tasmota-webserial-esptool';
 
 // ESP8266 constants and metadata helpers (mirrors legacy target structure)
 export const CHIP_NAME = 'ESP8266';
@@ -57,10 +58,10 @@ export const SPI_W0_OFFS = 0x40;
 //   // transport?: { baudrate?: number };
 // };
 
-export async function readEsp8266Metadata(loader: any): Promise<ChipMetadata> {
+export async function readEsp8266Metadata(loader: ESPLoader): Promise<ChipMetadata> {
   const readEfuse = async (offset: number) => {
     const addr = EFUSE_RD_REG_BASE + 4 * offset;
-    return loader.readReg(addr);
+    return loader.readRegister(addr);
   };
 
   const getChipDescription = async () => {
@@ -78,7 +79,7 @@ export async function readEsp8266Metadata(loader: any): Promise<ChipMetadata> {
   };
 
   const getCrystalFreq = async () => {
-    const uartDiv = (await loader.readReg(UART_CLKDIV_REG)) & UART_CLKDIV_MASK;
+    const uartDiv = (await loader.readRegister(UART_CLKDIV_REG)) & UART_CLKDIV_MASK;
     // const baud = loader.transport?.baudrate ?? 115200;
     const baud =  115200;
     const etsXtal = (baud * uartDiv) / 1000000 / XTAL_CLK_DIVIDER;

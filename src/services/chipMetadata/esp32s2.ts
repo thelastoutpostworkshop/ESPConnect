@@ -1,4 +1,5 @@
 import type { ChipMetadata } from './types';
+import type { ESPLoader } from 'tasmota-webserial-esptool';
 
 // ESP32-S2 register and layout constants (mirrors original target structure)
 export const IMAGE_CHIP_ID = 2;
@@ -91,22 +92,22 @@ export const BOOTLOADER_FLASH_OFFSET = 0x1000;
 //   chipName?: string;
 // };
 
-export async function readEsp32S2Metadata(loader: any): Promise<ChipMetadata> {
-  const readReg = (addr: number) => loader.readReg(addr);
+export async function readEsp32S2Metadata(loader: ESPLoader): Promise<ChipMetadata> {
+  const readRegister = (addr: number) => loader.readRegister(addr);
 
   const getPkgVersion = async () => {
-    const word = await readReg(EFUSE_BLOCK1_ADDR + 4 * 4);
+    const word = await readRegister(EFUSE_BLOCK1_ADDR + 4 * 4);
     return (word >> 0) & 0x0f;
   };
   const getMinorChipVersion = async () => {
-    const hi = ((await readReg(EFUSE_BLOCK1_ADDR + 4 * 3)) >> 20) & 0x01;
-    const low = ((await readReg(EFUSE_BLOCK1_ADDR + 4 * 4)) >> 4) & 0x07;
+    const hi = ((await readRegister(EFUSE_BLOCK1_ADDR + 4 * 3)) >> 20) & 0x01;
+    const low = ((await readRegister(EFUSE_BLOCK1_ADDR + 4 * 4)) >> 4) & 0x07;
     return (hi << 3) + low;
   };
   const getMajorChipVersion = async () =>
-    ((await readReg(EFUSE_BLOCK1_ADDR + 4 * 3)) >> 18) & 0x03;
-  const getFlashCap = async () => ((await readReg(EFUSE_BLOCK1_ADDR + 4 * 3)) >> 21) & 0x0f;
-  const getPsramCap = async () => ((await readReg(EFUSE_BLOCK1_ADDR + 4 * 3)) >> 28) & 0x0f;
+    ((await readRegister(EFUSE_BLOCK1_ADDR + 4 * 3)) >> 18) & 0x03;
+  const getFlashCap = async () => ((await readRegister(EFUSE_BLOCK1_ADDR + 4 * 3)) >> 21) & 0x0f;
+  const getPsramCap = async () => ((await readRegister(EFUSE_BLOCK1_ADDR + 4 * 3)) >> 28) & 0x0f;
 
   const pkgVersion = await safeCall(getPkgVersion);
   const majorVersion = await safeCall(getMajorChipVersion);
@@ -160,8 +161,8 @@ export async function readEsp32S2Metadata(loader: any): Promise<ChipMetadata> {
           .join(':');
       }
     }
-    const mac0 = await readReg(MAC_EFUSE_REG);
-    const mac1 = await readReg(MAC_EFUSE_REG + 4);
+    const mac0 = await readRegister(MAC_EFUSE_REG);
+    const mac1 = await readRegister(MAC_EFUSE_REG + 4);
     const mac = new Uint8Array(6);
     mac[0] = (mac1 >> 8) & 0xff;
     mac[1] = mac1 & 0xff;

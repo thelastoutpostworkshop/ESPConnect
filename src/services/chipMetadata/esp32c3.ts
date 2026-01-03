@@ -1,4 +1,5 @@
 import type { ChipMetadata } from './types';
+import type { ESPLoader } from 'tasmota-webserial-esptool';
 
 // ESP32-C3 register and layout constants (mirrors original target structure)
 export const CHIP_NAME = 'ESP32-C3';
@@ -40,27 +41,27 @@ export const MEMORY_MAP: Array<[number, number, string]> = [
 //   chipName?: string;
 // };
 
-export async function readEsp32C3Metadata(loader: any): Promise<ChipMetadata> {
-  const readReg = (addr: number) => loader.readReg(addr);
+export async function readEsp32C3Metadata(loader: ESPLoader): Promise<ChipMetadata> {
+  const readRegister = (addr: number) => loader.readRegister(addr);
 
   const getPkgVersion = async () => {
-    const word3 = await readReg(EFUSE_BASE + 0x044 + 4 * 3);
+    const word3 = await readRegister(EFUSE_BASE + 0x044 + 4 * 3);
     return (word3 >> 21) & 0x07;
   };
   const getMinorChipVersion = async () => {
-    const hi = ((await readReg(EFUSE_BASE + 0x044 + 4 * 5)) >> 23) & 0x01;
-    const low = ((await readReg(EFUSE_BASE + 0x044 + 4 * 3)) >> 18) & 0x07;
+    const hi = ((await readRegister(EFUSE_BASE + 0x044 + 4 * 5)) >> 23) & 0x01;
+    const low = ((await readRegister(EFUSE_BASE + 0x044 + 4 * 3)) >> 18) & 0x07;
     return (hi << 3) + low;
   };
   const getMajorChipVersion = async () =>
-    ((await readReg(EFUSE_BASE + 0x044 + 4 * 5)) >> 24) & 0x03;
+    ((await readRegister(EFUSE_BASE + 0x044 + 4 * 5)) >> 24) & 0x03;
 
   const getFlashCap = async () => {
-    const registerValue = await readReg(EFUSE_BASE + 0x044 + 4 * 3);
+    const registerValue = await readRegister(EFUSE_BASE + 0x044 + 4 * 3);
     return (registerValue >> 27) & 0x07;
   };
   const getFlashVendor = async () => {
-    const registerValue = await readReg(EFUSE_BASE + 0x044 + 4 * 4);
+    const registerValue = await readRegister(EFUSE_BASE + 0x044 + 4 * 4);
     const vendorId = (registerValue >> 0) & 0x07;
     const vendorMap: Record<number, string> = {
       1: 'XMC',
@@ -117,9 +118,9 @@ export async function readEsp32C3Metadata(loader: any): Promise<ChipMetadata> {
           .join(':');
       }
     }
-    let mac0 = await readReg(MAC_EFUSE_REG);
+    let mac0 = await readRegister(MAC_EFUSE_REG);
     mac0 = mac0 >>> 0;
-    let mac1 = await readReg(MAC_EFUSE_REG + 4);
+    let mac1 = await readRegister(MAC_EFUSE_REG + 4);
     mac1 = (mac1 >>> 0) & 0x0000ffff;
     const mac = new Uint8Array(6);
     mac[0] = (mac1 >> 8) & 0xff;

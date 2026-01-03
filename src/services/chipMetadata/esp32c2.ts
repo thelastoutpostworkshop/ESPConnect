@@ -1,4 +1,5 @@
 import type { ChipMetadata } from './types';
+import type { ESPLoader } from 'tasmota-webserial-esptool';
 
 // ESP32-C2 constants and metadata helpers (mirrors legacy target structure)
 export const CHIP_NAME = 'ESP32-C2';
@@ -45,8 +46,8 @@ export const MEMORY_MAP: Array<[number, number, string]> = [
 //   // changeBaud?: () => Promise<void>;
 // };
 
-export async function readEsp32C2Metadata(loader: any): Promise<ChipMetadata> {
-  const readEfuse = async (wordIndex: number) => loader.readReg(MAC_EFUSE_REG + 4 * wordIndex);
+export async function readEsp32C2Metadata(loader: ESPLoader): Promise<ChipMetadata> {
+  const readEfuse = async (wordIndex: number) => loader.readRegister(MAC_EFUSE_REG + 4 * wordIndex);
 
   const getPkgVersion = async () => {
     const word1 = await readEfuse(1);
@@ -69,7 +70,7 @@ export async function readEsp32C2Metadata(loader: any): Promise<ChipMetadata> {
   const getChipFeatures = async () => ['Wi-Fi', 'BLE'];
 
   const getCrystalFreq = async () => {
-    const uartDiv = (await loader.readReg(UART_CLKDIV_REG)) & UART_CLKDIV_MASK;
+    const uartDiv = (await loader.readRegister(UART_CLKDIV_REG)) & UART_CLKDIV_MASK;
     // const baud = loader.transport?.baudrate ?? 115200;
     const baud =  115200;
     const etsXtal = (baud * uartDiv) / 1000000 / XTAL_CLK_DIVIDER;

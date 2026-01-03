@@ -1,4 +1,5 @@
 import type { ChipMetadata } from './types';
+import type { ESPLoader } from 'tasmota-webserial-esptool';
 
 // ESP32-P4 constants and metadata helpers (mirrors legacy target structure)
 export const CHIP_NAME = 'ESP32-P4';
@@ -99,8 +100,8 @@ export const KEY_PURPOSES: Record<number, string> = {
 //   readReg: (addr: number) => Promise<number>;
 // };
 
-export async function readEsp32P4Metadata(loader: any): Promise<ChipMetadata> {
-  const readEfuse = async (wordIndex: number) => loader.readReg(EFUSE_BLOCK1_ADDR + 4 * wordIndex);
+export async function readEsp32P4Metadata(loader: ESPLoader): Promise<ChipMetadata> {
+  const readEfuse = async (wordIndex: number) => loader.readRegister(EFUSE_BLOCK1_ADDR + 4 * wordIndex);
 
   const getPkgVersion = async () => {
     const word2 = await readEfuse(2);
