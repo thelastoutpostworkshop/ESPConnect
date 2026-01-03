@@ -136,7 +136,7 @@
         packageFormFactor: 'Format du composant',
         revision: 'Révision',
         cpuCores: 'Coeurs',
-        maxCpuFrequency: 'Féquence CPU max',
+        maxCpuFrequency: 'Fréquence CPU max',
         embeddedFlash: 'Capacité de la Flash',
         embeddedPsr: 'Capacité de la PSRAM',
         flashId: 'Id de la Flash',
