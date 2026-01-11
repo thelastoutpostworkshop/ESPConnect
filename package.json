@@ -42,7 +42,7 @@
     "@electron-forge/plugin-auto-unpack-natives": "^7.6.0",
     "@electron/fuses": "^2.0.0",
     "@playwright/test": "^1.57.0",
-    "@types/node": "^25.0.3",
+    "@types/node": "^25.0.6",
     "@vitejs/plugin-vue": "^6.0.1",
     "electron": "^39.2.7",
     "sass": "^1.80.0",
