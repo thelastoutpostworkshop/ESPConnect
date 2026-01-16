@@ -670,6 +670,7 @@ import { useFatfsManager, useLittlefsManager, useSpiffsManager } from './composa
 import { useDialogs } from './composables/useDialogs';
 import { getLanguage, setLanguage, SupportedLocale } from './plugins/i18n';
 import { readPartitionTable } from './utils/partitions';
+import { detectActiveOtaSlot } from './utils/ota';
 import type { ESPLoader } from 'tasmota-webserial-esptool';
 import { createEsptoolClient, requestSerialPort, type CompatibleTransport, type EsptoolClient, type StatusPayload } from './services/esptoolClient';
 import {
@@ -4624,51 +4625,8 @@ function extractAppDescriptor(buffer: Uint8Array): AppDescriptor | null {
   return null;
 }
 
-// Determine the active OTA slot from otadata contents.
-const OTA_DATA_SECTOR_BYTES = 0x1000;
-
-function detectActiveOtaSlot(otadata: Uint8Array, otaEntries: PartitionTableEntry[]) {
-  const otaCount = otaEntries?.length ?? 0;
-  if (!otadata || !otadata.length || !otaCount) {
-    return { slotId: null, summary: 'Active slot unknown.' };
-  }
-  const entryCount = Math.min(Math.floor(otadata.length / OTA_SELECT_ENTRY_SIZE), otaCount > 1 ? 2 : 1);
-  const entries = [];
-  for (let index = 0; index < entryCount; index += 1) {
-    const base = index * OTA_SELECT_ENTRY_SIZE;
-    const seq = readUint32LE(otadata, base);
-    if (!seq || Number.isNaN(seq) || seq === 0xffffffff || seq === 0xfffffffe || seq >= 0x80000000) {
-      continue;
-    }
-    const slotIndex = (seq - 1) % otaCount;
-    if (slotIndex < 0 || slotIndex >= otaCount) {
-      continue;
-    }
-    const stateOffset = base + 16;
-    const state = stateOffset < otadata.length ? otadata[stateOffset] : null;
-    entries.push({
-      seq,
-      slotIndex,
-      state,
-    });
-  }
-  if (!entries.length) {
-    return { slotId: null, summary: 'Active slot unknown.' };
-  }
-  entries.sort((a, b) => b.seq - a.seq);
-  const winner = entries[0];
-  const slotEntry = otaEntries[winner.slotIndex];
-  if (!slotEntry) {
-    return { slotId: null, summary: 'Active slot unknown.' };
-  }
-  const slotId = `ota_${winner.slotIndex}`;
-  return {
-    slotId,
-    summary: `Active slot: ${slotId} (sequence ${winner.seq})`,
-  };
-}
-
 // Scan application partitions to build metadata and identify the active slot.
+const OTA_DATA_SECTOR_BYTES = 0x1000;
 async function analyzeAppPartitions(loaderInstance: ESPLoader, partitions: PartitionTableEntry[]) {
   appPartitions.value = [];
   activeAppSlotId.value = null;
@@ -4697,14 +4655,31 @@ async function analyzeAppPartitions(loaderInstance: ESPLoader, partitions: Parti
   const otadataEntry = partitions.find(entry => entry.type === 0x01 && entry.subtype === 0x02);
   if (otadataEntry && otaEntries.length) {
     try {
-      const otadataChunks: Uint8Array[] = [];
-      const primaryOtadata = await loaderInstance.readFlash(otadataEntry.offset, OTA_SELECT_ENTRY_SIZE);
-      otadataChunks.push(primaryOtadata);
+      const maxSectors = Math.min(2, Math.max(1, otaEntries.length));
+      const desiredLength = OTA_DATA_SECTOR_BYTES * maxSectors;
+      const primaryBlock = await loaderInstance.readFlash(
+        otadataEntry.offset,
+        Math.min(desiredLength, Math.max(otadataEntry.size ?? 0, OTA_SELECT_ENTRY_SIZE)),
+      );
 
-      const secondaryOffset = otadataEntry.offset + OTA_DATA_SECTOR_BYTES;
-      if ((otadataEntry.size ?? 0) >= secondaryOffset + OTA_SELECT_ENTRY_SIZE) {
-        const secondaryOtadata = await loaderInstance.readFlash(secondaryOffset, OTA_SELECT_ENTRY_SIZE);
-        otadataChunks.push(secondaryOtadata);
+      const otadataChunks: Uint8Array[] = [];
+      otadataChunks.push(primaryBlock.subarray(0, OTA_SELECT_ENTRY_SIZE));
+
+      // Try to extract the mirrored entry from the same block first; fallback to a direct read.
+      const mirroredStart = OTA_DATA_SECTOR_BYTES;
+      if (primaryBlock.length >= mirroredStart + OTA_SELECT_ENTRY_SIZE) {
+        otadataChunks.push(primaryBlock.subarray(mirroredStart, mirroredStart + OTA_SELECT_ENTRY_SIZE));
+      } else {
+        const secondaryOffset = otadataEntry.offset + OTA_DATA_SECTOR_BYTES;
+        try {
+          const secondaryOtadata = await loaderInstance.readFlash(secondaryOffset, OTA_SELECT_ENTRY_SIZE);
+          if (secondaryOtadata?.length) {
+            otadataChunks.push(secondaryOtadata);
+          }
+        } catch (error) {
+          // Secondary otadata sector is optional; ignore read failures and fall back to primary.
+          appendLog('Secondary OTA data sector unavailable', error);
+        }
       }
 
       const combinedOtadata = new Uint8Array(Math.max(otadataChunks.length, 1) * OTA_SELECT_ENTRY_SIZE);
