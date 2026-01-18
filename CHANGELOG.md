@@ -2,6 +2,21 @@
 
 ## 1.1.7
 
+### Internal runtime
+- Bump tasmota-webserial-esptool 7.3.4 to 9.1.9
+- Bump electron from 39.2.7 to 40.0.0
+
+### Development tooling
+- Bump vitest from 4.0.16 to 4.0.17
+- Bump @electron-forge/cli from	7.10.2 to	7.11.1
+- Bump @electron-forge/maker-deb from	7.10.2 to	7.11.1
+- Bump @electron-forge/maker-dmg from	7.10.2 to	7.11.1
+- Bump @electron-forge/maker-rpm from	7.10.2 to	7.11.1
+- Bump @electron-forge/maker-squirrel from 7.10.2 to	7.11.1
+- Bump @electron-forge/maker-zip from	7.10.2 to	7.11.1
+- Bump @electron-forge/plugin-auto-unpack-natives from 7.10.2 to	7.11.1
+- Bump @types/node	25.0.6	25.0.9
+
 ## 1.1.6
 ### Improvement
 - Serial Monitor now lets you send text input, including Ctrl+C, suggest by ator1811 ([issue #90](https://github.com/thelastoutpostworkshop/ESPConnect/issues/90)).
