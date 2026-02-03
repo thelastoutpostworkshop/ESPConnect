@@ -2,7 +2,7 @@
 
 ## 1.1.8-preview
 ### Improvement
-- Session log now records chip pkgVersion/chipRevision values.
+- Session log now records chip pkgVersion/chipRevision/chip ID values.
 
 ### Documentation
 - Clarified i18n rules: session log entries must remain English-only.

@@ -73,6 +73,7 @@
     copySuccess: '会话日志已复制到剪贴板。',
     copyError: '无法复制日志，请重试。',
     chipMetadata: 'Chip metadata: pkgVersion={pkgVersion}, chipRevision={chipRevision}',
+    chipId: 'Chip ID: {chipId}',
   },
   dialogs: {
     connecting: '连接中',

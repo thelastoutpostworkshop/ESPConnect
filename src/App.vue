@@ -6063,10 +6063,19 @@ async function connect() {
     connected.value = true;
     appendLog(`Handshake complete with ${esp.chipName}. Collecting device details...`, '[ESPConnect-Debug]');
 
+    const englishUnknown = t('deviceInfo.unknown', {}, { locale: 'en' });
+    const chipIdLabel =
+      typeof esp.chipId === 'number' && Number.isFinite(esp.chipId)
+        ? `0x${esp.chipId.toString(16).toUpperCase()}`
+        : englishUnknown;
+    appendLog(
+      t('sessionLog.chipId', { chipId: chipIdLabel }, { locale: 'en' }),
+      '[ESPConnect-Debug]'
+    );
+
     lastFlashBaud.value = currentBaud.value;
 
     const metadata = await client.readChipMetadata();
-    const englishUnknown = t('deviceInfo.unknown', {}, { locale: 'en' });
     const pkgVersionLabel =
       typeof metadata.pkgVersion === 'number' && !Number.isNaN(metadata.pkgVersion)
         ? String(metadata.pkgVersion)

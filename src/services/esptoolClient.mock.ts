@@ -20,6 +20,7 @@ export interface EsptoolOptions {
 
 export interface ConnectHandshakeResult {
   chipName: string;
+  chipId?: number;
   macAddress?: string;
   securityFacts: SecurityFact[];
   flashSize?: string | null;
@@ -94,6 +95,7 @@ export interface EsptoolClient {
 const CHIP_NAME = 'ESP32-S3';
 const MAC_ADDRESS = 'aa:bb:cc:dd:ee:ff';
 const FLASH_SIZE = '16MB';
+const CHIP_ID = 0x32;
 const MOCK_MD5 = 'd41d8cd98f00b204e9800998ecf8427e';
 const PARTITION_TABLE_OFFSET = 0x8000;
 const PARTITION_TABLE_SIZE = 0x400;
@@ -223,6 +225,7 @@ export function createEsptoolClient(options: EsptoolOptions): EsptoolClient {
     ];
     return {
       chipName: CHIP_NAME,
+      chipId: CHIP_ID,
       macAddress: MAC_ADDRESS,
       flashSize: FLASH_SIZE,
       securityFacts,

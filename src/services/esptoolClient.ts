@@ -69,6 +69,7 @@ export async function requestSerialPort(filters?: SerialPortFilter[]) {
 
 export interface ConnectHandshakeResult {
   chipName: string;
+  chipId?: number;
   macAddress?: string;
   securityFacts: SecurityFact[];
   flashSize?: string | null;
@@ -349,6 +350,7 @@ export function createEsptoolClient({
 
       let securityInfo = undefined;
       let securityFacts: SecurityFact[] = [];
+      let chipId: number | undefined = undefined;
       try {
         status({
           translationKey: 'dialogs.gettingSecurityInfo',
@@ -356,12 +358,19 @@ export function createEsptoolClient({
           showInDialog: false,
         });
         securityInfo = await loader.getSecurityInfo();
+        chipId = securityInfo?.chipId;
         securityFacts = buildSecurityFacts(securityInfo, chipName);
       } catch (error) {
         logger.error('Cannot read security information', error);
       }
 
-      const result: ConnectHandshakeResult = { chipName, macAddress, securityFacts, flashSize: loader.flashSize };
+      const result: ConnectHandshakeResult = {
+        chipName,
+        chipId,
+        macAddress,
+        securityFacts,
+        flashSize: loader.flashSize,
+      };
       return result;
     });
   }

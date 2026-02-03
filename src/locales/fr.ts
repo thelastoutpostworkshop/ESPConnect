@@ -47,6 +47,7 @@
     copySuccess: 'Copier le registre de session dans le presse-papier.',
     copyError: 'Incapable de copier le registre.  Veuillez essayer de nouveau.',
     chipMetadata: 'Chip metadata: pkgVersion={pkgVersion}, chipRevision={chipRevision}',
+    chipId: 'Chip ID: {chipId}',
   },
   serialMonitor: {
     title: 'Moniteur série',
