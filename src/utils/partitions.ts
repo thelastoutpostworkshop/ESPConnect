@@ -11,6 +11,8 @@ function logWarn(log: LogFn | undefined, message: string, detail?: unknown) {
 const PROBE_BYTES = 64 * 1024;
 const FAT_SECTOR_SIZE = 512;
 const LITTLEFS_VERSIONS = new Set([0x00020000, 0x00020001]);
+const LITTLEFS_SUPERBLOCK_TAG_PREFIX = 0xf7ff0ff0;
+const LITTLEFS_SUPERBLOCK_MIRROR_DISTANCE = 0x1000;
 const SPIFFS_PAGE_SIZES = [256, 512];
 const asciiEncoder = new TextEncoder();
 const LITTLEFS_MARKER = asciiEncoder.encode('littlefs/');
@@ -43,6 +45,30 @@ function hasLittlefsMarker(data: Uint8Array) {
   return findSequence(data, LITTLEFS_MARKER) >= 0;
 }
 
+function hasSequenceAt(data: Uint8Array, needle: Uint8Array, offset: number) {
+  if (offset < 0 || offset + needle.length > data.length) {
+    return false;
+  }
+  for (let index = 0; index < needle.length; index += 1) {
+    if (data[offset + index] !== needle[index]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function hasLittlefsTagPrefix(index: number, view: DataView) {
+  if (index < 4) {
+    return false;
+  }
+  return view.getUint32(index - 4, true) === LITTLEFS_SUPERBLOCK_TAG_PREFIX;
+}
+
+function hasMirroredLittlefsSuperblock(index: number, data: Uint8Array, view: DataView) {
+  const candidates = [index - LITTLEFS_SUPERBLOCK_MIRROR_DISTANCE, index + LITTLEFS_SUPERBLOCK_MIRROR_DISTANCE];
+  return candidates.some(candidate => hasSequenceAt(data, LITTLEFS_MAGIC, candidate) && hasLittlefsTagPrefix(candidate, view));
+}
+
 function hasLittlefsSuperblock(data: Uint8Array, view: DataView) {
   let offset = 0;
   while (offset <= data.length - LITTLEFS_MAGIC.length) {
@@ -56,6 +82,9 @@ function hasLittlefsSuperblock(data: Uint8Array, view: DataView) {
       if (LITTLEFS_VERSIONS.has(version)) {
         return true;
       }
+    }
+    if (hasLittlefsTagPrefix(index, view) && hasMirroredLittlefsSuperblock(index, data, view)) {
+      return true;
     }
     offset = index + 1;
   }

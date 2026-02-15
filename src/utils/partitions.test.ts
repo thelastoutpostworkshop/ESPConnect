@@ -75,6 +75,20 @@ describe('partition utilities', () => {
       expect(await detectFilesystemType(loader, 0x1000, 0x2000)).toBe('littlefs');
     });
 
+    it('detects LittleFS when superblock magic is followed by a supported version', async () => {
+      const loader = {
+        readFlash: async (_offset: number, length: number) => {
+          const data = new Uint8Array(length);
+          const markerOffset = 128;
+          data.set(textEncoder.encode('littlefs'), markerOffset);
+          const view = new DataView(data.buffer);
+          view.setUint32(markerOffset + 'littlefs'.length, 0x00020000, true);
+          return data;
+        },
+      };
+      expect(await detectFilesystemType(loader, 0x1000, 0x2000)).toBe('littlefs');
+    });
+
     it('returns null when readFlash throws', async () => {
       const loader = {
         readFlash: async () => {
@@ -99,9 +113,9 @@ describe('partition utilities', () => {
       expect(await detectFilesystemType(loader, 0, MICROPY_FIXTURE.length)).toBe('littlefs');
     });
 
-    it('returns null for LittleFS v2.0 fixture when probe markers are inconclusive', async () => {
+    it('detects LittleFS for the v2.0 fixture', async () => {
       const loader = makeFixtureLoader(LITTLEFS_V2_0_FIXTURE);
-      expect(await detectFilesystemType(loader, 0, LITTLEFS_V2_0_FIXTURE.length)).toBeNull();
+      expect(await detectFilesystemType(loader, 0, LITTLEFS_V2_0_FIXTURE.length)).toBe('littlefs');
     });
   });
 
@@ -143,6 +157,32 @@ describe('partition utilities', () => {
           label: fsLabel,
           type: 0x01,
           subtype: 0x82,
+          offset: 0x1000,
+          size: 0x2000,
+          detectedFilesystem: 'littlefs',
+        },
+      ]);
+    });
+
+    it('sets detectedFilesystem when probe identifies LittleFS for a 0x83 partition', async () => {
+      const fsLabel = 'littlefs';
+      const entry = makePartitionEntry({ type: 0x01, subtype: 0x83, offset: 0x1000, size: 0x2000, label: fsLabel });
+      const table = createPartitionTable([entry, makeTerminator()]);
+
+      const loader = {
+        readFlash: async (offset: number, length: number) => {
+          if (offset === 0x8000) return table.subarray(0, length);
+          if (offset === 0x1000) return LITTLEFS_V2_0_FIXTURE.subarray(0, length);
+          return new Uint8Array(length);
+        },
+      };
+
+      const entries = await readPartitionTable(loader);
+      expect(entries).toEqual([
+        {
+          label: fsLabel,
+          type: 0x01,
+          subtype: 0x83,
           offset: 0x1000,
           size: 0x2000,
           detectedFilesystem: 'littlefs',
