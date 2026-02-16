@@ -2,7 +2,7 @@
   "name": "espconnect",
   "productName": "ESPConnect",
   "private": true,
-  "version": "1.1.7",
+  "version": "1.1.8",
   "type": "module",
   "description": "Browser-based control center for ESP32 and ESP8266 boards",
   "main": "electron/main.cjs",

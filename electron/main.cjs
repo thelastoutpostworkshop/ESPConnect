@@ -75,8 +75,40 @@ function createWindow() {
 }
 
 function setupSerialPortHandlers(session) {
+  const isLikelyEspPort = (port) => {
+    const name = `${port?.displayName || ''} ${port?.portName || ''}`.toLowerCase();
+    return (
+      name.includes('cp210') ||
+      name.includes('cp2102') ||
+      name.includes('cp2104') ||
+      name.includes('ch910') ||
+      name.includes('ch340') ||
+      name.includes('ch341') ||
+      name.includes('ch343') ||
+      name.includes('ch9102') ||
+      name.includes('ftdi') ||
+      name.includes('ft232') ||
+      name.includes('usb') ||
+      name.includes('uart') ||
+      name.includes('silicon labs') ||
+      name.includes('esp32') ||
+      name.includes('esp8266') ||
+      name.includes('esp')
+    );
+  };
+
+  const getPortLabel = (port) => port?.displayName || port?.portName || port?.portId || 'Unknown port';
+
+  const getPortButtonLabel = (port, isRecommended = false) => {
+    const shortId = port?.portName || port?.displayName || port?.portId || 'Unknown';
+    return isRecommended ? `${shortId} (Recommended)` : shortId;
+  };
+
+  const toHexId = (value) =>
+    typeof value === 'number' ? `0x${value.toString(16).toUpperCase().padStart(4, '0')}` : null;
+
   // Handle serial port selection - shows when navigator.serial.requestPort() is called
-  session.on('select-serial-port', (event, portList, webContents, callback) => {
+  session.on('select-serial-port', async (event, portList, webContents, callback) => {
     event.preventDefault();
 
     console.log('Available serial ports:', portList.map(p => ({
@@ -85,34 +117,56 @@ function setupSerialPortHandlers(session) {
       displayName: p.displayName
     })));
 
-    if (portList && portList.length > 0) {
-      // Try to find ESP-compatible port
-      const espPort = portList.find(port => {
-        const name = (port.displayName || port.portName || '').toLowerCase();
-        return name.includes('cp210') ||
-               name.includes('cp2102') ||
-               name.includes('cp2104') ||
-               name.includes('ch910') ||
-               name.includes('ch340') ||
-               name.includes('ch341') ||
-               name.includes('ch343') ||
-               name.includes('ch9102') ||
-               name.includes('ftdi') ||
-               name.includes('ft232') ||
-               name.includes('usb') ||
-               name.includes('uart') ||
-               name.includes('silicon labs') ||
-               name.includes('esp32') ||
-               name.includes('esp8266') ||
-               name.includes('esp');
+    if (!portList || portList.length === 0) {
+      console.log('No serial ports available');
+      callback('');
+      return;
+    }
+
+    if (portList.length === 1) {
+      const selectedPort = portList[0];
+      console.log('Only one serial port available; selecting:', selectedPort.portId);
+      callback(selectedPort.portId);
+      return;
+    }
+
+    const detail = portList.map((port, index) => {
+      const vendorId = toHexId(port.vendorId);
+      const productId = toHexId(port.productId);
+      const usbId = vendorId && productId ? `${vendorId}:${productId}` : null;
+      const metadata = [usbId].filter(Boolean).join(' | ');
+      const primary = port.portName ? `${port.portName} - ${getPortLabel(port)}` : getPortLabel(port);
+      return `${index + 1}. ${primary}${metadata ? ` (${metadata})` : ''}`;
+    }).join('\n');
+
+    const defaultIndex = Math.max(portList.findIndex(isLikelyEspPort), 0);
+    const buttonLabels = portList.map((port, index) => getPortButtonLabel(port, index === defaultIndex));
+    const cancelIndex = buttonLabels.length;
+
+    try {
+      const ownerWindow = BrowserWindow.fromWebContents(webContents) || mainWindow;
+      const result = await dialog.showMessageBox(ownerWindow, {
+        type: 'question',
+        title: 'ESPConnect',
+        message: 'Select the serial port for your ESP device.',
+        detail,
+        buttons: [...buttonLabels, 'Cancel'],
+        defaultId: defaultIndex,
+        cancelId: cancelIndex,
+        noLink: true,
       });
 
-      // Select ESP-compatible port or first available
-      const selectedPort = espPort || portList[0];
-      console.log('Selected port:', selectedPort.portId, selectedPort.displayName || selectedPort.portName);
+      const selectedPort = portList[result.response];
+      if (!selectedPort) {
+        console.log('Serial port selection canceled');
+        callback('');
+        return;
+      }
+
+      console.log('Selected port:', selectedPort.portId, getPortLabel(selectedPort));
       callback(selectedPort.portId);
-    } else {
-      console.log('No serial ports available');
+    } catch (error) {
+      console.error('Failed to show serial port picker:', error);
       callback('');
     }
   });
