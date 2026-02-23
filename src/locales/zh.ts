@@ -388,6 +388,9 @@
       size: '大小',
     },
     unnamed: '未命名',
+    tableOffset: '分区表偏移地址',
+    tableOffsetHint: '分区表的闪存地址（默认 0x8000）。连接时自动检测；如使用安全启动或自定义引导程序，可手动修改。',
+    refreshButton: '刷新',
   },
   filesystem: {
     partitionTitle: '{fs} 分区',

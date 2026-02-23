@@ -390,6 +390,9 @@
       size: 'Size',
     },
     unnamed: 'Unnamed',
+    tableOffset: 'Partition Table Offset',
+    tableOffsetHint: 'Flash address of the partition table (default 0x8000). Auto-detected on connect; override for secure boot or custom bootloaders.',
+    refreshButton: 'Refresh',
   },
   filesystem: {
     partitionTitle: '{fs} Partition',

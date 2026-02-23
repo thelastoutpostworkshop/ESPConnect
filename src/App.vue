@@ -105,7 +105,10 @@
             <v-window-item value="partitions">
               <PartitionsTab :partition-segments="partitionSegments" :formatted-partitions="formattedPartitions"
                 :unused-summary="unusedFlashSummary" :flash-size-label="partitionFlashSizeLabel"
-                :connected="connected" />
+                :connected="connected" :partition-table-offset="partitionTableOffset"
+                :busy="busy"
+                @update:partition-table-offset="updatePartitionTableOffset"
+                @refresh-partitions="refreshPartitionTable()" />
             </v-window-item>
 
             <v-window-item value="nvs">
@@ -667,7 +670,7 @@ import { createSpiffsFromImage, SpiffsErrorCode } from './wasm/spiffs';
 import { useFatfsManager, useLittlefsManager, useSpiffsManager } from './composables/useFilesystemManagers';
 import { useDialogs } from './composables/useDialogs';
 import { getLanguage, setLanguage, SupportedLocale } from './plugins/i18n';
-import { readPartitionTable } from './utils/partitions';
+import { readPartitionTable, probePartitionTableOffset } from './utils/partitions';
 import { detectActiveOtaSlot } from './utils/ota';
 import type { ESPLoader } from 'tasmota-webserial-esptool';
 import { createEsptoolClient, requestSerialPort, type CompatibleTransport, type EsptoolClient, type StatusPayload } from './services/esptoolClient';
@@ -3962,6 +3965,18 @@ let eraseFillBlock: number[] | null = null;
 const selectedBaud = ref<BaudRate>(DEFAULT_FLASH_BAUD as BaudRate);
 const baudrateOptions = SUPPORTED_BAUDRATES;
 const flashOffset = ref('0x0');
+const PARTITION_OFFSET_STORAGE_KEY = 'espconnect-partition-offset';
+const partitionTableOffset = ref(
+  typeof window !== 'undefined'
+    ? window.localStorage.getItem(PARTITION_OFFSET_STORAGE_KEY) ?? '0x8000'
+    : '0x8000',
+);
+function updatePartitionTableOffset(value: string) {
+  partitionTableOffset.value = value;
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem(PARTITION_OFFSET_STORAGE_KEY, value);
+  }
+}
 const eraseFlash = ref(false);
 const higherBaudrateAvailable = ref(false);
 const selectedPreset = ref<string | number | null>(null);
@@ -5050,22 +5065,30 @@ const UNUSED_SEGMENT_COLOR = '#c62828';
 const UNUSED_SEGMENT_PATTERN =
   'repeating-linear-gradient(270deg, rgba(248, 113, 113, 0.65) 0px, rgba(248, 113, 113, 0.65) 12px, rgba(220, 38, 38, 0.65) 12px, rgba(220, 38, 38, 0.65) 24px)';
 
-const RESERVED_SEGMENTS = [
-  {
-    key: 'bootloader',
-    label: 'Bootloader',
-    offset: 0x0,
-    size: 0x8000,
-    color: '#546e7a',
-  },
-  {
-    key: 'partition-table',
-    label: 'Partition Table',
-    offset: 0x8000,
-    size: 0x1000,
-    color: '#78909c',
-  },
-];
+const RESERVED_SEGMENTS = computed(() => {
+  let ptOffset = 0x8000;
+  try {
+    ptOffset = parseOffset(partitionTableOffset.value);
+  } catch {
+    // keep default
+  }
+  return [
+    {
+      key: 'bootloader',
+      label: 'Bootloader',
+      offset: 0x0,
+      size: ptOffset,
+      color: '#546e7a',
+    },
+    {
+      key: 'partition-table',
+      label: 'Partition Table',
+      offset: ptOffset,
+      size: 0x1000,
+      color: '#78909c',
+    },
+  ];
+});
 
 const MIN_SEGMENT_PERCENT = 1; // ensure tiny partitions remain hoverable in the map
 
@@ -5120,7 +5143,7 @@ const partitionSegments = computed<PartitionSegment[]>(() => {
     const gapSegments: PartitionMapSegment[] = [];
     let pointer = start;
 
-    const relevantReserved = RESERVED_SEGMENTS.filter(
+    const relevantReserved = RESERVED_SEGMENTS.value.filter(
       block => block.offset < end && block.offset + block.size > start
     ).sort((a, b) => a.offset - b.offset);
 
@@ -5343,7 +5366,7 @@ const formattedPartitions = computed<FormattedPartitionRow[]>(() => {
     }
   }
 
-  const reservedRows = RESERVED_SEGMENTS.map(segment => {
+  const reservedRows = RESERVED_SEGMENTS.value.map(segment => {
     const offsetHex = `0x${segment.offset.toString(16).toUpperCase()}`;
     const sizeText = formatBytes(segment.size) ?? `${segment.size} bytes`;
     return {
@@ -6272,7 +6295,9 @@ async function connect() {
       appMetadataLoaded.value = false;
     } else if (loader.value) {
       const loaderInstance = loader.value;
-      const partitions = await runLoaderOperation(() => readPartitionTable(loaderInstance, undefined, undefined, appendLog));
+      const detectedOffset = await runLoaderOperation(() => probePartitionTableOffset(loaderInstance, appendLog));
+      updatePartitionTableOffset(`0x${detectedOffset.toString(16)}`);
+      const partitions = await runLoaderOperation(() => readPartitionTable(loaderInstance, detectedOffset, undefined, appendLog));
       partitionTable.value = partitions;
       appMetadataLoaded.value = false;
     } else {
@@ -6425,8 +6450,14 @@ async function refreshPartitionTable(loaderInstance = loader.value) {
       partitionTable.value = [];
       return;
     }
+    let offset: number;
+    try {
+      offset = parseOffset(partitionTableOffset.value);
+    } catch {
+      offset = 0x8000;
+    }
     const partitions = await runLoaderOperation(() =>
-      readPartitionTable(loaderInstance, undefined, undefined, appendLog),
+      readPartitionTable(loaderInstance, offset, undefined, appendLog),
     );
     partitionTable.value = partitions;
   } finally {

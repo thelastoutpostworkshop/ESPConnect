@@ -192,12 +192,43 @@ export async function detectFilesystemType(
   }
 }
 
+const PARTITION_MAGIC = 0x50aa;
+const DEFAULT_PARTITION_TABLE_OFFSET = 0x8000;
+const PARTITION_TABLE_PROBE_OFFSETS = [
+  0x8000, 0x9000, 0xa000, 0xc000, 0xd000, 0xe000, 0x10000,
+];
+
+export async function probePartitionTableOffset(
+  loader: { readFlash: (offset: number, length: number) => Promise<Uint8Array> },
+  log?: LogFn,
+): Promise<number> {
+  for (const candidate of PARTITION_TABLE_PROBE_OFFSETS) {
+    try {
+      const data = await loader.readFlash(candidate, 2);
+      const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+      if (view.getUint16(0, true) === PARTITION_MAGIC) {
+        if (candidate !== DEFAULT_PARTITION_TABLE_OFFSET) {
+          logInfo(log, `Partition table detected at non-standard offset 0x${candidate.toString(16)}.`);
+        }
+        return candidate;
+      }
+    } catch {
+      // probe failed for this offset, try next
+    }
+  }
+  logWarn(log, `No partition table magic found at any probed offset; falling back to default 0x${DEFAULT_PARTITION_TABLE_OFFSET.toString(16)}.`);
+  return DEFAULT_PARTITION_TABLE_OFFSET;
+}
+
 export async function readPartitionTable(
   loader: { readFlash: (offset: number, length: number) => Promise<Uint8Array> },
-  offset = 0x8000,
+  offset?: number,
   length = 0x400,
   log?: LogFn,
 ) {
+  if (offset == null) {
+    offset = await probePartitionTableOffset(loader, log);
+  }
   try {
     const data = await loader.readFlash(offset, length);
     const view = new DataView(data.buffer, data.byteOffset, data.byteLength);

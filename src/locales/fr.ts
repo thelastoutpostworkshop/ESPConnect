@@ -390,6 +390,9 @@
       size: 'Taille',
     },
     unnamed: 'Sans nom',
+    tableOffset: 'Adresse de la table de partitions',
+    tableOffsetHint: 'Adresse Flash de la table de partitions (défaut : 0x8000). Détectée automatiquement à la connexion ; modifiez pour le démarrage sécurisé ou les chargeurs personnalisés.',
+    refreshButton: 'Rafraîchir',
   },
   filesystem: {
     partitionTitle: 'Partition « {fs} »',

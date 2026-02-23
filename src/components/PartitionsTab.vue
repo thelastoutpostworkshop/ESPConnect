@@ -1,4 +1,28 @@
 <template>
+  <div class="partition-offset-row">
+    <v-text-field
+      :model-value="partitionTableOffset"
+      :label="t('partitions.tableOffset')"
+      :hint="t('partitions.tableOffsetHint')"
+      persistent-hint
+      placeholder="0x8000"
+      density="comfortable"
+      variant="outlined"
+      class="partition-offset-input"
+      :disabled="busy"
+      @update:model-value="value => emit('update:partitionTableOffset', value)"
+    />
+    <v-btn
+      color="primary"
+      variant="outlined"
+      density="comfortable"
+      :disabled="!connected || busy"
+      @click="emit('refreshPartitions')"
+    >
+      <v-icon start>mdi-refresh</v-icon>
+      {{ t('partitions.refreshButton') }}
+    </v-btn>
+  </div>
   <div v-if="!partitionSegments.length" class="partitions-empty">
     <v-card :class="[
       'partitions-empty__card',
@@ -148,6 +172,8 @@ const props = withDefaults(
     unusedSummary?: UnusedFlashSummary | null;
     flashSizeLabel?: string | null;
     connected?: boolean;
+    partitionTableOffset?: string;
+    busy?: boolean;
   }>(),
   {
     partitionSegments: () => [],
@@ -155,8 +181,15 @@ const props = withDefaults(
     unusedSummary: null,
     flashSizeLabel: '',
     connected: false,
+    partitionTableOffset: '0x8000',
+    busy: false,
   },
 );
+
+const emit = defineEmits<{
+  (e: 'update:partitionTableOffset', value: string): void;
+  (e: 'refreshPartitions'): void;
+}>();
 
 const { partitionSegments, formattedPartitions, unusedSummary, flashSizeLabel, connected } = toRefs(props);
 const { t } = useI18n();
@@ -225,6 +258,18 @@ function logPartitionCsv(rows: FormattedPartitionRow[]) {
 </script>
 
 <style scoped>
+.partition-offset-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding-top: 12px;
+  margin-bottom: 16px;
+}
+
+.partition-offset-input {
+  max-width: 320px;
+}
+
 .partition-view {
   display: flex;
   flex-direction: column;
