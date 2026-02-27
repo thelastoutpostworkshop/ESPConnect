@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.9-preview
+## 1.1.9
 ### Improvement
 - Partitions tools now auto-detect non-standard partition table offsets (for example custom bootloaders/secure-boot layouts) while keeping the UI simple. Thanks to grene78 for the contribution ([PR #137](https://github.com/thelastoutpostworkshop/ESPConnect/pull/137)).
 - Added Turkish translations. Thanks to HamzaYslmn for the contribution ([PR #138](https://github.com/thelastoutpostworkshop/ESPConnect/pull/138)).
