@@ -6,7 +6,7 @@ import tr from '../locales/tr';
 import { en as vuetifyEn, fr as vuetifyFr, zhHans as vuetifyZhHans, tr as vuetifyTr } from 'vuetify/locale';
 
 const STORAGE_KEY = 'espconnect-language';
-const supportedLocales = ['en', 'fr', 'zh', 'tr'] as const;
+export const supportedLocales = ['en', 'fr', 'zh', 'tr'] as const;
 export type SupportedLocale = (typeof supportedLocales)[number];
 
 function normalizeLocale(value: unknown): SupportedLocale {

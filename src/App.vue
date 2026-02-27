@@ -666,7 +666,7 @@ import registerGuides from './data/register-guides.json';
 import { createSpiffsFromImage, SpiffsErrorCode } from './wasm/spiffs';
 import { useFatfsManager, useLittlefsManager, useSpiffsManager } from './composables/useFilesystemManagers';
 import { useDialogs } from './composables/useDialogs';
-import { getLanguage, setLanguage, SupportedLocale } from './plugins/i18n';
+import { getLanguage, setLanguage, supportedLocales, SupportedLocale } from './plugins/i18n';
 import { readPartitionTable, probePartitionTableOffset } from './utils/partitions';
 import { detectActiveOtaSlot } from './utils/ota';
 import type { ESPLoader } from 'tasmota-webserial-esptool';
@@ -4309,14 +4309,21 @@ const themeIcon = computed(() =>
 );
 
 const currentLanguage = computed<SupportedLocale>(() => getLanguage());
-const languageOptions = computed(() => [
-  { code: 'en', label: t('language.english') },
-  { code: 'fr', label: t('language.french') },
-  { code: 'zh', label: t('language.chinese') },
-]);
+const languageLabelKeys: Record<SupportedLocale, string> = {
+  en: 'language.english',
+  fr: 'language.french',
+  zh: 'language.chinese',
+  tr: 'language.turkish',
+};
+const languageOptions = computed(() =>
+  supportedLocales.map(code => ({
+    code,
+    label: t(languageLabelKeys[code]),
+  })),
+);
 const currentLanguageLabel = computed(() =>
   languageOptions.value.find(lang => lang.code === currentLanguage.value)?.label ??
-  t('language.english'),
+  t(languageLabelKeys.en),
 );
 const otherLanguageLabel = computed(() => {
   const option = languageOptions.value.find(lang => lang.code !== currentLanguage.value);
@@ -4326,7 +4333,7 @@ const languageMenuTitle = computed(() =>
   t('language.switchTo', { language: otherLanguageLabel.value }),
 );
 
-function selectLanguage(code: string) {
+function selectLanguage(code: SupportedLocale) {
   if (code !== currentLanguage.value) {
     setLanguage(code);
   }
