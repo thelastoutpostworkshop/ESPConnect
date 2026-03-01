@@ -27,10 +27,10 @@
   "dependencies": {
     "@mdi/font": "^7.3.67",
     "electron-squirrel-startup": "^1.0.1",
-    "tasmota-webserial-esptool": "^7.3.4",
-    "vue": "^3.5.28",
+    "tasmota-webserial-esptool": "^7.3.10",
+    "vue": "^3.5.29",
     "vue-i18n": "^11.2.8",
-    "vuetify": "^3.11.8"
+    "vuetify": "^3.12.1"
   },
   "devDependencies": {
     "@electron-forge/cli": "^7.11.1",
