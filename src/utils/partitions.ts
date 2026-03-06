@@ -1,3 +1,5 @@
+// src/utils/partitions.ts
+
 type LogFn = (message: string, detail?: unknown, levelTag?: string) => void;
 
 function logInfo(log: LogFn | undefined, message: string) {
@@ -6,6 +8,20 @@ function logInfo(log: LogFn | undefined, message: string) {
 
 function logWarn(log: LogFn | undefined, message: string, detail?: unknown) {
   log?.(message, detail, '[ESPConnect-Warn]');
+}
+
+/**
+ * Helper to wrap a promise with a timeout to prevent hardware hangs
+ * from blocking the UI indefinitely.
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, timeoutError: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(timeoutError)), ms);
+    promise
+      .then(resolve)
+      .catch(reject)
+      .finally(() => clearTimeout(timer));
+  });
 }
 
 const PROBE_BYTES = 64 * 1024;
@@ -160,7 +176,12 @@ export async function detectFilesystemType(
       logWarn(log, 'Filesystem probe skipped: invalid partition size.', { offset, size });
       return null;
     }
-    const data = await loader.readFlash(offset, readSize);
+
+    const data = await withTimeout(
+      loader.readFlash(offset, readSize),
+      5000,
+      'Filesystem probe timed out'
+    );
 
     if (data.length < FAT_SECTOR_SIZE) {
       logWarn(log, 'Filesystem probe skipped: not enough data to inspect.', { offset, size, readSize: data.length });
@@ -229,7 +250,11 @@ export async function probePartitionTableOffset(
 ): Promise<number | null> {
   for (const candidate of PARTITION_TABLE_PROBE_OFFSETS) {
     try {
-      const data = await loader.readFlash(candidate, PARTITION_ENTRY_SIZE);
+      const data = await withTimeout(
+        loader.readFlash(candidate, PARTITION_ENTRY_SIZE),
+        3000,
+        `Probe at 0x${candidate.toString(16)} timed out`
+      );
       if (hasPlausiblePartitionEntry(data)) {
         if (candidate !== DEFAULT_PARTITION_TABLE_OFFSET) {
           logInfo(log, `Partition table detected at non-standard offset 0x${candidate.toString(16)}.`);
@@ -261,7 +286,11 @@ export async function readPartitionTable(
     }
   }
   try {
-    const data = await loader.readFlash(offset, length);
+    const data = await withTimeout(
+      loader.readFlash(offset, length),
+      7000,
+      'Partition table read timed out'
+    );
     const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
     const decoder = new TextDecoder();
     const entries: Array<{
@@ -283,7 +312,7 @@ export async function readPartitionTable(
       const labelBytes = data.subarray(i + 12, i + 28);
       const label = decoder
         .decode(labelBytes)
-        .replace(/\0/g, '')
+        .replace(/ /g, '')
         .trim();
       entries.push({ label: label || `type 0x${type.toString(16)}`, type, subtype, offset: addr, size });
     }

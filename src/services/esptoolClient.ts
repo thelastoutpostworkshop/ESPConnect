@@ -1,3 +1,5 @@
+// src/services/esptoolClient.ts
+
 import { ESPLoader } from 'tasmota-webserial-esptool';
 import type { Logger } from 'tasmota-webserial-esptool/dist/const.js';
 import type { } from '../types/web-serial';
@@ -73,6 +75,7 @@ export interface ConnectHandshakeResult {
   macAddress?: string;
   securityFacts: SecurityFact[];
   flashSize?: string | null;
+  flashId?: number | null;
 }
 
 export interface EsptoolClient {
@@ -364,12 +367,41 @@ export function createEsptoolClient({
         logger.error('Cannot read security information', error);
       }
 
+      // Hardware Diagnostic: Check Flash ID response with a tight 2s timeout
+      let detectedFlashId: number | null = null;
+      try {
+        detectedFlashId = await Promise.race([
+          loader.flashId(),
+          new Promise<number>((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000))
+        ]);
+        
+        if (detectedFlashId != null) {
+          const manuf = detectedFlashId & 0xFF;
+          const device = (detectedFlashId >> 8) & 0xFFFF;
+          
+          if (detectedFlashId === 0xFFFFFF || detectedFlashId === 0 || device === 0xFFFF || manuf === 0xFF || manuf === 0x00) {
+            securityFacts.push({
+              label: 'Hardware Warning',
+              value: `Flash chip unresponsive (ID: 0x${detectedFlashId.toString(16).toUpperCase()}). Check SPI MISO/Power.`,
+              kind: 'status'
+            });
+          }
+        }
+      } catch {
+        securityFacts.push({
+          label: 'Hardware Warning',
+          value: 'Flash chip timed out during identification. Check hardware connectivity.',
+          kind: 'status'
+        });
+      }
+
       const result: ConnectHandshakeResult = {
         chipName,
         chipId,
         macAddress,
         securityFacts,
         flashSize: loader.flashSize,
+        flashId: detectedFlashId
       };
       return result;
     });
