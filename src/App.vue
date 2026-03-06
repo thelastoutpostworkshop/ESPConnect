@@ -5969,7 +5969,6 @@ async function connect() {
   flashProgress.value = 0;
   monitorAutoResetPerformed = false;
   serialMonitorClosedPrompt.value = false;
-  isFlashUnresponsive.value = false;
   resetMaintenanceState();
   connectDialog.visible = false;
   connectDialog.label = t('dialogs.connectingToDevice');
@@ -5988,6 +5987,7 @@ async function connect() {
     busyDialogMessage.value = '';
     showBootDialog.value = false;
     showGeneralErrorDialog.value = false;
+    // currentPort.value = await requestSerialPort(SUPPORTED_VENDORS);
     currentPort.value = await requestSerialPort();
     connectDialogTimer = setTimeout(() => {
       connectDialog.visible = true;
@@ -5996,6 +5996,7 @@ async function connect() {
     const connectBaud_defaultROM = DEFAULT_ROM_BAUD;
     lastFlashBaud.value = desiredBaud;
 
+    // Get port and usb bridge information
     const portDetails = currentPort.value?.getInfo ? currentPort.value.getInfo() : null;
     const usbBridge = portDetails ? formatUsbBridge(portDetails) : "Unknown";
     const bridge =
@@ -6006,6 +6007,7 @@ async function connect() {
         : undefined;
 
     if (bridge && bridge.productName === 'CH340' && typeof bridge.maxBaudrate === 'number' && desiredBaud > bridge.maxBaudrate) {
+      // Reduce baud rate for CH340 to the highest supported value under its max.
       const cappedBaud =
         SUPPORTED_BAUDRATES.filter(rate => rate <= bridge.maxBaudrate).pop() ?? DEFAULT_FLASH_BAUD;
       desiredBaud = cappedBaud as BaudRate;
@@ -6020,6 +6022,7 @@ async function connect() {
       appendLog('Detected CH340 bridge; lowering baud to ' + desiredBaud + ' bps.', '[ESPConnect-Debug]');
     }
 
+    // Create the client to communicate and do operations on the MCU
     const esptool = createEsptoolClient({
       port: currentPort.value,
       terminal,
@@ -6027,10 +6030,21 @@ async function connect() {
       debugSerial: false,
       debugLogging: false,
       onStatus: (payload: StatusPayload) => {
-        if (!payload) return;
-        const dialogText = payload.translationKey != null ? t(payload.translationKey, payload.params ?? {}) : payload.message ?? '';
-        if (payload.message) appendLog(payload.message, '[ESPConnect-Debug]');
-        if ((payload.showInDialog ?? true) && dialogText) connectDialog.message = dialogText;
+        if (!payload) {
+          return;
+        }
+        const dialogText =
+          payload.translationKey != null
+            ? t(payload.translationKey, payload.params ?? {})
+            : payload.message ?? '';
+        const sessionLogMessage = payload.message ?? '';
+        if (sessionLogMessage) {
+          appendLog(sessionLogMessage, '[ESPConnect-Debug]');
+        }
+        const showInDialog = payload.showInDialog ?? true;
+        if (showInDialog && dialogText) {
+          connectDialog.message = dialogText;
+        }
       },
     });
     esptoolClient.value = esptool;
@@ -6041,59 +6055,188 @@ async function connect() {
     currentBaud.value = connectBaud_defaultROM;
     transportInstance.baudrate = connectBaud_defaultROM;
 
+    // Flush any input remaining on the transport
     try {
       await transportInstance.flushInput();
+      appendLog('Serial input flushed before handshake.', '[ESPConnect-Debug]');
     } catch (err) {
       appendLog(`Warning: unable to flush serial input before handshake (${formatErrorMessage(err)}).`, '[ESPConnect-Warn]');
     }
 
+    // Open the serial port, talk to the ROM bootloader, load the stub flasher
     connectDialog.message = t('dialogs.handshakingBootloader');
     const esp = await client.connectAndHandshake();
-    
-    // Troubleshooting Check: If Flash ID is valid (0xFFFF3F or 0FF indicates floating MISO)
-    const fId = esp.flashId ?? 0;
-    const devicePart = (fId >> 8) & 0xFFFF;
-    if (fId === 0 || fId === 0xFFFFFF || devicePart === 0xFFFF) {
-      isFlashUnresponsive.value = true;
-      appendLog(`Flash ID 0x${fId.toString(16).toUpperCase()} detected. Flash chip is not responding.`, '[ESPConnect-Warn]');
-    }
-
     currentBaud.value = desiredBaud || connectBaud_defaultROM;
     transportInstance.baudrate = currentBaud.value;
     const previousSuspendState = suspendBaudWatcher;
     suspendBaudWatcher = true;
     selectedBaud.value = currentBaud.value as BaudRate;
-    queueMicrotask(() => { suspendBaudWatcher = previousSuspendState; });
+    queueMicrotask(() => {
+      suspendBaudWatcher = previousSuspendState;
+    });
     connected.value = true;
-    
+    appendLog(`Handshake complete with ${esp.chipName}. Collecting device details...`, '[ESPConnect-Debug]');
+
     const englishUnknown = t('deviceInfo.unknown', {}, { locale: 'en' });
-    const chipIdLabel = typeof esp.chipId === 'number' ? `0x${esp.chipId.toString(16).toUpperCase()}` : englishUnknown;
-    appendLog(t('sessionLog.chipId', { chipId: chipIdLabel }, { locale: 'en' }), '[ESPConnect-Debug]');
+    const chipIdLabel =
+      typeof esp.chipId === 'number' && Number.isFinite(esp.chipId)
+        ? `0x${esp.chipId.toString(16).toUpperCase()}`
+        : englishUnknown;
+    appendLog(
+      t('sessionLog.chipId', { chipId: chipIdLabel }, { locale: 'en' }),
+      '[ESPConnect-Debug]'
+    );
+
+    lastFlashBaud.value = currentBaud.value;
 
     const metadata = await client.readChipMetadata();
-    const pkgVersionLabel = typeof metadata.pkgVersion === 'number' ? String(metadata.pkgVersion) : englishUnknown;
-    const chipRevisionLabel = typeof metadata.chipRevision === 'number' ? String(metadata.chipRevision) : englishUnknown;
-    appendLog(t('sessionLog.chipMetadata', { pkgVersion: pkgVersionLabel, chipRevision: chipRevisionLabel }, { locale: 'en' }), '[ESPConnect-Debug]');
+    const pkgVersionLabel =
+      typeof metadata.pkgVersion === 'number' && !Number.isNaN(metadata.pkgVersion)
+        ? String(metadata.pkgVersion)
+        : englishUnknown;
+    const chipRevisionLabel =
+      typeof metadata.chipRevision === 'number' && !Number.isNaN(metadata.chipRevision)
+        ? String(metadata.chipRevision)
+        : englishUnknown;
+    appendLog(
+      t(
+        'sessionLog.chipMetadata',
+        { pkgVersion: pkgVersionLabel, chipRevision: chipRevisionLabel },
+        { locale: 'en' }
+      ),
+      '[ESPConnect-Debug]'
+    );
 
-    const featureList: string[] = Array.isArray(metadata.features) ? metadata.features : [];
+    const descriptionRaw = metadata.description ?? esp.chipName;
+    const featuresRaw = metadata.features;
+    const crystalFreq = metadata.crystalFreq;
+
+    connectDialog.message = t('dialogs.readingFlashSize');
+    const flashLabel = esp.flashSize;
+    appendLog(
+      `Chip detectFlashSize: ${flashLabel === null ? 'undefined' : flashLabel}`,
+      '[ESPConnect-Debug]'
+    );
+
+    const flashId = esp.flashId;
+    const id = (flashId != null && Number.isFinite(flashId)) ? flashId : null;
+
+    const manufacturerCode = id !== null ? id & 0xff : null;
+    const memoryTypeCode = id !== null ? (id >> 8) & 0xff : null;
+    const capacityCodeRaw = id !== null ? (id >> 16) & 0xff : null;
+
+    appendLog(
+      `Flash detect raw: getFlashSize=${flashLabel ?? 'n/a'}, flashId=${typeof flashId === 'number' && Number.isFinite(flashId) ? `0x${flashId
+        .toString(16)
+        .padStart(6, '0')
+        .toUpperCase()}` : 'n/a'} (manuf=0x${typeof manufacturerCode === 'number'
+          ? manufacturerCode.toString(16).toUpperCase().padStart(2, '0')
+          : '??'}, type=0x${typeof memoryTypeCode === 'number'
+            ? memoryTypeCode.toString(16).toUpperCase().padStart(2, '0')
+            : '??'}, cap=0x${typeof capacityCodeRaw === 'number'
+              ? capacityCodeRaw.toString(16).toUpperCase().padStart(2, '0')
+              : '??'})`,
+      '[ESPConnect-Debug]'
+    );
+
+    connectDialog.message = t('dialogs.preparingInformation');
+    const featureList: string[] = Array.isArray(featuresRaw)
+      ? (featuresRaw as string[])
+      : typeof featuresRaw === 'string'
+        ? (featuresRaw as string).split(/,\s*/)
+        : [];
+
+    const crystalLabel =
+      typeof crystalFreq === 'number' ? `${Number(crystalFreq).toFixed(0)} MHz` : null;
+    const macLabel = esp.macAddress ?? "unknown";
+
     applyRegisterGuide(esp.chipName);
     const facts: DeviceFact[] = [];
     const pushFact = (label: string, value: string | null | undefined) => {
       if (!value) return;
-      facts.push({ label, value, icon: FACT_ICONS[label] ?? null, translationKey: getFactLabelKey(label) });
+      facts.push({
+        label,
+        value,
+        icon: FACT_ICONS[label] ?? null,
+        translationKey: getFactLabelKey(label),
+      });
     };
-
     const packageLabel = resolvePackageLabel(esp.chipName, metadata.pkgVersion, metadata.chipRevision);
     pushFact('Chip Variant', packageLabel);
-    pushFact('Package Form Factor', packageLabel?.match(/\(([^)]+)\)$/)?.[1] ? PACKAGE_FORM_FACTORS[packageLabel.match(/\(([^)]+)\)$/)![1]] : null);
-    pushFact('Revision', resolveRevisionLabel(esp.chipName, metadata.chipRevision, metadata.majorVersion, metadata.minorVersion));
-    pushFact('Embedded Flash', resolveEmbeddedFlash(esp.chipName, metadata.flashCap, metadata.flashVendor, featureList));
-    pushFact('Embedded PSRAM', resolveEmbeddedPsram(esp.chipName, metadata.psramCap, metadata.psramVendor, featureList));
-    pushFact('Max CPU Frequency', extractCpuFrequency(featureList));
-    pushFact('CPU Cores', extractCoreCount(featureList));
+    const packageMatch = packageLabel?.match(/\(([^)]+)\)$/);
+    if (packageMatch) {
+      const detail = PACKAGE_FORM_FACTORS[packageMatch[1]];
+      pushFact('Package Form Factor', detail);
+    }
 
-    if (esp.securityFacts) {
-      for (const fact of esp.securityFacts) pushFact(fact.label, fact.value);
+    pushFact('Revision', resolveRevisionLabel(esp.chipName, metadata.chipRevision, metadata.majorVersion, metadata.minorVersion));
+
+    const embeddedFlash = resolveEmbeddedFlash(esp.chipName, metadata.flashCap, metadata.flashVendor, featureList);
+    pushFact('Embedded Flash', embeddedFlash);
+
+    const embeddedPsram = resolveEmbeddedPsram(esp.chipName, metadata.psramCap, metadata.psramVendor, featureList);
+    pushFact('Embedded PSRAM', embeddedPsram);
+
+    const cpuFrequency = extractCpuFrequency(featureList);
+    pushFact('Max CPU Frequency', cpuFrequency);
+
+    const coreCount = extractCoreCount(featureList);
+    pushFact('CPU Cores', coreCount);
+
+    const pwmEntry =
+      esp.chipName && esp.chipName in PWM_TABLE ? PWM_TABLE[esp.chipName as keyof typeof PWM_TABLE] : null;
+    if (pwmEntry) {
+      let pwmLabel = '';
+      if (pwmEntry.hasLedc === false) {
+        pwmLabel = pwmEntry.notes || 'Software PWM only';
+      } else {
+        const parts: string[] = [];
+        const ledcChannels = (pwmEntry as any).ledcChannels;
+        if (typeof ledcChannels === 'number') parts.push(`${ledcChannels} channels`);
+        const ledcTimers = (pwmEntry as any).ledcTimers;
+        if (typeof ledcTimers === 'number') parts.push(`${ledcTimers} timers`);
+        if (pwmEntry.notes) parts.push(pwmEntry.notes);
+        pwmLabel = parts.join(' · ');
+      }
+      pushFact('PWM/LEDC', pwmLabel);
+    }
+
+    if (metadata.flashVendor && !embeddedFlash) {
+      pushFact('Flash Vendor (eFuse)', formatVendorLabel(metadata.flashVendor));
+    }
+    if (metadata.psramVendor && !embeddedPsram) {
+      pushFact('PSRAM Vendor (eFuse)', formatVendorLabel(metadata.psramVendor));
+    }
+
+    if (typeof flashId === 'number' && !Number.isNaN(flashId)) {
+      const manufacturerCode = flashId & 0xff;
+      const manufacturerHex = `0x${manufacturerCode.toString(16).padStart(2, '0').toUpperCase()}`;
+      const memoryType = (flashId >> 8) & 0xff;
+      const capacityCode = (flashId >> 16) & 0xff;
+      const deviceCode = (memoryType << 8) | capacityCode;
+      const deviceHex = `0x${memoryType.toString(16).padStart(2, '0').toUpperCase()}${capacityCode
+        .toString(16)
+        .padStart(2, '0')
+        .toUpperCase()}`;
+      const manufacturerName = JEDEC_MANUFACTURERS[manufacturerCode];
+      const deviceName = JEDEC_FLASH_PARTS[manufacturerCode]?.[deviceCode];
+      const capacityBytes = JEDEC_CAPACITY_CODES[capacityCode] ?? null;
+
+      const formattedCapacity = capacityBytes !== null ? formatBytes(capacityBytes) : null;
+
+      pushFact('Flash ID', `0x${flashId.toString(16).padStart(6, '0').toUpperCase()}`);
+      pushFact(
+        'Flash Manufacturer',
+        manufacturerName ? `${manufacturerName} (${manufacturerHex})` : manufacturerHex
+      );
+      if (deviceName || formattedCapacity) {
+        const detail = formattedCapacity
+          ? `${formattedCapacity}${deviceName ? ` - ${deviceName}` : ''}`
+          : deviceName;
+        pushFact('Flash Device', detail || deviceHex);
+      } else {
+        pushFact('Flash Device', deviceHex);
+      }
     }
 
     const docs = esp.chipName ? findChipDocs(esp.chipName) : undefined;
@@ -6105,49 +6248,128 @@ async function connect() {
       pushFact('Hardware Design Guidelines', docs.hardwareDesignGuidelines);
     }
 
-    connectDialog.message = t('dialogs.readingPartitionTable');
-    if (esp.chipName?.includes('ESP8266')) {
-      partitionTable.value = [];
-    } else if (isFlashUnresponsive.value) {
-      // Fast Fail: Skip partition table read if flash hardware is unresponsive
-      appendLog('Bypassing partition table probe due to unresponsive flash.', '[ESPConnect-Debug]');
-      partitionTable.value = [];
-    } else if (loader.value) {
-      const loaderInstance = loader.value;
-      const detectedOffset = await runLoaderOperation(() => probePartitionTableOffset(loaderInstance, appendLog));
-      const partitionOffset = detectedOffset ?? 0x8000;
-      partitionTableOffset.value = partitionOffset;
-      const partitions = await runLoaderOperation(() => readPartitionTable(loaderInstance, partitionOffset, undefined, appendLog));
-      partitionTable.value = partitions;
+    if (esp.securityFacts) {
+      for (const fact of esp.securityFacts) {
+        pushFact(fact.label, fact.value);
+      }
     }
 
-    if (usbBridge) pushFact('USB Bridge', usbBridge);
+    try {
+      await transport.value?.flushInput();
+    } catch (err) {
+      appendLog(`Warning: failed to flush serial input before partition read (${formatErrorMessage(err)}).`, '[ESPConnect-Warn]');
+    }
+
+    if (esp.isFlashUnresponsive) {
+      appendLog('Skipping partition table scan: Flash chip is unresponsive.', '[ESPConnect-Warn]');
+      partitionTable.value = [];
+      appMetadataLoaded.value = false;
+    } else {
+      connectDialog.message = t('dialogs.readingPartitionTable');
+      if (esp.chipName?.includes('ESP8266')) {
+        appendLog('Skipping partition table read for ESP8266 (not supported).', '[ESPConnect-Debug]');
+        partitionTable.value = [];
+        appMetadataLoaded.value = false;
+      } else if (loader.value) {
+        const loaderInstance = loader.value;
+        const detectedOffset = await runLoaderOperation(() => probePartitionTableOffset(loaderInstance, appendLog));
+        const partitionOffset = detectedOffset ?? 0x8000;
+        partitionTableOffset.value = partitionOffset;
+        const partitions = await runLoaderOperation(() => readPartitionTable(loaderInstance, partitionOffset, undefined, appendLog));
+        partitionTable.value = partitions;
+        appMetadataLoaded.value = false;
+      } else {
+        partitionTable.value = [];
+        appMetadataLoaded.value = false;
+      }
+    }
+
+    if (usbBridge) {
+      pushFact('USB Bridge', usbBridge);
+    }
+
     pushFact('Connection Baud', `${currentBaud.value.toLocaleString()} bps`);
 
-    chipDetails.value = {
-      name: esp.chipName,
-      description: metadata.description ?? esp.chipName,
-      features: featureList.filter(Boolean).map(humanizeFeature),
-      mac: esp.macAddress ?? "unknown",
-      flashSize: esp.flashSize ?? null,
-      crystal: typeof metadata.crystalFreq === 'number' ? `${metadata.crystalFreq} MHz` : null,
-      facts,
-      factGroups: buildFactGroups(facts),
-    };
+    const featuresDisplay = featureList.filter(Boolean).map(humanizeFeature);
+    // const orderedFacts = sortFacts(facts);
+    const factGroups = buildFactGroups(facts);
 
+    const details: DeviceDetails = {
+      name: esp.chipName,
+      description: descriptionRaw || esp.chipName,
+      features: featuresDisplay,
+      mac: macLabel,
+      flashSize: flashLabel ?? null,
+      crystal: crystalLabel,
+      facts,
+      factGroups,
+    };
+    chipDetails.value = details;
     activeTab.value = 'info';
+    appendLog(
+      `Loaded device details: ${details.name}, ${facts.length} facts.`,
+      '[ESPConnect-Debug]'
+    );
+
     connected.value = true;
+    showBusyDialog.value = false;
+    showBootDialog.value = false;
+    showGeneralErrorDialog.value = false;
+    appendLog(`Connection established. Ready to flash.`);
   } catch (error) {
-    const message = formatErrorMessage(error);
-    appendLog(`Connection failed: ${message}`, '[error]');
+    const errorName =
+      error instanceof Error
+        ? error.name
+        : isRecord(error) && typeof error.name === 'string'
+          ? error.name
+          : undefined;
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : isRecord(error) && typeof error.message === 'string'
+          ? error.message
+          : undefined;
+
+    if (errorName === 'AbortError' || errorName === 'NotFoundError') {
+      appendLog('Port selection was cancelled.');
+    } else if (errorName === 'NetworkError') {
+      const busyMessage = 'Selected port is busy or in use. Close other apps or tabs using it and try again.';
+      appendLog(busyMessage, '[warn]');
+      lastErrorMessage.value = busyMessage;
+      busyDialogMessage.value = busyMessage;
+      showBusyDialog.value = true;
+      showBootDialog.value = false;
+      showGeneralErrorDialog.value = false;
+    } else if (errorMessage === "Couldn't sync to ESP. Try resetting.") {
+      const message = formatErrorMessage(error);
+      lastErrorMessage.value = message;
+      busyDialogMessage.value = '';
+      showBusyDialog.value = false;
+      showBootDialog.value = true;
+      showGeneralErrorDialog.value = false;
+    } else {
+      const message = formatErrorMessage(error);
+      appendLog(`General code error: ${message}`, '[error]');
+      lastErrorMessage.value = message;
+      busyDialogMessage.value = '';
+      connectDialog.visible = false;
+      connectDialog.message = '';
+      showBusyDialog.value = false;
+      showBootDialog.value = false;
+      showGeneralErrorDialog.value = true;
+    }
     await disconnectTransport();
   } finally {
-    if (connectDialogTimer) clearTimeout(connectDialogTimer);
+    if (connectDialogTimer) {
+      clearTimeout(connectDialogTimer);
+      connectDialogTimer = null;
+    }
     connectDialog.visible = false;
+    connectDialog.message = '';
     busy.value = false;
+    appendLog(`Connect flow finished (busy=${busy.value}).`, '[ESPConnect-Debug]');
   }
 }
-
 
 // Disconnect from the device and clean up state.
 async function disconnect() {
@@ -6188,14 +6410,9 @@ function parseNumericInput(value: string | number | null | undefined, label: str
 }
 
 async function refreshPartitionTable(loaderInstance = loader.value) {
-  if (!loaderInstance) return;
-  
-  // Fast Fail: Skip partition probe if flash hardware is known bad
-  if (isFlashUnresponsive.value) {
-    appendLog('Cannot refresh partition table: Flash chip is unresponsive.', '[ESPConnect-Warn]');
+  if (!loaderInstance) {
     return;
   }
-  
   const showDialog = !connectDialog.visible;
   const previousDialog = showDialog
     ? { label: connectDialog.label, message: connectDialog.message }
@@ -6228,6 +6445,7 @@ async function refreshPartitionTable(loaderInstance = loader.value) {
       appendLog('No valid partition table found. Flash may be empty or unreadable.', '[ESPConnect-Warn]');
     }
   } catch (error) {
+    // Catch timeouts or hardware hangs to prevent the entire connection from failing
     const message = formatErrorMessage(error);
     appendLog(`Partition table read failed: ${message}`, '[ESPConnect-Warn]');
     partitionTable.value = [];

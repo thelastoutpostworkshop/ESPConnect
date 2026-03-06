@@ -76,6 +76,7 @@ export interface ConnectHandshakeResult {
   securityFacts: SecurityFact[];
   flashSize?: string | null;
   flashId?: number | null;
+  isFlashUnresponsive: boolean;
 }
 
 export interface EsptoolClient {
@@ -367,12 +368,13 @@ export function createEsptoolClient({
         logger.error('Cannot read security information', error);
       }
 
-      // Hardware Diagnostic: Check Flash ID response with a tight 2s timeout
+      // Hardware Diagnostic: Check Flash ID response
       let detectedFlashId: number | null = null;
+      let isFlashUnresponsive = false;
       try {
         detectedFlashId = await Promise.race([
           loader.flashId(),
-          new Promise<number>((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000))
+          new Promise<number>((_, reject) => setTimeout(() => reject(new Error('timeout')), 4000))
         ]);
         
         if (detectedFlashId != null) {
@@ -380,6 +382,7 @@ export function createEsptoolClient({
           const device = (detectedFlashId >> 8) & 0xFFFF;
           
           if (detectedFlashId === 0xFFFFFF || detectedFlashId === 0 || device === 0xFFFF || manuf === 0xFF || manuf === 0x00) {
+            isFlashUnresponsive = true;
             securityFacts.push({
               label: 'Hardware Warning',
               value: `Flash chip unresponsive (ID: 0x${detectedFlashId.toString(16).toUpperCase()}). Check SPI MISO/Power.`,
@@ -388,6 +391,7 @@ export function createEsptoolClient({
           }
         }
       } catch {
+        isFlashUnresponsive = true;
         securityFacts.push({
           label: 'Hardware Warning',
           value: 'Flash chip timed out during identification. Check hardware connectivity.',
@@ -401,7 +405,8 @@ export function createEsptoolClient({
         macAddress,
         securityFacts,
         flashSize: loader.flashSize,
-        flashId: detectedFlashId
+        flashId: detectedFlashId,
+        isFlashUnresponsive
       };
       return result;
     });
