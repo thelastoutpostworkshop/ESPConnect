@@ -32,3 +32,6 @@ Desktop.ini
 
 # Linux
 *~
+
+# Local files
+/local
