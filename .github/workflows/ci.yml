@@ -31,17 +31,17 @@ jobs:
         uses: pnpm/action-setup@v2
         with:
           version: 10
-          
+
+      # https://github.com/actions/checkout
+      - name: Checkout
+        uses: actions/checkout@v6
+
       # https://github.com/actions/setup-node
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: "pnpm"
-
-      # https://github.com/actions/checkout
-      - name: Checkout
-        uses: actions/checkout@v6
 
       - name: Install dependencies and fail if an update is needed
         run: pnpm i
