@@ -13,7 +13,7 @@ ESPConnect is a browser-based control center for ESP32- and ESP8266-class boards
 - A USB cable with data lines. If your board lacks automatic reset wiring, the app walks you through entering the bootloader manually.
 
 ## Quick Start
-1. Open [ESPConnect](https://thelastoutpostworkshop.github.io/ESPConnect/).  
+1. Open [ESPConnect](https://mcuw.github.io/ESPConnect/).  
 2. Click **Connect** and choose your device when the browser asks for permission.  
 3. After the handshake completes, the navigation drawer unlocks every tool: Device Info, Partitions, SPIFFS, Apps, Flash, Console, and Logs.  
 4. Use **Disconnect** whenever you want to free the USB port for another application.
