@@ -78,7 +78,7 @@
           </v-card>
 
           <div v-if="details.factGroups?.length" class="detail-groups">
-            <v-row dense class="detail-group-row">
+            <v-row density="comfortable" class="detail-group-row">
               <v-col v-for="group in details.factGroups" :key="group.title" cols="12" md="6" class="">
                 <v-card elevation="0" variant="tonal" class="detail-card">
                   <v-card-title>
@@ -381,11 +381,13 @@ const translateGroupTitle = (group: DeviceFactGroup): string =>
 
 .device-summary-card {
   border-radius: 18px;
-  border: 1px solid color-mix(in srgb, var(--v-theme-primary) 14%, transparent);
-  background: linear-gradient(150deg,
-      color-mix(in srgb, var(--v-theme-surface) 96%, transparent) 0%,
-      color-mix(in srgb, var(--v-theme-primary) 10%, transparent) 65%),
-    linear-gradient(150deg, rgba(255, 255, 255, 0.04), transparent);
+  border: 1px solid color-mix(in srgb, rgb(var(--v-theme-on-primary)) 18%, transparent);
+  background:
+    linear-gradient(135deg,
+      rgb(var(--v-theme-primary)) 0%,
+      color-mix(in srgb, rgb(var(--v-theme-primary)) 88%, #1f8fff 12%) 62%,
+      color-mix(in srgb, rgb(var(--v-theme-primary)) 82%, #1687e8 18%) 100%) !important;
+  color: rgb(var(--v-theme-on-primary)) !important;
   margin-bottom: clamp(16px, 3vw, 28px);
 }
 
@@ -406,7 +408,7 @@ const translateGroupTitle = (group: DeviceFactGroup): string =>
   display: flex;
   flex-direction: column;
   gap: 8px;
-  color: color-mix(in srgb, var(--v-theme-on-surface) 92%, transparent);
+  color: rgb(var(--v-theme-on-primary));
 }
 
 .summary-label {
@@ -442,13 +444,13 @@ const translateGroupTitle = (group: DeviceFactGroup): string =>
   align-items: center;
   gap: 6px;
   font-size: 0.82rem;
-  color: color-mix(in srgb, var(--v-theme-on-surface) 80%, transparent);
+  color: color-mix(in srgb, rgb(var(--v-theme-on-primary)) 88%, transparent);
 }
 
 .summary-divider {
   flex: 0 0 1px;
   align-self: stretch;
-  background: color-mix(in srgb, var(--v-theme-on-surface) 18%, transparent);
+  background: color-mix(in srgb, rgb(var(--v-theme-on-primary)) 28%, transparent);
   opacity: 0.6;
 }
 
@@ -459,8 +461,8 @@ const translateGroupTitle = (group: DeviceFactGroup): string =>
 }
 
 .summary-chip {
-  background: color-mix(in srgb, var(--v-theme-secondary) 18%, transparent) !important;
-  color: color-mix(in srgb, var(--v-theme-on-secondary) 90%, transparent) !important;
+  background: color-mix(in srgb, rgb(var(--v-theme-on-primary)) 18%, transparent) !important;
+  color: rgb(var(--v-theme-on-primary)) !important;
   font-size: 0.8rem;
   font-weight: 600;
   text-transform: capitalize;
@@ -468,8 +470,8 @@ const translateGroupTitle = (group: DeviceFactGroup): string =>
 
 .summary-chip--more {
   background: transparent !important;
-  color: color-mix(in srgb, var(--v-theme-on-secondary) 75%, transparent) !important;
-  border-color: color-mix(in srgb, var(--v-theme-on-secondary) 35%, transparent) !important;
+  color: color-mix(in srgb, rgb(var(--v-theme-on-primary)) 82%, transparent) !important;
+  border-color: color-mix(in srgb, rgb(var(--v-theme-on-primary)) 42%, transparent) !important;
 }
 
 .summary-empty {
@@ -477,7 +479,7 @@ const translateGroupTitle = (group: DeviceFactGroup): string =>
   align-items: center;
   gap: 6px;
   font-size: 0.82rem;
-  color: color-mix(in srgb, var(--v-theme-on-surface) 68%, transparent);
+  color: color-mix(in srgb, rgb(var(--v-theme-on-primary)) 78%, transparent);
 }
 
 @media (max-width: 959px) {

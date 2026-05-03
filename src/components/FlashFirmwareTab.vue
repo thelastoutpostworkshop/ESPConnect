@@ -15,15 +15,15 @@
           <template #item="{ props, item }">
             <v-list-item v-bind="props" class="partition-select__item">
               <template #prepend>
-                <span class="partition-select__swatch" :style="{ backgroundColor: resolvePartitionColor(item?.raw) }" />
+                <span class="partition-select__swatch" :style="{ backgroundColor: resolveSelectItemColor(item) }" />
               </template>
-              <v-list-item-title>{{ item.raw.label }}</v-list-item-title>
+              <v-list-item-title>{{ resolveSelectItemLabel(item) }}</v-list-item-title>
             </v-list-item>
           </template>
           <template #selection="{ item }">
             <span v-if="item" class="partition-select__selection">
-              <span class="partition-select__swatch" :style="{ backgroundColor: resolvePartitionColor(item.raw) }" />
-              <span>{{ item.raw.label }}</span>
+              <span class="partition-select__swatch" :style="{ backgroundColor: resolveSelectItemColor(item) }" />
+              <span>{{ resolveSelectItemLabel(item) }}</span>
             </span>
           </template>
         </v-select>
@@ -51,7 +51,7 @@
         </div>
       </div>
       <v-divider v-if="partitionOptions.length" class="my-4" />
-      <v-row dense>
+      <v-row density="comfortable">
         <v-col cols="12" md="6">
           <v-text-field :model-value="flashReadOffset" :label="t('flashFirmware.backup.startOffset')" placeholder="0x0" density="comfortable"
             :disabled="busy || maintenanceBusy" @update:model-value="value => emit('update:flashReadOffset', value)" />
@@ -89,7 +89,7 @@
       <span class="font-weight-black">{{ t('flashFirmware.firmware.title') }}</span>
     </template>
     <v-card-text class="tools-card__body">
-      <v-row class="mb-2" dense>
+      <v-row class="mb-2" density="comfortable">
         <v-col cols="12" md="8">
           <v-file-input :label="t('flashFirmware.firmware.binaryLabel')" prepend-icon="mdi-file-upload" accept=".bin"
             density="comfortable" :disabled="busy || maintenanceBusy"
@@ -109,15 +109,15 @@
               <v-list-item v-bind="props" class="partition-select__item">
                 <template #prepend>
                   <span class="partition-select__swatch"
-                    :style="{ backgroundColor: resolvePartitionColor(item?.raw) }" />
+                    :style="{ backgroundColor: resolveSelectItemColor(item) }" />
                 </template>
-                <v-list-item-title>{{ item.raw.label }}</v-list-item-title>
+                <v-list-item-title>{{ resolveSelectItemLabel(item) }}</v-list-item-title>
               </v-list-item>
             </template>
             <template #selection="{ item }">
               <span v-if="item" class="partition-select__selection">
-                <span class="partition-select__swatch" :style="{ backgroundColor: resolvePartitionColor(item.raw) }" />
-                <span>{{ item.raw.label }}</span>
+                <span class="partition-select__swatch" :style="{ backgroundColor: resolveSelectItemColor(item) }" />
+                <span>{{ resolveSelectItemLabel(item) }}</span>
               </span>
             </template>
           </v-select>
@@ -152,12 +152,12 @@
         @update:model-value="handleRegisterSelect">
         <template #item="{ props, item }">
           <v-list-item v-bind="props">
-            <v-list-item-title>{{ item.raw.label }}</v-list-item-title>
-            <v-list-item-subtitle>{{ item.raw.address }}</v-list-item-subtitle>
+            <v-list-item-title>{{ resolveSelectItemLabel(item) }}</v-list-item-title>
+            <v-list-item-subtitle>{{ resolveSelectItemAddress(item) }}</v-list-item-subtitle>
           </v-list-item>
         </template>
         <template #selection="{ item }">
-          <span>{{ item.raw.label }}</span>
+          <span>{{ resolveSelectItemLabel(item) }}</span>
         </template>
       </v-autocomplete>
       <v-alert v-if="selectedRegisterInfo" type="info" variant="tonal" border="start" density="comfortable"
@@ -176,7 +176,7 @@
           <a :href="registerReference.url" target="_blank" rel="noopener">{{ t('flashFirmware.registerAccess.technicalReferenceLink') }}</a>
         </div>
       </v-alert>
-      <v-row dense>
+      <v-row density="comfortable">
         <v-col cols="12" md="6">
           <v-text-field :model-value="registerAddress" :label="t('flashFirmware.registerAccess.registerAddress')" placeholder="0x60000000"
             density="comfortable" :disabled="busy || maintenanceBusy" data-testid="register-address-input"
@@ -224,22 +224,22 @@
         <template #item="{ props, item }">
           <v-list-item v-bind="props" class="partition-select__item">
             <template #prepend>
-              <span class="partition-select__swatch" :style="{ backgroundColor: resolvePartitionColor(item?.raw) }" />
+              <span class="partition-select__swatch" :style="{ backgroundColor: resolveSelectItemColor(item) }" />
             </template>
-            <v-list-item-title>{{ item.raw.label }}</v-list-item-title>
+            <v-list-item-title>{{ resolveSelectItemLabel(item) }}</v-list-item-title>
           </v-list-item>
         </template>
         <template #selection="{ item }">
           <span v-if="item" class="partition-select__selection">
-            <span class="partition-select__swatch" :style="{ backgroundColor: resolvePartitionColor(item.raw) }" />
-            <span>{{ item.raw.label }}</span>
+            <span class="partition-select__swatch" :style="{ backgroundColor: resolveSelectItemColor(item) }" />
+            <span>{{ resolveSelectItemLabel(item) }}</span>
           </span>
         </template>
       </v-select>
       <p v-if="partitionOptions.length" class="integrity-helper">
         {{ t('flashFirmware.integrity.helper') }}
       </p>
-      <v-row dense class="flash-progress-row">
+      <v-row density="comfortable" class="flash-progress-row">
         <v-col cols="12" md="6">
           <v-text-field :model-value="md5Offset" :label="t('flashFirmware.integrity.startOffset')" placeholder="0x0" density="comfortable"
             :disabled="busy || maintenanceBusy" @update:model-value="value => emit('update:md5Offset', value)" />
@@ -429,6 +429,35 @@ function handleIntegrityPartitionSelect(value: PartitionOptionValue | null) {
 }
 
 const PARTITION_COLOR_FALLBACK = 'var(--v-theme-primary)';
+
+function unwrapSelectItem(item: unknown): unknown {
+  if (item && typeof item === 'object' && 'raw' in item) {
+    return (item as { raw?: unknown }).raw ?? item;
+  }
+  return item;
+}
+
+function resolveSelectItemLabel(item: unknown): string {
+  const raw = unwrapSelectItem(item);
+  if (raw && typeof raw === 'object' && 'label' in raw) {
+    const label = (raw as { label?: unknown }).label;
+    return typeof label === 'string' ? label : '';
+  }
+  return '';
+}
+
+function resolveSelectItemAddress(item: unknown): string {
+  const raw = unwrapSelectItem(item);
+  if (raw && typeof raw === 'object' && 'address' in raw) {
+    const address = (raw as { address?: unknown }).address;
+    return typeof address === 'string' ? address : '';
+  }
+  return '';
+}
+
+function resolveSelectItemColor(item: unknown): string {
+  return resolvePartitionColor(unwrapSelectItem(item));
+}
 
 function resolvePartitionColor(option: unknown): string {
   if (option && typeof option === 'object' && 'color' in option) {
