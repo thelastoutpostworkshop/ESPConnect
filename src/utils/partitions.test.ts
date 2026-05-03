@@ -260,13 +260,19 @@ describe('partition utilities', () => {
     });
 
     it('returns an empty array when reading the table fails', async () => {
+      let readError: unknown = null;
       const loader = {
         readFlash: async () => {
           throw new Error('fail');
         },
       };
-      const entries = await readPartitionTable(loader);
+      const entries = await readPartitionTable(loader, undefined, undefined, undefined, {
+        onReadError: error => {
+          readError = error;
+        },
+      });
       expect(entries).toEqual([]);
+      expect(readError).toBeInstanceOf(Error);
     });
   });
 });

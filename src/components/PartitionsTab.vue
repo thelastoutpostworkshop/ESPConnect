@@ -1,5 +1,16 @@
 <template>
-  <div v-if="!partitionSegments.length" class="partitions-empty">
+  <div v-if="readError" class="partitions-empty">
+    <v-alert type="error" variant="tonal" border="start" class="partitions-empty__alert">
+      <div class="partitions-empty__title">{{ t('partitions.error.title') }}</div>
+      <div class="partitions-empty__subtitle">
+        {{ t('partitions.error.message') }}
+      </div>
+      <div class="partitions-empty__detail">
+        {{ t('partitions.error.detail', { error: readError }) }}
+      </div>
+    </v-alert>
+  </div>
+  <div v-else-if="!partitionSegments.length" class="partitions-empty">
     <v-card :class="[
       'partitions-empty__card',
       { 'partitions-empty__card--disconnected': !connected },
@@ -148,6 +159,7 @@ const props = withDefaults(
     unusedSummary?: UnusedFlashSummary | null;
     flashSizeLabel?: string | null;
     connected?: boolean;
+    readError?: string | null;
   }>(),
   {
     partitionSegments: () => [],
@@ -155,10 +167,11 @@ const props = withDefaults(
     unusedSummary: null,
     flashSizeLabel: '',
     connected: false,
+    readError: null,
   },
 );
 
-const { partitionSegments, formattedPartitions, unusedSummary, flashSizeLabel, connected } = toRefs(props);
+const { partitionSegments, formattedPartitions, unusedSummary, flashSizeLabel, connected, readError } = toRefs(props);
 const { t } = useI18n();
 
 const PARTITION_BUILDER_URL =
@@ -282,6 +295,10 @@ function logPartitionCsv(rows: FormattedPartitionRow[]) {
   color: color-mix(in srgb, var(--v-theme-error) 85%, var(--v-theme-on-surface) 10%);
 }
 
+.partitions-empty__alert {
+  max-width: 720px;
+}
+
 .partitions-empty__title {
   font-size: 1.02rem;
   font-weight: 600;
@@ -291,6 +308,14 @@ function logPartitionCsv(rows: FormattedPartitionRow[]) {
 .partitions-empty__subtitle {
   font-size: 0.92rem;
   color: color-mix(in srgb, var(--v-theme-on-surface) 65%, transparent);
+}
+
+.partitions-empty__detail {
+  color: color-mix(in srgb, var(--v-theme-on-surface) 65%, transparent);
+  font-family: monospace;
+  font-size: 0.86rem;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
 }
 
 .partition-map {

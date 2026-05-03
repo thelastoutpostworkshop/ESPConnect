@@ -29,7 +29,7 @@
 
     <template v-else>
       <v-alert
-        v-if="!apps.length"
+        v-if="!error && !apps.length"
         type="info"
         variant="tonal"
         density="comfortable"

@@ -221,6 +221,7 @@
     alerts: {
       readingMetadata: 'Uygulama meta verileri okunuyor…',
       noApplications: 'Uygulama bölümü algılanmadı.',
+      partitionTableUnavailable: 'Bölüm tablosu okunamadığı için uygulama bölümleri gösterilemiyor.',
     },
     chips: {
       active: 'Aktif',
@@ -368,6 +369,12 @@
       title: 'Henüz bölüm verisi yok',
       subtitle: 'Bölüm tablosunu yüklemek için bir ESP32\'ye bağlanın (ESP8266 desteklenmiyor).',
       subtitleConnected: 'Bu ESP32\'de bölüm tablosu algılanmadı.',
+    },
+    error: {
+      title: 'Bölüm tablosu okunamadı',
+      message:
+        'ESPConnect bölüm tablosunu okuyamadı. Bu genellikle bu tarayıcıda seri iletişimin güvenilir olmadığı veya çip/taşımanın tam desteklenmediği anlamına gelir.',
+      detail: 'Ayrıntılar: {error}',
     },
     alerts: {
       unusedFlash: {

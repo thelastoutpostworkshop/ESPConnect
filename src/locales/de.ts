@@ -221,6 +221,7 @@ const de = {
     alerts: {
       readingMetadata: 'Anwendungsmetadaten werden gelesen…',
       noApplications: 'Keine Anwendungspartitionen erkannt.',
+      partitionTableUnavailable: 'Anwendungspartitionen können nicht angezeigt werden, weil die Partitionstabelle nicht gelesen werden konnte.',
     },
     chips: {
       active: 'Aktiv',
@@ -368,6 +369,12 @@ const de = {
       title: 'Noch keine Partitionsdaten',
       subtitle: 'Verbinde ein ESP32, um die Partitionstabelle zu laden (ESP8266 wird nicht unterstützt).',
       subtitleConnected: 'Keine Partitionstabelle auf diesem ESP32 erkannt.',
+    },
+    error: {
+      title: 'Partitionstabelle konnte nicht gelesen werden',
+      message:
+        'ESPConnect konnte die Partitionstabelle nicht lesen. Das weist meistens auf eine unzuverlässige serielle Kommunikation in diesem Browser oder einen nicht vollständig unterstützten Chip/Transport hin.',
+      detail: 'Details: {error}',
     },
     alerts: {
       unusedFlash: {

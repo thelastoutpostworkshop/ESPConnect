@@ -1,5 +1,9 @@
 type LogFn = (message: string, detail?: unknown, levelTag?: string) => void;
 
+interface ReadPartitionTableOptions {
+  onReadError?: (error: unknown) => void;
+}
+
 function logInfo(log: LogFn | undefined, message: string) {
   log?.(message, undefined, '[ESPConnect-Debug]');
 }
@@ -249,6 +253,7 @@ export async function readPartitionTable(
   offset?: number,
   length = 0x400,
   log?: LogFn,
+  options?: ReadPartitionTableOptions,
 ) {
   if (offset == null) {
     const detectedOffset = await probePartitionTableOffset(loader, log);
@@ -310,6 +315,7 @@ export async function readPartitionTable(
     return entries;
   } catch (err) {
     log?.('Failed to read partition table', err);
+    options?.onReadError?.(err);
     return [];
   }
 }

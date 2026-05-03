@@ -220,6 +220,7 @@
     alerts: {
       readingMetadata: '正在读取应用程序元数据…',
       noApplications: '未检测到应用分区。',
+      partitionTableUnavailable: '无法显示应用分区，因为分区表读取失败。',
     },
     chips: {
       active: '激活',
@@ -366,6 +367,12 @@
       title: '暂无分区数据',
       subtitle: '连接 ESP32 以加载其分区表（ESP8266 不受支持）。',
       subtitleConnected: '未检测到此 ESP32 的分区表。',
+    },
+    error: {
+      title: '无法读取分区表',
+      message:
+        'ESPConnect 无法读取分区表。这通常表示此浏览器中的串口通信不可靠，或芯片/传输方式未完全受支持。',
+      detail: '详细信息：{error}',
     },
     alerts: {
       unusedFlash: {

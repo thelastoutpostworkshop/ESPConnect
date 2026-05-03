@@ -105,7 +105,7 @@
             <v-window-item value="partitions">
               <PartitionsTab :partition-segments="partitionSegments" :formatted-partitions="formattedPartitions"
                 :unused-summary="unusedFlashSummary" :flash-size-label="partitionFlashSizeLabel"
-                :connected="connected" />
+                :connected="connected" :read-error="partitionTableReadError" />
             </v-window-item>
 
             <v-window-item value="nvs">
@@ -189,7 +189,7 @@
 
             <v-window-item value="apps">
               <AppsTab v-if="connected" :apps="appPartitions" :active-slot-id="activeAppSlotId"
-                :active-summary="appActiveSummary" :loading="appMetadataLoading" :error="appMetadataError" />
+                :active-summary="appActiveSummary" :loading="appMetadataLoading" :error="appMetadataDisplayError" />
               <DisconnectedState v-else icon="mdi-application-cog-outline" :min-height="420"
                 :title="t('disconnected.defaultTitle')" :subtitle="t('disconnected.apps')" />
             </v-window-item>
@@ -4198,11 +4198,21 @@ async function runLoaderOperation<T>(operation: () => Promise<T>): Promise<T> {
   }
   return await operation();
 }
+function recordPartitionTableReadError(error: unknown) {
+  partitionTableReadError.value = formatErrorMessage(error);
+}
 const firmwareBuffer = ref<ArrayBuffer | null>(null);
 const firmwareName = ref('');
 const chipDetails = ref<DeviceDetails | null>(null);
 const partitionFlashSizeLabel = computed(() => chipDetails.value?.flashSize ?? null);
 const partitionTable = ref<PartitionTableEntry[]>([]);
+const partitionTableReadError = ref<string | null>(null);
+const appMetadataDisplayError = computed(() => {
+  if (partitionTableReadError.value) {
+    return t('apps.alerts.partitionTableUnavailable');
+  }
+  return appMetadataError.value;
+});
 const activeTab = ref('info');
 const sessionLogRef = ref<SessionLogTabRef | null>(null);
 const navigationItems = computed(() => [
@@ -5938,6 +5948,8 @@ async function disconnectTransport() {
     esptoolClient.value = null;
     connected.value = false;
     chipDetails.value = null;
+    partitionTable.value = [];
+    partitionTableReadError.value = null;
     flashSizeBytes.value = null;
     monitorError.value = null;
     monitorText.value = '';
@@ -5980,6 +5992,7 @@ async function connect() {
 
   logBuffer.value = '';
   partitionTable.value = [];
+  partitionTableReadError.value = null;
   appendLog('Requesting serial port access...');
 
   try {
@@ -6280,6 +6293,7 @@ async function connect() {
     }
 
     connectDialog.message = t('dialogs.readingPartitionTable');
+    partitionTableReadError.value = null;
     if (esp.chipName?.includes('ESP8266')) {
       appendLog('Skipping partition table read for ESP8266 (not supported).', '[ESPConnect-Debug]');
       partitionTable.value = [];
@@ -6289,7 +6303,11 @@ async function connect() {
       const detectedOffset = await runLoaderOperation(() => probePartitionTableOffset(loaderInstance, appendLog));
       const partitionOffset = detectedOffset ?? 0x8000;
       partitionTableOffset.value = partitionOffset;
-      const partitions = await runLoaderOperation(() => readPartitionTable(loaderInstance, partitionOffset, undefined, appendLog));
+      const partitions = await runLoaderOperation(() =>
+        readPartitionTable(loaderInstance, partitionOffset, undefined, appendLog, {
+          onReadError: recordPartitionTableReadError,
+        }),
+      );
       partitionTable.value = partitions;
       appMetadataLoaded.value = false;
     } else {
@@ -6438,6 +6456,7 @@ async function refreshPartitionTable(loaderInstance = loader.value) {
   }
 
   try {
+    partitionTableReadError.value = null;
     if (chipDetails.value?.name?.includes('ESP8266')) {
       partitionTable.value = [];
       return;
@@ -6446,7 +6465,9 @@ async function refreshPartitionTable(loaderInstance = loader.value) {
     const offset = detectedOffset ?? 0x8000;
     partitionTableOffset.value = offset;
     const partitions = await runLoaderOperation(() =>
-      readPartitionTable(loaderInstance, offset, undefined, appendLog),
+      readPartitionTable(loaderInstance, offset, undefined, appendLog, {
+        onReadError: recordPartitionTableReadError,
+      }),
     );
     partitionTable.value = partitions;
   } finally {
