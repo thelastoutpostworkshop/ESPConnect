@@ -75,6 +75,18 @@ const de = {
     copySuccess: 'Serieller Monitor in die Zwischenablage kopiert.',
     copyError: 'Ausgabe des seriellen Monitors konnte nicht kopiert werden. Bitte versuche es erneut.',
   },
+  serialPortPicker: {
+    title: 'Seriellen Port auswählen',
+    subtitle: 'Wähle den Port, der mit deinem ESP-Gerät verbunden ist.',
+    recommended: 'Empfohlen',
+    unknownPort: 'Unbekannter Port',
+    noDetails: 'Keine Gerätedetails verfügbar',
+    usbId: 'USB ID {vendorId}:{productId}',
+    serialNumber: 'Seriennummer {serialNumber}',
+    actions: {
+      select: 'Auswählen',
+    },
+  },
   dialogs: {
     connecting: 'Verbinde',
     littlefsBackup: 'LittleFS-Backup',

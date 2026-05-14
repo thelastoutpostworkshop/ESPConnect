@@ -25,7 +25,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('show-message', { type, title, message, buttons }),
   
   showConfirm: (message, title) =>
-    ipcRenderer.invoke('show-confirm', { message, title })
+    ipcRenderer.invoke('show-confirm', { message, title }),
+
+  onSerialPortPickerOpen: (callback) => {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on('serial-port-picker:open', listener);
+    return () => ipcRenderer.removeListener('serial-port-picker:open', listener);
+  },
+
+  selectSerialPort: (requestId, portId) =>
+    ipcRenderer.send('serial-port-picker:select', { requestId, portId })
 });
 
 // Log when preload script runs

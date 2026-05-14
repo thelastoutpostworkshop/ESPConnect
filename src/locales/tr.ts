@@ -75,6 +75,18 @@
     copySuccess: 'Seri monitör panoya kopyalandı.',
     copyError: 'Seri monitör çıktısı kopyalanamadı. Lütfen tekrar deneyin.',
   },
+  serialPortPicker: {
+    title: 'Seri port seç',
+    subtitle: 'ESP cihazınıza bağlı portu seçin.',
+    recommended: 'Önerilen',
+    unknownPort: 'Bilinmeyen port',
+    noDetails: 'Cihaz ayrıntısı yok',
+    usbId: 'USB ID {vendorId}:{productId}',
+    serialNumber: 'Seri {serialNumber}',
+    actions: {
+      select: 'Seç',
+    },
+  },
   dialogs: {
     connecting: 'Bağlanıyor',
     littlefsBackup: 'LittleFS Yedeği',

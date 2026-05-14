@@ -75,6 +75,18 @@
     copySuccess: 'Serial monitor copied to clipboard.',
     copyError: 'Unable to copy serial monitor output. Please try again.',
   },
+  serialPortPicker: {
+    title: 'Select serial port',
+    subtitle: 'Choose the port connected to your ESP device.',
+    recommended: 'Recommended',
+    unknownPort: 'Unknown port',
+    noDetails: 'No device details available',
+    usbId: 'USB ID {vendorId}:{productId}',
+    serialNumber: 'Serial {serialNumber}',
+    actions: {
+      select: 'Select',
+    },
+  },
   dialogs: {
     connecting: 'Connecting',
     littlefsBackup: 'LittleFS Backup',

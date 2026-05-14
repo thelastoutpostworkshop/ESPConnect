@@ -15,9 +15,70 @@ if (process.platform === 'win32') {
 }
 
 let mainWindow;
+let serialPortPickerRequestId = 0;
 
 // Store granted serial port devices
 const grantedDevices = new Map();
+const pendingSerialPortPickers = new Map();
+
+ipcMain.on('serial-port-picker:select', (event, payload) => {
+  const requestId = typeof payload?.requestId === 'string' ? payload.requestId : '';
+  const pending = pendingSerialPortPickers.get(requestId);
+  if (!pending || pending.webContentsId !== event.sender.id) {
+    return;
+  }
+
+  pendingSerialPortPickers.delete(requestId);
+  pending.cleanup();
+  pending.resolve(typeof payload?.portId === 'string' ? payload.portId : '');
+});
+
+function sanitizeSerialPort(port, index, recommended) {
+  const toStringOrUndefined = (value) => (typeof value === 'string' && value ? value : undefined);
+  const toNumberOrUndefined = (value) => (typeof value === 'number' && Number.isFinite(value) ? value : undefined);
+
+  return {
+    index,
+    portId: toStringOrUndefined(port?.portId) || '',
+    portName: toStringOrUndefined(port?.portName),
+    displayName: toStringOrUndefined(port?.displayName),
+    serialNumber: toStringOrUndefined(port?.serialNumber),
+    vendorId: toNumberOrUndefined(port?.vendorId),
+    productId: toNumberOrUndefined(port?.productId),
+    recommended,
+  };
+}
+
+function requestSerialPortFromRenderer(webContents, ports, defaultPortId) {
+  if (!webContents || webContents.isDestroyed()) {
+    return Promise.resolve('');
+  }
+
+  const requestId = `serial-port-${Date.now()}-${++serialPortPickerRequestId}`;
+
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      webContents.removeListener('destroyed', handleDestroyed);
+    };
+    const handleDestroyed = () => {
+      pendingSerialPortPickers.delete(requestId);
+      resolve('');
+    };
+
+    pendingSerialPortPickers.set(requestId, {
+      webContentsId: webContents.id,
+      resolve,
+      cleanup,
+    });
+
+    webContents.once('destroyed', handleDestroyed);
+    webContents.send('serial-port-picker:open', {
+      requestId,
+      ports,
+      defaultPortId,
+    });
+  });
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -99,14 +160,6 @@ function setupSerialPortHandlers(session) {
 
   const getPortLabel = (port) => port?.displayName || port?.portName || port?.portId || 'Unknown port';
 
-  const getPortButtonLabel = (port, isRecommended = false) => {
-    const shortId = port?.portName || port?.displayName || port?.portId || 'Unknown';
-    return isRecommended ? `${shortId} (Recommended)` : shortId;
-  };
-
-  const toHexId = (value) =>
-    typeof value === 'number' ? `0x${value.toString(16).toUpperCase().padStart(4, '0')}` : null;
-
   // Handle serial port selection - shows when navigator.serial.requestPort() is called
   session.on('select-serial-port', async (event, portList, webContents, callback) => {
     event.preventDefault();
@@ -130,33 +183,15 @@ function setupSerialPortHandlers(session) {
       return;
     }
 
-    const detail = portList.map((port, index) => {
-      const vendorId = toHexId(port.vendorId);
-      const productId = toHexId(port.productId);
-      const usbId = vendorId && productId ? `${vendorId}:${productId}` : null;
-      const metadata = [usbId].filter(Boolean).join(' | ');
-      const primary = port.portName ? `${port.portName} - ${getPortLabel(port)}` : getPortLabel(port);
-      return `${index + 1}. ${primary}${metadata ? ` (${metadata})` : ''}`;
-    }).join('\n');
-
     const defaultIndex = Math.max(portList.findIndex(isLikelyEspPort), 0);
-    const buttonLabels = portList.map((port, index) => getPortButtonLabel(port, index === defaultIndex));
-    const cancelIndex = buttonLabels.length;
 
     try {
-      const ownerWindow = BrowserWindow.fromWebContents(webContents) || mainWindow;
-      const result = await dialog.showMessageBox(ownerWindow, {
-        type: 'question',
-        title: 'ESPConnect',
-        message: 'Select the serial port for your ESP device.',
-        detail,
-        buttons: [...buttonLabels, 'Cancel'],
-        defaultId: defaultIndex,
-        cancelId: cancelIndex,
-        noLink: true,
-      });
-
-      const selectedPort = portList[result.response];
+      const pickerPorts = portList
+        .map((port, index) => sanitizeSerialPort(port, index, index === defaultIndex))
+        .filter(port => port.portId);
+      const defaultPortId = pickerPorts.find(port => port.recommended)?.portId || pickerPorts[0]?.portId || '';
+      const selectedPortId = await requestSerialPortFromRenderer(webContents, pickerPorts, defaultPortId);
+      const selectedPort = portList.find(port => port.portId === selectedPortId);
       if (!selectedPort) {
         console.log('Serial port selection canceled');
         callback('');

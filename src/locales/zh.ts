@@ -63,6 +63,18 @@
     copySuccess: '串口监视器信息已复制到剪贴板。',
     copyError: '无法复制串口监视器输出。请重试。',
   },
+  serialPortPicker: {
+    title: '选择串口',
+    subtitle: '选择连接到 ESP 设备的端口。',
+    recommended: '推荐',
+    unknownPort: '未知端口',
+    noDetails: '没有可用的设备详情',
+    usbId: 'USB ID {vendorId}:{productId}',
+    serialNumber: '序列号 {serialNumber}',
+    actions: {
+      select: '选择',
+    },
+  },
   sessionLog: {
     title: '会话日志',
     actions: {

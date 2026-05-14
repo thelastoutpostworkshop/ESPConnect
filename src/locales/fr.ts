@@ -75,6 +75,18 @@
     copySuccess: 'Moniteur serie copie dans le presse-papier.',
     copyError: 'Impossible de copier la sortie du moniteur. Veuillez reessayer.',
   },
+  serialPortPicker: {
+    title: 'Sélectionner le port série',
+    subtitle: 'Choisissez le port connecté à votre appareil ESP.',
+    recommended: 'Recommandé',
+    unknownPort: 'Port inconnu',
+    noDetails: 'Aucun détail disponible',
+    usbId: 'USB ID {vendorId}:{productId}',
+    serialNumber: 'Série {serialNumber}',
+    actions: {
+      select: 'Sélectionner',
+    },
+  },
   dialogs: {
     connecting: 'Connexion en cours',
     littlefsBackup: 'Sauvegarde du LittleFS',
