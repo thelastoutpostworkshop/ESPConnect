@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.13
+### Fixed
+- Electron serial port selection now uses a bounded, scrollable in-app picker so systems with many ports remain easy to use ([issue #160](https://github.com/thelastoutpostworkshop/ESPConnect/issues/160)).
+
 ## 1.1.12
 ### Improvement
 - NVS Inspector now shows used NVS entry storage in bytes compared with the selected NVS partition size ([issue #157](https://github.com/thelastoutpostworkshop/ESPConnect/issues/157)).
