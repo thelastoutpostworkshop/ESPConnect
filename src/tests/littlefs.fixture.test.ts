@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -31,39 +31,7 @@ const NESTED_FILE_NAME = 'nested_info.txt';
 const MICROPY_BOOT_FILE = '/boot.py';
 const ESP32_S3_KNOWN_FILES = ['/_persist.json', '/test.mp3'];
 
-const LITTLEFS_JS_PATH = path.resolve(process.cwd(), 'src/wasm/littlefs/littlefs.js');
-const LITTLEFS_UMD_ORIGINAL =
-  'if(typeof exports==="object"&&typeof module==="object"){module.exports=createLittleFS;module.exports.default=createLittleFS}else if(typeof define==="function"&&define["amd"])define([],()=>createLittleFS);';
-const LITTLEFS_UMD_PATCHED =
-  'if(typeof createLittleFS!=="undefined"&&typeof exports==="object"&&typeof module==="object"){try{module.exports=createLittleFS;module.exports.default=createLittleFS}catch{}}else if(typeof define==="function"&&define["amd"]&&typeof createLittleFS!=="undefined")define([],()=>createLittleFS);';
-
-let littlefsOriginalContent: string | null = null;
 let littlefsModule: LittleFSModule | null = null;
-
-function patchLittlefsUmd() {
-  if (littlefsOriginalContent !== null) {
-    return;
-  }
-  const content = readFileSync(LITTLEFS_JS_PATH, 'utf8');
-  littlefsOriginalContent = content;
-
-  if (content.includes(LITTLEFS_UMD_PATCHED)) {
-    return;
-  }
-  if (!content.includes(LITTLEFS_UMD_ORIGINAL)) {
-    throw new Error('Unexpected littlefs.js footer; cannot apply test patch.');
-  }
-
-  writeFileSync(LITTLEFS_JS_PATH, content.replace(LITTLEFS_UMD_ORIGINAL, LITTLEFS_UMD_PATCHED));
-}
-
-function restoreLittlefsUmd() {
-  if (littlefsOriginalContent === null) {
-    return;
-  }
-  writeFileSync(LITTLEFS_JS_PATH, littlefsOriginalContent);
-  littlefsOriginalContent = null;
-}
 
 async function loadLittleFSModule(): Promise<LittleFSModule> {
   if (!littlefsModule) {
@@ -112,9 +80,6 @@ let originalFetch: typeof fetch;
 let originalConsoleInfo: typeof console.info;
 
 beforeAll(() => {
-  patchLittlefsUmd();
-  process.once('exit', restoreLittlefsUmd);
-
   originalConsoleInfo = console.info;
   console.info = vi.fn();
 
@@ -139,7 +104,6 @@ beforeAll(() => {
 afterAll(() => {
   console.info = originalConsoleInfo;
   globalThis.fetch = originalFetch;
-  restoreLittlefsUmd();
 });
 
 describe('littlefs fixture image', () => {
