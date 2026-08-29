@@ -46,8 +46,17 @@ describe('i18n locale selection', () => {
     expect(i18n.global.locale.value).toBe('fr');
   });
 
+  it('uses es when navigator languages include Spanish', async () => {
+    setNavigator(['es-ES', 'en-US']);
+    setWindowWithLocalStorage(null);
+
+    const { i18n } = await loadI18n();
+
+    expect(i18n.global.locale.value).toBe('es');
+  });
+
   it('falls back to en when navigator languages are unsupported', async () => {
-    setNavigator(['es-ES']);
+    setNavigator(['ja-JP']);
     setWindowWithLocalStorage(null);
 
     const { i18n } = await loadI18n();

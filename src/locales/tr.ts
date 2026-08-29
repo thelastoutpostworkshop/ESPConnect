@@ -627,6 +627,7 @@ const tr = {
     turkish: 'Türkçe',
     german: 'Almanca',
     czech: 'Çekçe',
+    spanish: 'İspanyolca',
     switchTo: '{language} diline geç',
   },
   theme: {

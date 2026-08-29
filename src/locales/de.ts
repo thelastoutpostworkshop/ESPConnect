@@ -628,6 +628,7 @@ const de = {
     turkish: 'Türkisch',
     german: 'Deutsch',
     czech: 'Tschechisch',
+    spanish: 'Spanisch',
     switchTo: 'Zu {language} wechseln',
   },
   theme: {

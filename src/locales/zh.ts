@@ -626,6 +626,7 @@ const zh = {
     turkish: '土耳其语',
     german: '德语',
     czech: '捷克语',
+    spanish: '西班牙语',
     switchTo: '切换到{language}',
   },
   theme: {
