@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.21
+### Improvement
+- Added Spanish translations. Thanks to Cayetano97 for the contribution ([PR #171](https://github.com/thelastoutpostworkshop/ESPConnect/pull/171)).
+
 ## 1.1.20
 ### Improvement
 - Added a PayPal donation link to Resources.
