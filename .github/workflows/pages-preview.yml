@@ -14,17 +14,17 @@ permissions:
 
 jobs:
   deploy-preview:
-    name: Build & deploy /preview from main
+    name: Build & deploy /preview from ${{ github.ref_name }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - name: Checkout main
+      - name: Checkout selected branch
         uses: actions/checkout@v5
         with:
-          ref: main
+          ref: ${{ github.ref }}
           fetch-depth: 0
 
       - name: Setup Node
