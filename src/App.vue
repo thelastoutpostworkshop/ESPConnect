@@ -728,6 +728,7 @@ import { getLanguage, setLanguage, supportedLocales, SupportedLocale } from './p
 import { readPartitionTable, probePartitionTableOffset } from './utils/partitions';
 import { detectActiveOtaSlot } from './utils/ota';
 import type { ESPLoader } from 'tasmota-webserial-esptool';
+import { createV7CompatibleFlashReader, readFlashWithV7Compatibility } from './services/flashReadCompatibility';
 import { createEsptoolClient, requestSerialPort, type CompatibleTransport, type EsptoolClient, type StatusPayload } from './services/esptoolClient';
 import {
   SPIFFS_AUDIO_EXTENSIONS,
@@ -3891,7 +3892,8 @@ async function readFlashToBuffer(offset: number, length: number, options: ReadFl
       const currentChunkSize = Math.min(chunkSize, remaining);
       const chunkOffset = offset + totalReceived;
       const chunkBase = totalReceived;
-      const chunk = await loaderInstance.readFlash(
+      const chunk = await readFlashWithV7Compatibility(
+        loaderInstance,
         chunkOffset,
         currentChunkSize,
         (_packet, received) => {
@@ -4807,7 +4809,7 @@ async function analyzeAppPartitions(loaderInstance: ESPLoader, partitions: Parti
     try {
       // Always read the two otadata sectors (0x2000) from the otadata partition start.
       const desiredLength = OTA_DATA_SECTOR_BYTES * 2; // 0x2000
-      const primaryBlock = await loaderInstance.readFlash(otadataEntry.offset, desiredLength);
+      const primaryBlock = await readFlashWithV7Compatibility(loaderInstance, otadataEntry.offset, desiredLength);
 
       // Debug: show the first 32 bytes of each sector.
       appendLog(`otadata sector0[0..31]=${hex(primaryBlock.subarray(0x0000, 0x0020))}`);
@@ -4869,7 +4871,7 @@ async function analyzeAppPartitions(loaderInstance: ESPLoader, partitions: Parti
 
     if (readSize >= 24) {
       try {
-        buffer = await loaderInstance.readFlash(entry.offset, readSize);
+        buffer = await readFlashWithV7Compatibility(loaderInstance, entry.offset, readSize);
       } catch (error) {
         imageError = formatErrorMessage(error);
         appendLog(`Failed to read app partition ${entry.label || slotLabel}`, error);
@@ -6419,11 +6421,12 @@ async function connect() {
       appMetadataLoaded.value = false;
     } else if (loader.value) {
       const loaderInstance = loader.value;
-      const detectedOffset = await runLoaderOperation(() => probePartitionTableOffset(loaderInstance, appendLog));
+      const partitionReader = createV7CompatibleFlashReader(loaderInstance);
+      const detectedOffset = await runLoaderOperation(() => probePartitionTableOffset(partitionReader, appendLog));
       const partitionOffset = detectedOffset ?? 0x8000;
       partitionTableOffset.value = partitionOffset;
       const partitions = await runLoaderOperation(() =>
-        readPartitionTable(loaderInstance, partitionOffset, undefined, appendLog, {
+        readPartitionTable(partitionReader, partitionOffset, undefined, appendLog, {
           onReadError: recordPartitionTableReadError,
         }),
       );
@@ -6580,11 +6583,12 @@ async function refreshPartitionTable(loaderInstance = loader.value) {
       partitionTable.value = [];
       return;
     }
-    const detectedOffset = await runLoaderOperation(() => probePartitionTableOffset(loaderInstance, appendLog));
+    const partitionReader = createV7CompatibleFlashReader(loaderInstance);
+    const detectedOffset = await runLoaderOperation(() => probePartitionTableOffset(partitionReader, appendLog));
     const offset = detectedOffset ?? 0x8000;
     partitionTableOffset.value = offset;
     const partitions = await runLoaderOperation(() =>
-      readPartitionTable(loaderInstance, offset, undefined, appendLog, {
+      readPartitionTable(partitionReader, offset, undefined, appendLog, {
         onReadError: recordPartitionTableReadError,
       }),
     );
@@ -6936,7 +6940,8 @@ async function downloadFlashRegion(offset: number, length: number, options: Down
         const currentChunkSize = Math.min(chunkSize, remaining);
         const chunkOffset = offset + totalReceived;
         const chunkBase = totalReceived;
-        const chunkBuffer = await loaderInstance.readFlash(
+        const chunkBuffer = await readFlashWithV7Compatibility(
+          loaderInstance,
           chunkOffset,
           currentChunkSize,
           (_packet, received) => {
