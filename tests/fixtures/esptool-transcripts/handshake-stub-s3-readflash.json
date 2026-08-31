@@ -27,6 +27,12 @@
     {
       "type": "response",
       "opcode": "ESP_READ_REG",
+      "value": "0x0",
+      "data": "00000000"
+    },
+    {
+      "type": "response",
+      "opcode": "ESP_READ_REG",
       "value": "0x18956b4c",
       "data": "00000000"
     },

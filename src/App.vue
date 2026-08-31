@@ -4515,7 +4515,7 @@ async function setConnectionBaud(targetBaud: string | number, options: SetBaudOp
       }
       await runLoaderOperation(async () => {
         await loaderInstance.setBaudrate(parsed);
-        await loaderInstance.sleep(300); // Fix needed for Native USB (0x1001), otherwise an error is raised
+        await new Promise(resolve => setTimeout(resolve, 300)); // Fix needed for Native USB (0x1001), otherwise an error is raised
       });
       if (transport.value) {
         transport.value.baudrate = parsed;
