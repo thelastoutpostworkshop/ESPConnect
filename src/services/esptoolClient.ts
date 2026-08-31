@@ -39,6 +39,7 @@ import { readEsp32P4Metadata } from './chipMetadata/esp32p4';
 import { readEsp32H4Metadata } from './chipMetadata/esp32h4';
 import { readEsp32H21Metadata } from './chipMetadata/esp32h21';
 import { readEsp32S31Metadata } from './chipMetadata/esp32s31';
+import { disableCdcBurstPacketReader } from './flashReadCompatibility';
 
 export type StatusPayload = {
   translationKey?: string;
@@ -340,6 +341,7 @@ export function createEsptoolClient({
       });
       const stub = await loader.runStub();
       loader = stub;
+      disableCdcBurstPacketReader(loader);
       transport.loader = loader;
       loader.debug = debugLogging;
 
