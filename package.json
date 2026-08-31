@@ -22,7 +22,8 @@
     "start": "electron-forge start",
     "package": "electron-forge package",
     "make": "electron-forge make",
-    "publish": "electron-forge publish"
+    "publish": "electron-forge publish",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",
@@ -45,6 +46,7 @@
     "@types/node": "^26.1.1",
     "@vitejs/plugin-vue": "^6.0.7",
     "electron": "^43.2.0",
+    "patch-package": "^8.0.1",
     "sass": "^1.100.0",
     "typescript": "^5.9.3",
     "vite": "^8.0.14",
