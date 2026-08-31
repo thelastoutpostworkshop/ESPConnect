@@ -40,6 +40,8 @@ import { readEsp32H4Metadata } from './chipMetadata/esp32h4';
 import { readEsp32H21Metadata } from './chipMetadata/esp32h21';
 import { readEsp32S31Metadata } from './chipMetadata/esp32s31';
 
+const ESP32_S31_BACKPORT_LABEL = 'ESP32-S31 compatibility patch active';
+
 export type StatusPayload = {
   translationKey?: string;
   params?: Record<string, unknown>;
@@ -287,7 +289,10 @@ export function createEsptoolClient({
   const transport = new CompatibleTransport(port, debugSerial ?? false, loader, isBusy);
 
   const status = (payload: StatusPayload) => onStatus?.(payload);
-  status({ message: `tasmota-webserial-esptool v(${tasmotaEsptoolVersion})`, showInDialog: false });
+  status({
+    message: `tasmota-webserial-esptool v(${tasmotaEsptoolVersion}) [${ESP32_S31_BACKPORT_LABEL}]`,
+    showInDialog: false,
+  });
 
   let client: EsptoolClient;
 
