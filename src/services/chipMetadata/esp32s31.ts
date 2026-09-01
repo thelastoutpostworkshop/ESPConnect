@@ -1,7 +1,7 @@
 import type { ChipMetadata } from './types';
 import type { ESPLoader } from 'tasmota-webserial-esptool';
 
-// Minimal ESP32-S31 metadata helper (constants mirrored from legacy target for reference)
+// ESP32-S31 metadata helper. Variant-specific memory details require eFuse decoding.
 export const CHIP_NAME = 'ESP32-S31';
 export const IMAGE_CHIP_ID = 32;
 export const EFUSE_BASE = 0x60008800;
@@ -19,7 +19,15 @@ export async function readEsp32S31Metadata(loader: ESPLoader): Promise<ChipMetad
   const mac = typeof loader.macAddr === 'function' ? safeMac(loader) : undefined;
   return {
     description: loader.chipName ?? CHIP_NAME,
-    features: ['Wi-Fi', 'BLE'],
+    features: [
+      'Wi-Fi 6',
+      'Bluetooth 5.4 LE',
+      'Bluetooth Classic',
+      'IEEE 802.15.4 (Thread / Zigbee)',
+      'Dual-core 32-bit RISC-V high-performance CPU',
+      'Low-power RISC-V core',
+      '320 MHz',
+    ],
     crystalFreq: 40,
     macAddress: mac,
     pkgVersion: undefined,
