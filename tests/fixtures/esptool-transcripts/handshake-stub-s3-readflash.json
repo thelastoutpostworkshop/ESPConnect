@@ -80,6 +80,12 @@
     },
     {
       "type": "response",
+      "opcode": "ESP_MEM_DATA",
+      "value": "0x2040000",
+      "data": "00000000"
+    },
+    {
+      "type": "response",
       "opcode": "ESP_MEM_BEGIN",
       "value": "0x2040000",
       "data": "00000000"
