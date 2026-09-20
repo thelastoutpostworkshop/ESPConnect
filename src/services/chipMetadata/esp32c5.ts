@@ -107,7 +107,7 @@ export const KEY_PURPOSES: Record<number, string> = {
 //   // info?: (msg: string) => void;
 // };
 
-export async function readEsp32C5Metadata(loader: ESPLoader): Promise<ChipMetadata> {
+export async function readEsp32C5Metadata(loader: ESPLoader, baud: number): Promise<ChipMetadata> {
   const readEfuse = async (wordIndex: number) => loader.readRegister(EFUSE_BLOCK1_ADDR + 4 * wordIndex);
 
   const getPkgVersion = async () => {
@@ -137,8 +137,6 @@ export async function readEsp32C5Metadata(loader: ESPLoader): Promise<ChipMetada
 
   const getCrystalFreq = async () => {
     const uartDiv = (await loader.readRegister(UART_CLKDIV_REG)) & 0xfffff;
-    // const baud = loader.transport?.baudrate ?? 115200;
-    const baud = 115200;
     const etsXtal = (baud * uartDiv) / 1000000 / XTAL_CLK_DIVIDER;
     const normXtal = etsXtal > 45 ? 48 : etsXtal > 33 ? 40 : 26;
     // if (Math.abs(normXtal - etsXtal) > 1 && typeof loader.info === 'function') {

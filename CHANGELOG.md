@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.23
+### Fixed
+- Corrected crystal-frequency detection at higher connection baud rates for ESP32, ESP8266, ESP32-C2, and ESP32-C5 by using the active baud rate ([issue #179](https://github.com/thelastoutpostworkshop/ESPConnect/issues/179)).
+
 ## 1.1.22
 ### Improvement
 - Added Vietnamese translations. Thanks to ngantrandev for the contribution ([PR #176](https://github.com/thelastoutpostworkshop/ESPConnect/pull/176)).

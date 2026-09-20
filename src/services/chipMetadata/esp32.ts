@@ -69,7 +69,7 @@ export const SPI_MISO_DLEN_OFFS = 0x2c;
 //   readReg: (addr: number) => Promise<number>;
 // };
 
-export async function readEsp32Metadata(loader: ESPLoader): Promise<ChipMetadata> {
+export async function readEsp32Metadata(loader: ESPLoader, baud: number): Promise<ChipMetadata> {
   const readEfuse = async (offset: number) => loader.readRegister(EFUSE_RD_REG_BASE + 4 * offset);
 
   const getPkgVersion = async () => {
@@ -178,8 +178,6 @@ export async function readEsp32Metadata(loader: ESPLoader): Promise<ChipMetadata
 
   const getCrystalFreq = async () => {
     const uartDiv = (await loader.readRegister(UART_CLKDIV_REG)) & UART_CLKDIV_MASK;
-    // const baud = loader.transport?.baudrate ?? 115200;
-    const baud = 115200;
     const etsXtal = (baud * uartDiv) / 1000000 / XTAL_CLK_DIVIDER;
     const normXtal = etsXtal > 33 ? 40 : 26;
     // if (Math.abs(normXtal - etsXtal) > 1 && typeof loader.info === 'function') {

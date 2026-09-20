@@ -395,16 +395,16 @@ export function createEsptoolClient({
         return await readEsp32C3Metadata(loader);
       }
       if (chipFamily === CHIP_FAMILY_ESP32) {
-        return await readEsp32Metadata(loader);
+        return await readEsp32Metadata(loader, transport.baudrate);
       }
       if (chipFamily === CHIP_FAMILY_ESP8266) {
-        return await readEsp8266Metadata(loader);
+        return await readEsp8266Metadata(loader, transport.baudrate);
       }
       if (chipFamily === CHIP_FAMILY_ESP32C2) {
-        return await readEsp32C2Metadata(loader);
+        return await readEsp32C2Metadata(loader, transport.baudrate);
       }
       if (chipFamily === CHIP_FAMILY_ESP32C5) {
-        return await readEsp32C5Metadata(loader);
+        return await readEsp32C5Metadata(loader, transport.baudrate);
       }
       if (chipFamily === CHIP_FAMILY_ESP32C6) {
         return await readEsp32C6Metadata(loader);
