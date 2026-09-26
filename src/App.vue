@@ -6013,7 +6013,7 @@ async function stopMonitor(options: StopMonitorOptions = {}) {
           ? error.message
           : undefined;
 
-    if (errorMessage === "Couldn't sync to ESP. Try resetting.") {
+    if (errorMessage?.startsWith("Couldn't sync to ESP.")) {
       lastErrorMessage.value = formatErrorMessage(error);
       busyDialogMessage.value = '';
       showBusyDialog.value = false;
@@ -6491,7 +6491,7 @@ async function connect() {
       showBusyDialog.value = true;
       showBootDialog.value = false;
       showGeneralErrorDialog.value = false;
-    } else if (errorMessage === "Couldn't sync to ESP. Try resetting.") {
+    } else if (errorMessage?.startsWith("Couldn't sync to ESP.")) {
       const message = formatErrorMessage(error);
       lastErrorMessage.value = message;
       busyDialogMessage.value = '';
