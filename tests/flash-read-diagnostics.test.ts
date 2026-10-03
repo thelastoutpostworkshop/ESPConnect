@@ -46,7 +46,7 @@ describe('issue #180 flash-read diagnostic build', () => {
     expect(writes.mock.calls).toEqual([[slipEncode([32, 0, 0, 0])]]);
     expect(progress).toHaveBeenCalledWith(new Uint8Array(32), 32, 32);
     expect(parent.__inputBuffer).toEqual(digest);
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Build=issue-180-timeout-3s'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Build=issue-180-buffer-64k'));
     expect(logger.log.mock.calls.some(([line]) => line.includes('Packet failure'))).toBe(false);
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('returned=32, buffered=18'));
 
@@ -78,6 +78,24 @@ describe('issue #180 flash-read diagnostic build', () => {
     }
     expect(writes.mock.calls).toEqual([
       [slipEncode([32, 0, 0, 0])],
+      [slipEncode([0, 4, 0, 0])],
+    ]);
+  });
+
+  it('logs short decoded packets while preserving the original ACK behavior', async () => {
+    const { loader, logger, enqueue, respond, writes } = setup();
+    vi.spyOn(loader, 'sendCommand').mockImplementation(async () => {
+      respond();
+      enqueue(slipEncode(Array(677).fill(0x55)));
+      enqueue(slipEncode(Array(347).fill(0x55)));
+    });
+    installFlashReadDiagnostics(loader);
+    const assertion = expect(loader.readFlash(0x8000, 1024)).resolves.toEqual(new Uint8Array(1024).fill(0x55));
+    await vi.advanceTimersByTimeAsync(200);
+    await assertion;
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Unexpected data packet size: expected=1024, actual=677'));
+    expect(writes.mock.calls).toEqual([
+      [slipEncode([0xa5, 2, 0, 0])],
       [slipEncode([0, 4, 0, 0])],
     ]);
   });

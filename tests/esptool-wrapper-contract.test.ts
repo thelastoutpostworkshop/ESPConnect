@@ -5,6 +5,7 @@ import {
   type StatusPayload,
 } from "../src/services/esptoolClient";
 import { FakeSerialPort, loadTranscript } from "./helpers/esptool-transcript";
+import { DIAGNOSTIC_SERIAL_BUFFER_SIZE } from '../src/services/serialReceiveDiagnostics';
 
 type StatusCapture = {
   statuses: StatusPayload[];
@@ -71,6 +72,7 @@ describe("tasmota-webserial-esptool wrapper contract", () => {
       desiredBaud: 921600,
       skipStub: true,
     });
+    const opened = vi.spyOn(port, 'open');
 
     expect(statuses[0]).toMatchObject({
       message: "tasmota-webserial-esptool v(7.3.10) [ESP32-S31 and ESP32-P4 rev 3.2 compatibility patches active]",
@@ -95,6 +97,10 @@ describe("tasmota-webserial-esptool wrapper contract", () => {
       flashSize: null,
     });
     expect(result.securityFacts.length).toBeGreaterThan(0);
+    expect(opened.mock.calls.map(([options]) => options)).toEqual([
+      { baudRate: 115200, bufferSize: DIAGNOSTIC_SERIAL_BUFFER_SIZE },
+      { baudRate: 921600, bufferSize: DIAGNOSTIC_SERIAL_BUFFER_SIZE },
+    ]);
 
     port.assertNoPendingSteps();
     await port.close();
@@ -147,6 +153,7 @@ describe("tasmota-webserial-esptool wrapper contract", () => {
       desiredBaud: 921600,
       skipStub: true,
     });
+    const opened = vi.spyOn(port, 'open');
 
     await client.connectAndHandshake();
     await client.syncWithStub();
@@ -155,6 +162,8 @@ describe("tasmota-webserial-esptool wrapper contract", () => {
       status => status.translationKey === "dialogs.reconnectingStub",
     );
     expect(reconnectStatus).toBeTruthy();
+    expect(opened.mock.calls).toHaveLength(4);
+    for (const [options] of opened.mock.calls) expect(options).toMatchObject({ bufferSize: DIAGNOSTIC_SERIAL_BUFFER_SIZE });
 
     port.assertNoPendingSteps();
     await port.close();

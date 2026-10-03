@@ -1,8 +1,9 @@
 import type { ESPLoader } from 'tasmota-webserial-esptool';
 import { ESP_READ_FLASH } from 'tasmota-webserial-esptool/dist/const.js';
 import { unpack } from 'tasmota-webserial-esptool/dist/struct.js';
+import { serialReceiveSnapshot, type ReceiveSnapshot } from './serialReceiveDiagnostics';
 
-export const FLASH_READ_DIAGNOSTIC_LABEL = 'issue-180-timeout-3s';
+export const FLASH_READ_DIAGNOSTIC_LABEL = 'issue-180-buffer-64k';
 export const DIAGNOSTIC_FLASH_READ_TIMEOUT = 3000;
 
 type ReadStage = 'command-response' | 'data-packet' | 'acknowledgment' | 'recovery';
@@ -11,9 +12,11 @@ type ReadContext = {
   size: number;
   received: number;
   packets: number;
+  packetSize: number;
   attempt: number;
   stage: ReadStage;
   startedAt: number;
+  receiveStart?: ReceiveSnapshot;
 };
 
 const installed = new WeakSet<ESPLoader>();
@@ -44,10 +47,16 @@ export function installFlashReadDiagnostics(loader: ESPLoader): void {
   const checkCommand = loader.checkCommand.bind(loader);
   const reconnect = loader.reconnect.bind(loader);
   const log = (message: string) => loader.logger.log(`[FlashRead-Diagnostic] ${message}`);
+  const receiveDetails = (start?: ReceiveSnapshot) => {
+    const now = serialReceiveSnapshot(loader.port);
+    if (!now) return 'rx=unavailable';
+    return `rxBytes=${now.bytes - (start?.bytes ?? 0)}, rxChunks=${now.chunks - (start?.chunks ?? 0)}, ` +
+      `rxErrors=${now.errors - (start?.errors ?? 0)}, recentRxChunkSizes=[${now.recentChunkSizes.join(',')}]`;
+  };
   const details = (read: ReadContext) =>
     `address=${hex(read.address)}, size=${read.size}, stage=${read.stage}, ` +
     `attempt=${read.attempt}, received=${read.received}/${read.size}, packets=${read.packets}, ` +
-    `buffered=${bufferedBytes(loader)}, elapsed=${Date.now() - read.startedAt}ms`;
+    `buffered=${bufferedBytes(loader)}, elapsed=${Date.now() - read.startedAt}ms, ${receiveDetails(read.receiveStart)}`;
 
   loader.checkCommand = async (opcode, buffer, checksum, timeout) => {
     const read = context;
@@ -57,9 +66,11 @@ export function installFlashReadDiagnostics(loader: ESPLoader): void {
       read.size = size;
       read.received = 0;
       read.packets = 0;
+      read.packetSize = packetSize;
       read.attempt++;
       read.stage = 'command-response';
       read.startedAt = Date.now();
+      read.receiveStart = serialReceiveSnapshot(loader.port);
       log(`Read command: ${details(read)}, packetSize=${packetSize}, maxInFlight=${maxInFlight}.`);
     }
     const response = await checkCommand(opcode, buffer, checksum, timeout);
@@ -74,6 +85,10 @@ export function installFlashReadDiagnostics(loader: ESPLoader): void {
     try {
       const packet = await readPacket(isFlashData ? DIAGNOSTIC_FLASH_READ_TIMEOUT : timeout);
       if (isFlashData && packet.length > 0) {
+        const expected = Math.min(read.packetSize, read.size - read.received);
+        if (packet.length !== expected) {
+          log(`Unexpected data packet size: expected=${expected}, actual=${packet.length}, ${details(read)}.`);
+        }
         read.received += packet.length;
         read.packets++;
         read.stage = 'acknowledgment';
@@ -93,14 +108,15 @@ export function installFlashReadDiagnostics(loader: ESPLoader): void {
 
   loader.readFlash = async (address, size, onPacketReceived) => {
     context = {
-      address, size, received: 0, packets: 0, attempt: 0,
+      address, size, received: 0, packets: 0, packetSize: 0, attempt: 0,
       stage: 'command-response', startedAt: Date.now(),
     };
     const startedAt = Date.now();
+    const receiveStart = serialReceiveSnapshot(loader.port);
     log(`Read start: address=${hex(address)}, size=${size}, loaderBaud=${loader.currentBaudRate}, buffered=${bufferedBytes(loader)}.`);
     try {
       const data = await readFlash(address, size, onPacketReceived);
-      log(`Read returned: address=${hex(address)}, requested=${size}, returned=${data.length}, buffered=${bufferedBytes(loader)}, elapsed=${Date.now() - startedAt}ms.`);
+      log(`Read returned: address=${hex(address)}, requested=${size}, returned=${data.length}, buffered=${bufferedBytes(loader)}, elapsed=${Date.now() - startedAt}ms, ${receiveDetails(receiveStart)}.`);
       return data;
     } catch (error) {
       log(`Read failed: ${details(context)}, error=${errorDescription(error)}.`);
