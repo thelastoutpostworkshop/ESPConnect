@@ -1,5 +1,6 @@
 import { ESPLoader } from 'tasmota-webserial-esptool';
 import { P4CompatibleLoader } from './p4CompatibleLoader';
+import { installFlashReadDiagnostics } from './flashReadDiagnostics';
 import type { Logger } from 'tasmota-webserial-esptool/dist/const.js';
 import type { } from '../types/web-serial';
 import type { ChipMetadata } from './chipMetadata/types';
@@ -353,6 +354,9 @@ export function createEsptoolClient({
         await loader.setBaudrate(desiredBaud);
         transport.baudrate = desiredBaud;
       }
+
+      installFlashReadDiagnostics(loader);
+      logger.log(`[FlashRead-Diagnostic] Selected connection baud=${transport.baudrate}.`);
 
       let securityInfo = undefined;
       let securityFacts: SecurityFact[] = [];
