@@ -46,7 +46,7 @@ describe('issue #180 flash-read diagnostic build', () => {
     expect(writes.mock.calls).toEqual([[slipEncode([32, 0, 0, 0])]]);
     expect(progress).toHaveBeenCalledWith(new Uint8Array(32), 32, 32);
     expect(parent.__inputBuffer).toEqual(digest);
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Build=issue-180-window-1'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Build=issue-180-packet-1k'));
     expect(logger.log.mock.calls.some(([line]) => line.includes('Packet failure'))).toBe(false);
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('returned=32, buffered=18'));
 
@@ -105,7 +105,7 @@ describe('issue #180 flash-read diagnostic build', () => {
     { bytes: [0xc0, 0xdb, 0xee], error: 'Invalid SLIP escape (0xdb, 0xEE)' },
   ])('logs $error with partial progress before retrying', async ({ bytes, error }) => {
     const { loader, logger, enqueue, respond } = setup();
-    const packet = Array(4096).fill(0x55);
+    const packet = Array(1024).fill(0x55);
     let attempt = 0;
     vi.spyOn(loader, 'sendCommand').mockImplementation(async () => {
       respond();
@@ -113,11 +113,11 @@ describe('issue #180 flash-read diagnostic build', () => {
       enqueue(++attempt === 1 ? bytes : slipEncode(packet));
     });
     installFlashReadDiagnostics(loader);
-    const read = loader.readFlash(0x810000, 8192);
-    const assertion = expect(read).resolves.toEqual(new Uint8Array(8192).fill(0x55));
+    const read = loader.readFlash(0x810000, 2048);
+    const assertion = expect(read).resolves.toEqual(new Uint8Array(2048).fill(0x55));
     await vi.advanceTimersByTimeAsync(1000);
     await assertion;
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('stage=data-packet, attempt=1, received=4096/8192, packets=1'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('stage=data-packet, attempt=1, received=1024/2048, packets=1'));
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining(`error=SlipReadError: ${error}`));
     expect(attempt).toBe(2);
   });
@@ -154,23 +154,23 @@ describe('issue #180 flash-read diagnostic build', () => {
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('stage=command-response, attempt=1, received=0/32'));
   });
 
-  it('requests one packet at a time across retries and deep recovery, preserving cumulative ACKs', async () => {
+  it('requests 1024-byte packets across retries and deep recovery, preserving cumulative ACKs', async () => {
     const { loader, logger, enqueue, respond, writes } = setup();
     let attempt = 0;
     vi.spyOn(loader, 'sendCommand').mockImplementation(async (_opcode, buffer) => {
-      expect(unpack('<IIII', buffer)).toEqual([0x810000, 65536, 4096, 1]);
+      expect(unpack('<IIII', buffer)).toEqual([0x810000, 65536, 1024, 1]);
       respond();
       if (++attempt <= 6) enqueue([0x42]);
-      else enqueue(slipEncode(Array(4096).fill(0x55)));
+      else enqueue(slipEncode(Array(1024).fill(0x55)));
     });
     let acknowledged = 0;
     writes.mockImplementation(async frame => {
       if (frame.length === 2) return; // Original abort frames during retries.
-      const received = acknowledged + 4096;
+      const received = acknowledged + 1024;
       expect(frame).toEqual(slipEncode(pack('<I', received)));
       acknowledged = received;
       // The stub sends no next data packet until the current one is ACKed.
-      if (received < 65536) enqueue(slipEncode(Array(4096).fill(0x55)));
+      if (received < 65536) enqueue(slipEncode(Array(1024).fill(0x55)));
     });
     const reconnect = vi.spyOn(loader, 'reconnect').mockResolvedValue(undefined);
     installFlashReadDiagnostics(loader);
@@ -179,13 +179,14 @@ describe('issue #180 flash-read diagnostic build', () => {
     await assertion;
     expect(reconnect).toHaveBeenCalledOnce();
     expect(writes.mock.calls.filter(([frame]) => frame.length === 2)).toHaveLength(6);
+    expect(writes.mock.calls.filter(([frame]) => frame.length > 2)).toHaveLength(64);
     expect(writes.mock.calls.at(-1)).toEqual([slipEncode([0, 0, 1, 0])]);
     expect(acknowledged).toBe(65536);
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('stage=command-response, attempt=7'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('packetSize=4096, maxInFlight=1, upstreamMaxInFlight=1024'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('packetSize=1024, maxInFlight=1, upstreamPacketSize=4096, upstreamMaxInFlight=1024'));
   });
 
-  it('changes only the flash command window and preserves unrelated command arguments', async () => {
+  it('changes only flash packet size/window and preserves unrelated command arguments', async () => {
     const { loader } = setup();
     const flashCommand = pack('<IIII', 0x810000, 65536, 4096, 1024);
     const registerCommand = pack('<I', 0x60000000);
@@ -198,7 +199,7 @@ describe('issue #180 flash-read diagnostic build', () => {
     installFlashReadDiagnostics(loader);
     await loader.readFlash(0x810000, 65536);
     expect(command.mock.calls).toEqual([
-      [ESP_READ_FLASH, pack('<IIII', 0x810000, 65536, 4096, 1), 0x12, 1234],
+      [ESP_READ_FLASH, pack('<IIII', 0x810000, 65536, 1024, 1), 0x12, 1234],
       [ESP_READ_REG, registerCommand, 0x34, 4321],
     ]);
     expect(unpack('<IIII', flashCommand)).toEqual([0x810000, 65536, 4096, 1024]);
@@ -212,7 +213,7 @@ describe('issue #180 flash-read diagnostic build', () => {
     let packetLength = 0;
     let fill = 0;
     const nextPacket = () => {
-      packetLength = Math.min(4096, chunkSize - acknowledged);
+      packetLength = Math.min(1024, chunkSize - acknowledged);
       enqueue(slipEncode(Array(packetLength).fill(fill)));
     };
     vi.spyOn(loader, 'sendCommand').mockImplementation(async (_opcode, buffer) => {
@@ -239,14 +240,14 @@ describe('issue #180 flash-read diagnostic build', () => {
     await vi.advanceTimersByTimeAsync(200);
     await assertion;
     expect(commands).toEqual([
-      [0x810000, 65536, 4096, 1],
-      [0x820000, 4100, 4096, 1],
+      [0x810000, 65536, 1024, 1],
+      [0x820000, 4100, 1024, 1],
     ]);
     expect(progress.mock.calls.map(([packet, received, total]) => [packet.length, received, total])).toEqual([
       [65536, 65536, expected.length],
       [4100, expected.length, expected.length],
     ]);
-    expect(writes.mock.calls).toHaveLength(18);
+    expect(writes.mock.calls).toHaveLength(69);
     expect(logger.log.mock.calls.some(([line]) => line.includes('Unexpected data packet size'))).toBe(false);
   });
 

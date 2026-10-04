@@ -2,14 +2,15 @@
 
 Branch: `diagnostic/issue-180-flash-read-timeout`
 
-Version: `1.1.25-preview-3`
+Version: `1.1.25-preview-4`
 
-The session log identifies this build as `[FlashRead-Diagnostic] Build=issue-180-window-1`.
-It changes the READ_FLASH transfer window from 1024 to one unacknowledged data
-packet, including retries and reads after deep recovery. The 4096-byte packet
-size and 64 KB read chunks remain unchanged. The stub should wait for the host's
-acknowledgement after each data packet instead of being allowed to send the entire
-64 KB chunk before waiting. This may reduce read throughput.
+The session log identifies this build as `[FlashRead-Diagnostic] Build=issue-180-packet-1k`.
+Compared with preview-3, it changes only the READ_FLASH data packet size from
+4096 to 1024 bytes, including retries and reads after deep recovery. The transfer
+window remains one unacknowledged packet, and total read sizes and 64 KB chunk
+boundaries remain unchanged. A 64 KB chunk now uses 64 data packets and cumulative
+acknowledgements. Shorter final packets remain valid when the read size is not a
+multiple of 1024. This may reduce read throughput.
 
 The previous diagnostic's 65536-byte Web Serial buffer remains in place on
 initial connection, baud changes, and deep recovery, together with the 3000 ms
@@ -19,11 +20,13 @@ timeouts retain their original values. English diagnostic session logs appear
 even with verbose serial logging off.
 
 The timeout-only build (`1.1.25-preview-1`) failed the partition read in all five
-reporter attempts. The buffer build (`1.1.25-preview-2`, `issue-180-buffer-64k`)
-loaded the partition table in all three attempts, but filesystem access still
-failed. One 64 KB probe succeeded; other reads included short decoded packets
-and timeouts without reported serial read errors. This build tests whether
-limiting the transfer burst improves larger reads; it is not a confirmed fix.
+reporter attempts. Preview-2 and preview-3 loaded the partition table in all three
+attempts each, but filesystem access still failed. With preview-3's one-packet
+window, all initial LittleFS probes failed; two later 64 KB reads at 0x810000
+succeeded before the next chunk at 0x820000 failed. Some failures occurred before
+the first 4096-byte packet completed, without reported serial read errors. This
+build tests whether using the consistently successful 1024-byte packet size also
+improves larger filesystem transfers; it is not a confirmed fix.
 
 Logs include the selected connection baud, loader baud, USB IDs, address, read
 size, packet size/window, attempt number, transaction stage, bytes in completed
@@ -32,8 +35,8 @@ count read commands across retries, recovery, and chunks within one read request
 Bytes from an incomplete SLIP packet are not included in `received`; the original
 error distinguishes a header timeout from a content timeout. No flash contents
 or filenames are dumped by this instrumentation.
-Read-command logs report the effective `maxInFlight=1` and the upstream value as
-`upstreamMaxInFlight=1024`.
+Read-command logs report the effective `packetSize=1024, maxInFlight=1` and the
+upstream values as `upstreamPacketSize=4096, upstreamMaxInFlight=1024`.
 
 Additional logs record every port open's baud and buffer size, reader acquisition,
 reader termination (including normal cancellation), and the name/message of
@@ -49,7 +52,7 @@ rejecting it. `received=0` can coexist with nonzero `rxBytes` when no complete
 data packet was decoded.
 
 The original ACKs, MD5 handling, buffer flushing, retry limits, recovery, and
-progress callbacks remain unchanged to isolate the transfer-window experiment. A
+progress callbacks remain unchanged to isolate the packet-size experiment. A
 successful return does not add checksum verification. Longer timeouts also mean
 an unsuccessful operation can take longer to exhaust its retries.
 
@@ -66,10 +69,10 @@ an unsuccessful operation can take longer to exhaust its retries.
    then open `http://localhost:4173`. This archive does not
    require npm or a repository checkout.
 2. Use the same ESP32-S3 and USB connection. Close native esptool before testing.
-3. Refresh the preview and verify version **1.1.25-preview-3**. Select **115200
-   before connecting**. Confirm `Build=issue-180-window-1`, the selected baud,
+3. Refresh the preview and verify version **1.1.25-preview-4**. Select **115200
+   before connecting**. Confirm `Build=issue-180-packet-1k`, the selected baud,
    `Serial opened: baud=115200, bufferSize=65536`, and
-   `packetSize=4096, maxInFlight=1` in the session log.
+   `packetSize=1024, maxInFlight=1` in the session log.
 4. Repeat disconnect/connect three times. Record whether the partition table loads
    without retries, with retries, or fails.
 5. Open LittleFS and try listing and reading files on every connection. Report
@@ -80,6 +83,22 @@ an unsuccessful operation can take longer to exhaust its retries.
    and the receive counters. Keep the browser version the same as the previous
    test if possible; otherwise report the new version. No additional baud-rate
    comparison is needed yet.
+
+## Native 64 KB comparison
+
+After disconnecting ESPConnect, use the same native esptool environment and USB
+connection as the earlier tests. Read 65536 bytes at each failing filesystem
+address and return the command output for both reads. Update the port path if it
+has changed. These commands save flash contents to local files, following the
+[esptool read-flash syntax](https://docs.espressif.com/projects/esptool/en/latest/esp32/esptool/basic-commands.html#read-flash-contents-read-flash).
+
+```sh
+python -m esptool --chip esp32s3 --port /dev/cu.usbmodem1101 --baud 115200 read-flash 0x810000 0x10000 native-810000-64k.bin
+python -m esptool --chip esp32s3 --port /dev/cu.usbmodem1101 --baud 115200 read-flash 0x820000 0x10000 native-820000-64k.bin
+```
+
+This verifies the exact addresses and transfer sizes that still fail in the
+browser, rather than the earlier 1024/4096-byte reads at 0x8000.
 
 This experiment needs validation on the affected Mac. Simulated serial tests and
 the mock E2E suite cannot establish whether it fixes the native USB timing issue.
