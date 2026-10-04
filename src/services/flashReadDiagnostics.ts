@@ -1,10 +1,11 @@
 import type { ESPLoader } from 'tasmota-webserial-esptool';
 import { ESP_READ_FLASH } from 'tasmota-webserial-esptool/dist/const.js';
-import { unpack } from 'tasmota-webserial-esptool/dist/struct.js';
+import { pack, unpack } from 'tasmota-webserial-esptool/dist/struct.js';
 import { serialReceiveSnapshot, type ReceiveSnapshot } from './serialReceiveDiagnostics';
 
-export const FLASH_READ_DIAGNOSTIC_LABEL = 'issue-180-buffer-64k';
+export const FLASH_READ_DIAGNOSTIC_LABEL = 'issue-180-window-1';
 export const DIAGNOSTIC_FLASH_READ_TIMEOUT = 3000;
+export const DIAGNOSTIC_FLASH_READ_MAX_IN_FLIGHT = 1;
 
 type ReadStage = 'command-response' | 'data-packet' | 'acknowledgment' | 'recovery';
 type ReadContext = {
@@ -35,7 +36,8 @@ function errorDescription(error: unknown): string {
   return error instanceof Error ? `${error.name}: ${error.message}` : String(error);
 }
 
-// Diagnostic branch only: retain upstream framing, ACKs, retries, and recovery.
+// Diagnostic branch only: request one unacknowledged packet at a time.
+// Retain upstream packet size, framing, ACKs, retries, and recovery.
 // Apply the longer timeout only to flash data packets, not command or stub responses.
 export function installFlashReadDiagnostics(loader: ESPLoader): void {
   if (installed.has(loader)) return;
@@ -62,6 +64,9 @@ export function installFlashReadDiagnostics(loader: ESPLoader): void {
     const read = context;
     if (read && opcode === ESP_READ_FLASH) {
       const [address, size, packetSize, maxInFlight] = unpack('<IIII', buffer);
+      // Rewrite only the transfer window, on every attempt including recovery.
+      // Do not mutate the caller's command buffer or change its other fields.
+      buffer = pack('<IIII', address, size, packetSize, DIAGNOSTIC_FLASH_READ_MAX_IN_FLIGHT);
       read.address = address;
       read.size = size;
       read.received = 0;
@@ -71,7 +76,7 @@ export function installFlashReadDiagnostics(loader: ESPLoader): void {
       read.stage = 'command-response';
       read.startedAt = Date.now();
       read.receiveStart = serialReceiveSnapshot(loader.port);
-      log(`Read command: ${details(read)}, packetSize=${packetSize}, maxInFlight=${maxInFlight}.`);
+      log(`Read command: ${details(read)}, packetSize=${packetSize}, maxInFlight=${DIAGNOSTIC_FLASH_READ_MAX_IN_FLIGHT}, upstreamMaxInFlight=${maxInFlight}.`);
     }
     const response = await checkCommand(opcode, buffer, checksum, timeout);
     if (read && opcode === ESP_READ_FLASH) read.stage = 'data-packet';
@@ -127,5 +132,5 @@ export function installFlashReadDiagnostics(loader: ESPLoader): void {
   };
 
   const info = loader.port.getInfo();
-  log(`Build=${FLASH_READ_DIAGNOSTIC_LABEL}; flash data timeout=${DIAGNOSTIC_FLASH_READ_TIMEOUT}ms; loaderBaud=${loader.currentBaudRate}; USB VID=${info.usbVendorId === undefined ? 'unknown' : hex(info.usbVendorId)}, PID=${info.usbProductId === undefined ? 'unknown' : hex(info.usbProductId)}.`);
+  log(`Build=${FLASH_READ_DIAGNOSTIC_LABEL}; flash data timeout=${DIAGNOSTIC_FLASH_READ_TIMEOUT}ms; maxInFlight=${DIAGNOSTIC_FLASH_READ_MAX_IN_FLIGHT}; loaderBaud=${loader.currentBaudRate}; USB VID=${info.usbVendorId === undefined ? 'unknown' : hex(info.usbVendorId)}, PID=${info.usbProductId === undefined ? 'unknown' : hex(info.usbProductId)}.`);
 }

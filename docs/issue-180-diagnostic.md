@@ -2,20 +2,28 @@
 
 Branch: `diagnostic/issue-180-flash-read-timeout`
 
-Version: `1.1.25-preview-2`
+Version: `1.1.25-preview-3`
 
-The session log identifies this build as `[FlashRead-Diagnostic] Build=issue-180-buffer-64k`.
-It explicitly sets the Web Serial buffer to 65536 bytes on initial connection,
-baud changes, and deep recovery. The previous diagnostic's 3000 ms flash data
-timeout remains in place. This timeout is a wait for the next byte, not a deadline
-for the entire read. Command response and stub startup timeouts retain their
-original values. English diagnostic session logs appear even with verbose serial
-logging off.
+The session log identifies this build as `[FlashRead-Diagnostic] Build=issue-180-window-1`.
+It changes the READ_FLASH transfer window from 1024 to one unacknowledged data
+packet, including retries and reads after deep recovery. The 4096-byte packet
+size and 64 KB read chunks remain unchanged. The stub should wait for the host's
+acknowledgement after each data packet instead of being allowed to send the entire
+64 KB chunk before waiting. This may reduce read throughput.
 
-The previous build (`1.1.25-preview-1`, `issue-180-timeout-3s`) failed the partition
-read in all five reporter attempts. Some failures included short decoded packets;
-fresh recovery attempts also failed with an empty receive buffer. This build tests
-larger browser buffering and observes receive errors; it is not a confirmed fix.
+The previous diagnostic's 65536-byte Web Serial buffer remains in place on
+initial connection, baud changes, and deep recovery, together with the 3000 ms
+flash data timeout and receive instrumentation. This timeout is a wait for the
+next byte, not a deadline for the entire read. Command response and stub startup
+timeouts retain their original values. English diagnostic session logs appear
+even with verbose serial logging off.
+
+The timeout-only build (`1.1.25-preview-1`) failed the partition read in all five
+reporter attempts. The buffer build (`1.1.25-preview-2`, `issue-180-buffer-64k`)
+loaded the partition table in all three attempts, but filesystem access still
+failed. One 64 KB probe succeeded; other reads included short decoded packets
+and timeouts without reported serial read errors. This build tests whether
+limiting the transfer burst improves larger reads; it is not a confirmed fix.
 
 Logs include the selected connection baud, loader baud, USB IDs, address, read
 size, packet size/window, attempt number, transaction stage, bytes in completed
@@ -24,6 +32,8 @@ count read commands across retries, recovery, and chunks within one read request
 Bytes from an incomplete SLIP packet are not included in `received`; the original
 error distinguishes a header timeout from a content timeout. No flash contents
 or filenames are dumped by this instrumentation.
+Read-command logs report the effective `maxInFlight=1` and the upstream value as
+`upstreamMaxInFlight=1024`.
 
 Additional logs record every port open's baud and buffer size, reader acquisition,
 reader termination (including normal cancellation), and the name/message of
@@ -39,7 +49,7 @@ rejecting it. `received=0` can coexist with nonzero `rxBytes` when no complete
 data packet was decoded.
 
 The original ACKs, MD5 handling, buffer flushing, retry limits, recovery, and
-progress callbacks remain unchanged to isolate the buffer-size experiment. A
+progress callbacks remain unchanged to isolate the transfer-window experiment. A
 successful return does not add checksum verification. Longer timeouts also mean
 an unsuccessful operation can take longer to exhaust its retries.
 
@@ -56,16 +66,20 @@ an unsuccessful operation can take longer to exhaust its retries.
    then open `http://localhost:4173`. This archive does not
    require npm or a repository checkout.
 2. Use the same ESP32-S3 and USB connection. Close native esptool before testing.
-3. Refresh the preview and verify version **1.1.25-preview-2**. Select **115200
-   before connecting**. Confirm `Build=issue-180-buffer-64k`, the selected baud,
-   and `Serial opened: baud=115200, bufferSize=65536` in the session log.
-4. Repeat disconnect/connect five times. Record whether the partition table loads
+3. Refresh the preview and verify version **1.1.25-preview-3**. Select **115200
+   before connecting**. Confirm `Build=issue-180-window-1`, the selected baud,
+   `Serial opened: baud=115200, bufferSize=65536`, and
+   `packetSize=4096, maxInFlight=1` in the session log.
+4. Repeat disconnect/connect three times. Record whether the partition table loads
    without retries, with retries, or fails.
-5. Open LittleFS and try listing and reading files. Save the complete session log,
-   including any read that succeeds after recovery.
+5. Open LittleFS and try listing and reading files on every connection. Report
+   probe, file-listing, and file-reading success separately. Save the complete
+   session log, including any read that succeeds after recovery.
 6. Return the success count and full log, even if the test succeeds. If a read
    fails, include any `Serial read error` and `Unexpected data packet size` lines
-   and the receive counters. No additional baud-rate comparison is needed yet.
+   and the receive counters. Keep the browser version the same as the previous
+   test if possible; otherwise report the new version. No additional baud-rate
+   comparison is needed yet.
 
 This experiment needs validation on the affected Mac. Simulated serial tests and
 the mock E2E suite cannot establish whether it fixes the native USB timing issue.
