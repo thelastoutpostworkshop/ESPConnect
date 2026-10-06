@@ -46,7 +46,7 @@ describe('issue #180 flash-read diagnostic build', () => {
     expect(writes.mock.calls).toEqual([[slipEncode([32, 0, 0, 0])]]);
     expect(progress).toHaveBeenCalledWith(new Uint8Array(32), 32, 32);
     expect(parent.__inputBuffer).toEqual(digest);
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Build=issue-180-packet-1k'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Build=issue-180-s3-new-stub-1.2.2'));
     expect(logger.log.mock.calls.some(([line]) => line.includes('Packet failure'))).toBe(false);
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('returned=32, buffered=18'));
 

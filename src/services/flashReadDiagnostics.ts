@@ -3,7 +3,7 @@ import { ESP_READ_FLASH } from 'tasmota-webserial-esptool/dist/const.js';
 import { pack, unpack } from 'tasmota-webserial-esptool/dist/struct.js';
 import { serialReceiveSnapshot, type ReceiveSnapshot } from './serialReceiveDiagnostics';
 
-export const FLASH_READ_DIAGNOSTIC_LABEL = 'issue-180-packet-1k';
+export const FLASH_READ_DIAGNOSTIC_LABEL = 'issue-180-s3-new-stub-1.2.2';
 export const DIAGNOSTIC_FLASH_READ_TIMEOUT = 3000;
 export const DIAGNOSTIC_FLASH_READ_MAX_IN_FLIGHT = 1;
 export const DIAGNOSTIC_FLASH_READ_PACKET_SIZE = 1024;
