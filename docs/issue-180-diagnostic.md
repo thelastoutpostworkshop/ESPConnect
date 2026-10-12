@@ -1,5 +1,8 @@
 # Issue #180: ESP32-S3 new-stub experiment
 
+This document records the preview5 baseline. For the preview6 isolated receive
+experiment, see [the chunk-reader guide](issue-180-chunk-reader.md).
+
 Local candidate version: `1.1.25-preview-5`.
 
 Base: `diagnostic/issue-180-flash-read-timeout` at
