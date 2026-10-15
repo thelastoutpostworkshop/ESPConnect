@@ -7,7 +7,7 @@ import { CHIP_FAMILY_ESP32S3, ESP_READ_FLASH } from 'tasmota-webserial-esptool/d
 import { pack, unpack } from 'tasmota-webserial-esptool/dist/struct.js';
 import { slipEncode } from 'tasmota-webserial-esptool/dist/util.js';
 import { ChunkSerialTransport } from '../src/services/chunkSerialTransport';
-import { CHUNK_DIAGNOSTIC_CASES, readFlashChunkStrict, runChunkReadDiagnostic } from '../src/services/chunkReadDiagnostic';
+import { CHUNK_DIAGNOSTIC_CASES, clearFlashReadLocalEvidence, getFlashReadLocalAnalysis, readFlashChunkStrict, runChunkReadDiagnostic, runFlashReadTrial } from '../src/services/chunkReadDiagnostic';
 
 const md5 = (data: Uint8Array) => [...createHash('md5').update(data).digest()];
 const reply = () => [1, ESP_READ_FLASH, 2, 0, 0, 0, 0, 0, 0, 0];
@@ -64,6 +64,8 @@ async function strictTransport(fixture: ReturnType<typeof serial>, signal?: Abor
 
 function flashModel(fixture: ReturnType<typeof serial>, options: {
   shortPacket?: number; badDigest?: boolean; omitDigest?: boolean; badResponse?: number[];
+  packetSize?: number; syncValue?: number;
+  shortAtPacket?: number;
 } = {}) {
   const commands: number[][] = [];
   const acks: number[] = [];
@@ -73,17 +75,22 @@ function flashModel(fixture: ReturnType<typeof serial>, options: {
   let digestSent = true;
   let sequence = 0;
   const next = () => {
-    const packet = data.subarray(sent, Math.min(sent + 1024, data.length));
+    const packet = data.subarray(sent, Math.min(sent + (options.packetSize ?? 1024), data.length));
     sent += packet.length;
     awaitedAck = sent;
-    fixture.frame([...packet.subarray(0, options.shortPacket ?? packet.length)]);
+    const shorten = !options.shortAtPacket || Math.ceil(sent / (options.packetSize ?? 1024)) === options.shortAtPacket;
+    fixture.frame([...packet.subarray(0, shorten ? options.shortPacket ?? packet.length : packet.length)]);
   };
   fixture.onWrite(packet => {
     if (packet.length === 1) return; // Read abort, never an ACK.
+    if (packet.length >= 8 && packet[1] === opcodes.ESP_SYNC) {
+      fixture.frame([...pack('<BBHI', 1, opcodes.ESP_SYNC, 4, options.syncValue ?? 0x20120707), 0, 0, 0, 0]);
+      return;
+    }
     if (packet.length >= 8 && packet[1] === ESP_READ_FLASH) {
       expect(digestSent).toBe(true);
       const args = unpack('<IIII', packet.slice(8));
-      expect(args.slice(2)).toEqual([1024, 1]);
+      expect(args.slice(2)).toEqual([options.packetSize ?? 1024, 1]);
       commands.push(args);
       data = Uint8Array.from({ length: args[1] }, (_, i) => (i * 13 + sequence) & 255);
       sent = 0;
@@ -109,6 +116,7 @@ function flashModel(fixture: ReturnType<typeof serial>, options: {
 }
 
 afterEach(() => {
+  clearFlashReadLocalEvidence();
   vi.restoreAllMocks();
   vi.useRealTimers();
 });
@@ -328,6 +336,184 @@ describe('fresh diagnostic session ownership', () => {
   });
 });
 
+
+describe('guided suite independent trials', () => {
+  const config = { address: 0x810800, size: 1024, packetSize: 1024 as const, ackDelayMs: 0 as const };
+  function startup(capacity = '16MB') {
+    const initialize = vi.spyOn(ESPLoader.prototype, 'initialize').mockImplementation(async function () {
+      this.chipFamily = CHIP_FAMILY_ESP32S3;
+      await this.sendCommand(opcodes.ESP_SYNC, []);
+      await this.getResponse(opcodes.ESP_SYNC);
+    });
+    const upload = vi.spyOn(ESPLoader.prototype, 'runStub').mockImplementation(async function () {
+      const stub = new ESPLoader(this.port, this.logger, this);
+      stub.IS_STUB = true;
+      return stub;
+    });
+    vi.spyOn(ESPLoader.prototype, 'detectFlashSize').mockImplementation(async function () { this.flashSize = capacity; });
+    return { initialize, upload };
+  }
+
+  it.each([256, 512, 1024] as const)('negotiates packet size %i and requires final MD5 in a new session', async packetSize => {
+    const { initialize, upload } = startup();
+    const fixture = serial();
+    const model = flashModel(fixture, { packetSize });
+    const result = await runFlashReadTrial(fixture.port, { ...config, packetSize }, { log: vi.fn() });
+    expect(result).toMatchObject({ status: 'passed', romSyncVerified: true, cleanup: { closed: true, errors: [] }, read: { stage: 'verified', received: 1024 } });
+    expect(result.read?.acknowledgments.map(ack => ack.value)).toEqual(Array.from({ length: 1024 / packetSize }, (_, i) => (i + 1) * packetSize));
+    expect(model.commands).toEqual([[config.address, 1024, packetSize, 1]]);
+    expect(initialize).toHaveBeenCalledOnce();
+    expect(upload).toHaveBeenCalledOnce();
+    expect(fixture.close).toHaveBeenCalledOnce();
+  });
+
+  it('records actual delayed ACK times and cancels before a pending ACK without acknowledging it', async () => {
+    vi.useFakeTimers();
+    startup();
+    const fixture = serial();
+    const model = flashModel(fixture);
+    const controller = new AbortController();
+    const run = runFlashReadTrial(fixture.port, { ...config, ackDelayMs: 5 }, { signal: controller.signal, log: vi.fn() });
+    await vi.advanceTimersByTimeAsync(1);
+    expect(model.acks).toEqual([]);
+    await vi.advanceTimersByTimeAsync(6);
+    const result = await run;
+    expect(result.status).toBe('passed');
+    expect(result.read?.acknowledgments[0]?.actualDelayMs).toBeGreaterThanOrEqual(5);
+    const second = new AbortController();
+    const cancelled = runFlashReadTrial(fixture.port, { ...config, ackDelayMs: 5 }, { signal: second.signal, log: vi.fn() });
+    await vi.advanceTimersByTimeAsync(1);
+    second.abort();
+    const stopped = await cancelled;
+    expect(stopped.status).toBe('cancelled');
+    expect(model.acks).toEqual([1024]);
+    expect(stopped.cleanup.closed).toBe(true);
+  });
+
+  it('rejects a surviving stub SYNC before uploading or reading flash', async () => {
+    const { upload } = startup();
+    const fixture = serial();
+    const model = flashModel(fixture, { syncValue: 0 });
+    const result = await runFlashReadTrial(fixture.port, config, { log: vi.fn() });
+    expect(result).toMatchObject({ status: 'failed', romSyncVerified: false, failure: 'rom-failed', cleanup: { closed: true } });
+    expect(upload).not.toHaveBeenCalled();
+    expect(model.commands).toEqual([]);
+  });
+
+  it('re-establishes ROM and uploads again after invalid data, never retries that stream', async () => {
+    const { initialize, upload } = startup();
+    const fixture = serial();
+    const bad = flashModel(fixture, { shortPacket: 985 });
+    const failed = await runFlashReadTrial(fixture.port, config, { log: vi.fn() });
+    expect(failed).toMatchObject({ status: 'failed', failure: 'invalid-data-length', read: { received: 0, packets: 0, invalidPacket: { actualLength: 985 } } });
+    expect(bad.acks).toEqual([]);
+    expect(bad.commands).toHaveLength(1);
+    const good = flashModel(fixture);
+    expect((await runFlashReadTrial(fixture.port, config, { log: vi.fn() })).status).toBe('passed');
+    expect(initialize).toHaveBeenCalledTimes(2);
+    expect(upload).toHaveBeenCalledTimes(2);
+    expect(good.commands).toHaveLength(1);
+    const analysis = JSON.stringify(getFlashReadLocalAnalysis());
+    expect(analysis).toContain('39');
+    expect(analysis).not.toContain('rawBytes');
+    expect(analysis).not.toContain('decodedBytes');
+  });
+
+  it('does not report success after a failed close, and refuses a still-open port', async () => {
+    startup();
+    const fixture = serial();
+    flashModel(fixture);
+    fixture.close.mockRejectedValue(new Error('host secret must not be exported'));
+    const result = await runFlashReadTrial(fixture.port, config, { log: vi.fn() });
+    expect(result).toMatchObject({ status: 'failed', failure: 'cleanup-failed', cleanup: { closed: false, errors: ['port-close-failed'] } });
+    const retry = await runFlashReadTrial(fixture.port, config, { log: vi.fn() });
+    expect(retry.failure).toBe('port-already-open');
+    expect(fixture.port.open).toHaveBeenCalledOnce();
+    expect(JSON.stringify(result)).not.toContain('host secret');
+  });
+
+  it('checks flash capacity and never sends an out-of-range read', async () => {
+    startup('8MB');
+    const fixture = serial();
+    const model = flashModel(fixture);
+    const result = await runFlashReadTrial(fixture.port, config, { log: vi.fn() });
+    expect(result).toMatchObject({ status: 'failed', failure: 'range-out-of-bounds', flashSizeBytes: 8 * 1024 * 1024, cleanup: { closed: true } });
+    expect(model.commands).toEqual([]);
+  });
+
+  it('compares a short third frame with an exact verified reference without claiming prefix MD5', async () => {
+    startup();
+    const fixture = serial();
+    flashModel(fixture);
+    expect((await runFlashReadTrial(fixture.port, config, { log: vi.fn() })).status).toBe('passed');
+    const bad = flashModel(fixture, { shortPacket: 985, shortAtPacket: 3 });
+    const result = await runFlashReadTrial(fixture.port, { ...config, address: 0x810000, size: 3072 }, { log: vi.fn() });
+    expect(result.read).toMatchObject({ received: 2048, packets: 2, invalidPacket: { address: 0x810800, expectedLength: 1024, actualLength: 985, packet: 3 } });
+    expect(result.read?.md5).toBeUndefined();
+    expect(bad.acks).toEqual([1024, 2048]);
+    expect(getFlashReadLocalAnalysis()?.referenceComparison).toMatchObject({ status: 'compared', lengthDeficit: 39 });
+    expect(result.read?.failureSnapshot?.queuedFrames).toBe(0);
+  });
+
+  it('never reports a completed ACK when the actual writer rejects it', async () => {
+    startup();
+    const fixture = serial();
+    fixture.onWrite(packet => {
+      if (packet[1] === opcodes.ESP_SYNC && packet.length >= 8) fixture.frame([...pack('<BBHI', 1, opcodes.ESP_SYNC, 4, 0x20120707), 0, 0, 0, 0]);
+      else if (packet[1] === ESP_READ_FLASH && packet.length >= 8) { fixture.frame(reply()); fixture.frame(Array(1024).fill(0x55)); }
+      else if (packet.length === 4) throw new Error('private driver details');
+    });
+    const result = await runFlashReadTrial(fixture.port, config, { log: vi.fn() });
+    expect(result.status).toBe('failed');
+    const ack = result.read?.acknowledgments[0];
+    expect(ack?.writeStartedAtMs).toEqual(expect.any(Number));
+    expect(ack?.writeCompletedAtMs).toBeUndefined();
+    expect(JSON.stringify(result)).not.toContain('private driver');
+  });
+
+  it('waits for a pending open on cancellation, then closes without ROM or flash commands', async () => {
+    const { initialize } = startup();
+    const fixture = serial();
+    const controller = new AbortController();
+    const originalOpen = vi.mocked(fixture.port.open).getMockImplementation()!;
+    let finishOpen!: () => Promise<void>;
+    vi.mocked(fixture.port.open).mockImplementation(options => new Promise(resolve => {
+      finishOpen = async () => { await originalOpen(options); resolve(); };
+    }));
+    const run = runFlashReadTrial(fixture.port, config, { log: vi.fn(), signal: controller.signal });
+    controller.abort();
+    expect(fixture.close).not.toHaveBeenCalled();
+    await finishOpen();
+    expect(await run).toMatchObject({ status: 'cancelled', cleanup: { closed: true } });
+    expect(initialize).not.toHaveBeenCalled();
+    expect(fixture.writes).toEqual([]);
+  });
+
+  it('reports cancellation during cleanup even when the read checksum already passed', async () => {
+    startup();
+    const fixture = serial();
+    const controller = new AbortController();
+    flashModel(fixture);
+    const originalClose = fixture.close.getMockImplementation()!;
+    fixture.close.mockImplementation(async () => { controller.abort(); await originalClose(); });
+    const result = await runFlashReadTrial(fixture.port, config, { log: vi.fn(), signal: controller.signal });
+    expect(result).toMatchObject({ status: 'cancelled', failure: 'cancelled', read: { stage: 'verified', received: 1024 }, cleanup: { closed: true } });
+  });
+
+  it('retains partial metadata when cancelled and prevents overlapping starts', async () => {
+    startup();
+    const fixture = serial();
+    const controller = new AbortController();
+    flashModel(fixture, { omitDigest: true });
+    const run = runFlashReadTrial(fixture.port, config, { log: vi.fn(), signal: controller.signal });
+    while (!fixture.writes.some(packet => packet.length === 4)) await new Promise(resolve => setTimeout(resolve, 0));
+    expect((await runFlashReadTrial(fixture.port, config, { log: vi.fn() })).failure).toBe('port-already-open');
+    controller.abort();
+    const result = await run;
+    expect(result).toMatchObject({ status: 'cancelled', cleanup: { closed: true }, read: { stage: 'md5', received: 1024, packets: 1 } });
+    expect(result.read?.md5).toBeUndefined();
+  });
+});
 
 describe('real ROM/startup bridge with independent chunk I/O', () => {
   it('handles boot noise, sync replies, actual stub upload, child hooks and B without legacy readers', async () => {

@@ -1,0 +1,2 @@
+# patch-package must reproduce upstream asset bytes on Windows as well as Unix.
+patches/*.patch text eol=lf

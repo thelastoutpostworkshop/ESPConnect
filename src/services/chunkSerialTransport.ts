@@ -6,6 +6,10 @@ export const CHUNK_SERIAL_LIMITS = {
   maxWriteBytes: 64 * 1024,
   maxQueuedWrites: 32,
   traceEntries: 4096,
+  evidenceChunks: 2048,
+  evidenceFrames: 1024,
+  capturedRawFrameBytes: 8194,
+  capturedFrameChunkSpans: 256,
   cleanupTimeoutMs: 1000,
   writeTimeoutMs: 5000,
 } as const;
@@ -28,7 +32,51 @@ export type ChunkSerialSnapshot = {
   escaped: boolean;
 };
 
-type TransportOptions = { signal?: AbortSignal; visibility?: () => string };
+export type ChunkSerialFrameMetadata = {
+  sequence: number;
+  startedAtMs: number;
+  endedAtMs: number;
+  rawLength: number;
+  decodedLength: number;
+  complete: boolean;
+  rawTruncated: boolean;
+  chunkSpansDropped: number;
+  escapedDelimiters: number;
+  escapedEscapes: number;
+  invalidEscapes: number;
+};
+
+/** Local memory only. Never include this type in a downloadable report. */
+export type LocalDiagnosticFrameCapture = {
+  metadata: ChunkSerialFrameMetadata;
+  rawBytes: Uint8Array;
+  decodedBytes: Uint8Array;
+  chunkLengths: number[];
+};
+
+export type ChunkSerialEvidence = {
+  enabled: boolean;
+  chunks: Array<{ sequence: number; length: number; receivedAtMs: number; gapMs: number | null; visibility: string }>;
+  frames: ChunkSerialFrameMetadata[];
+  loss: { traceEntries: number; chunkEntries: number; frameEntries: number };
+  firstFailure?: { event: string; elapsedMs: number; snapshot: ChunkSerialSnapshot };
+};
+
+type FrameCapture = {
+  sequence: number;
+  startedAtMs: number;
+  rawLength: number;
+  rawBytes: number[];
+  chunkLengths: number[];
+  lastChunk: number;
+  chunkSpansDropped: number;
+  escapedDelimiters: number;
+  escapedEscapes: number;
+  invalidEscapes: number;
+};
+
+type TransportOptions = { signal?: AbortSignal; visibility?: () => string; captureFrames?: boolean };
+export type ChunkSerialWriteTiming = { started: () => void; completed: () => void };
 
 /**
  * Owns exactly one Web Serial reader and writer. A single event-driven pump owns
@@ -53,6 +101,18 @@ export class ChunkSerialTransport {
   private terminalSnapshot?: ChunkSerialSnapshot;
   private waiter?: PacketWaiter;
   private packets: number[][] = [];
+  private packetCaptures: Array<LocalDiagnosticFrameCapture | undefined> = [];
+  private currentFrameCapture?: FrameCapture;
+  private lastPacketCapture?: LocalDiagnosticFrameCapture;
+  private firstFailureFrame?: LocalDiagnosticFrameCapture;
+  private readonly evidenceChunks: ChunkSerialEvidence['chunks'] = [];
+  private readonly evidenceFrames: ChunkSerialFrameMetadata[] = [];
+  private evidenceChunksDropped = 0;
+  private evidenceFramesDropped = 0;
+  private firstFailure?: ChunkSerialEvidence['firstFailure'];
+  private captureSequence = 0;
+  private chunkReceivedAtMs = 0;
+  private previousChunkAtMs?: number;
   private queuedBytes = 0;
   private frame: number[] = [];
   private inFrame = false;
@@ -131,6 +191,7 @@ export class ChunkSerialTransport {
     }
     const packet = this.packets.shift();
     if (packet) {
+      this.lastPacketCapture = this.packetCaptures.shift();
       this.queuedBytes -= packet.length;
       return Promise.resolve(packet);
     }
@@ -141,8 +202,8 @@ export class ChunkSerialTransport {
   }
 
   /** Sends already-encoded bytes; encoding belongs to the protocol caller. */
-  write(data: number[]): Promise<void> {
-    return this.queueWrite(data, false);
+  write(data: number[], timing?: ChunkSerialWriteTiming): Promise<void> {
+    return this.queueWrite(data, false, timing);
   }
 
   /** One best-effort stub abort is allowed after a terminal receive failure. */
@@ -153,7 +214,7 @@ export class ChunkSerialTransport {
     return this.queueWrite([0xc0, 0x00, 0xc0], true);
   }
 
-  private queueWrite(data: number[], allowTerminal: boolean): Promise<void> {
+  private queueWrite(data: number[], allowTerminal: boolean, timing?: ChunkSerialWriteTiming): Promise<void> {
     const assertWritable = () => {
       if (!allowTerminal) this.assertRunning();
       else if (!this.started || this.closing || !this.writer) throw new Error('Serial transport is not writable');
@@ -173,7 +234,7 @@ export class ChunkSerialTransport {
     const job = this.writeTail.then(async () => {
       assertWritable();
       try {
-        await this.writeOnce(bytes);
+        await this.writeOnce(bytes, timing);
         this.txBytes += bytes.length;
         this.txChunks++;
         this.record(`write bytes=${bytes.length}`);
@@ -206,6 +267,7 @@ export class ChunkSerialTransport {
     const category = ['startup', 'before-sync', 'after-reset', 'before-stub', 'after-stub', 'rom-sync', 'startup-flush', 'startup-drain'].includes(reason) ? reason : 'other';
     this.record(`boot-discard reason=${category} frames=${count} bytes=${bytes} partial=${Number(this.inFrame || this.escaped)} escape=${Number(this.escaped)}`);
     this.packets = [];
+    this.packetCaptures = [];
     this.queuedBytes = 0;
     this.resetFrame();
     this.bootResync = false;
@@ -254,18 +316,89 @@ export class ChunkSerialTransport {
     ];
   }
 
+  /** Payload-free, bounded metadata. Browser chunks are not USB packet boundaries. */
+  getEvidence(): ChunkSerialEvidence {
+    return {
+      enabled: this.options.captureFrames === true,
+      chunks: this.evidenceChunks.map(chunk => ({ ...chunk })),
+      frames: this.evidenceFrames.map(frame => ({ ...frame })),
+      loss: { traceEntries: this.traceDropped, chunkEntries: this.evidenceChunksDropped, frameEntries: this.evidenceFramesDropped },
+      ...(this.firstFailure ? { firstFailure: { ...this.firstFailure, snapshot: { ...this.firstFailure.snapshot } } } : {}),
+    };
+  }
+
+  /** Returns a defensive local copy of the frame associated with readPacket(). */
+  getLastPacketCapture(): LocalDiagnosticFrameCapture | undefined {
+    return this.copyCapture(this.lastPacketCapture);
+  }
+
+  /** Freeze the first failure before cleanup; later failures cannot replace it. */
+  captureFirstFailureFrame(): LocalDiagnosticFrameCapture | undefined {
+    if (!this.options.captureFrames) return undefined;
+    // A timeout/EOF between packets has no failed frame. Never relabel the
+    // previous successfully returned packet as the one that did not arrive.
+    if (this.terminalError) return this.copyCapture(this.firstFailureFrame);
+    // A protocol caller is validating the packet just returned, even if a later
+    // partial frame arrived in the same browser chunk. Terminal decoder failures
+    // capture the active partial frame directly in fail() instead.
+    this.firstFailureFrame ??= this.copyCapture(this.lastPacketCapture) ?? this.snapshotFrame(false);
+    return this.copyCapture(this.firstFailureFrame);
+  }
+
+  private copyCapture(capture?: LocalDiagnosticFrameCapture): LocalDiagnosticFrameCapture | undefined {
+    return capture ? {
+      metadata: { ...capture.metadata }, rawBytes: capture.rawBytes.slice(),
+      decodedBytes: capture.decodedBytes.slice(), chunkLengths: [...capture.chunkLengths],
+    } : undefined;
+  }
+
+  private snapshotFrame(complete: boolean): LocalDiagnosticFrameCapture | undefined {
+    const capture = this.currentFrameCapture;
+    if (!capture) return undefined;
+    return {
+      metadata: {
+        sequence: capture.sequence, startedAtMs: capture.startedAtMs, endedAtMs: this.elapsedMs(),
+        rawLength: capture.rawLength, decodedLength: this.frame.length, complete,
+        rawTruncated: capture.rawLength > capture.rawBytes.length,
+        chunkSpansDropped: capture.chunkSpansDropped, escapedDelimiters: capture.escapedDelimiters,
+        escapedEscapes: capture.escapedEscapes, invalidEscapes: capture.invalidEscapes,
+      },
+      rawBytes: Uint8Array.from(capture.rawBytes), decodedBytes: Uint8Array.from(this.frame),
+      chunkLengths: [...capture.chunkLengths],
+    };
+  }
+
+  private captureFrameByte(byte: number): void {
+    const capture = this.currentFrameCapture;
+    if (!capture) return;
+    capture.rawLength++;
+    if (capture.rawBytes.length < CHUNK_SERIAL_LIMITS.capturedRawFrameBytes) capture.rawBytes.push(byte);
+    if (capture.lastChunk === this.rxChunks) {
+      if (capture.chunkSpansDropped === 0) capture.chunkLengths[capture.chunkLengths.length - 1]!++;
+    } else {
+      capture.lastChunk = this.rxChunks;
+      if (capture.chunkLengths.length < CHUNK_SERIAL_LIMITS.capturedFrameChunkSpans) capture.chunkLengths.push(1);
+      else capture.chunkSpansDropped++;
+    }
+  }
+
+  private elapsedMs(): number { return Math.max(0, performance.now() - this.origin); }
+
+  private visibility(): string {
+    try {
+      const value = this.options.visibility?.() ?? (typeof document === 'undefined' ? 'unknown' : document.visibilityState);
+      if (value === 'visible' || value === 'hidden' || value === 'prerender') return value;
+    } catch { /* A diagnostic callback must not affect I/O. */ }
+    return 'unknown';
+  }
+
   private assertRunning(): void {
     if (this.terminalError) throw this.terminalError;
     if (!this.started || this.closing) throw new Error('Serial transport is not running');
   }
 
   private record(event: string): void {
-    let visibility = 'unknown';
-    try {
-      const value = this.options.visibility?.() ?? (typeof document === 'undefined' ? 'unknown' : document.visibilityState);
-      if (value === 'visible' || value === 'hidden' || value === 'prerender') visibility = value;
-    } catch { /* A diagnostic callback must not affect I/O. */ }
-    const entry = `wallMs=${Date.now()} elapsedMs=${Math.max(0, performance.now() - this.origin).toFixed(3)} visibility=${visibility} ${event}`;
+    const entry = `wallMs=${Date.now()} elapsedMs=${this.elapsedMs().toFixed(3)} visibility=${this.visibility()} ${event}`;
     if (this.trace.length === CHUNK_SERIAL_LIMITS.traceEntries) {
       this.trace.shift();
       this.traceDropped++;
@@ -285,6 +418,15 @@ export class ChunkSerialTransport {
         const length = value?.length ?? 0;
         this.rxChunks++;
         this.rxBytes += length;
+        this.chunkReceivedAtMs = this.elapsedMs();
+        if (this.options.captureFrames) {
+          if (this.evidenceChunks.length < CHUNK_SERIAL_LIMITS.evidenceChunks) {
+            this.evidenceChunks.push({ sequence: this.rxChunks, length, receivedAtMs: this.chunkReceivedAtMs,
+              gapMs: this.previousChunkAtMs === undefined ? null : this.chunkReceivedAtMs - this.previousChunkAtMs,
+              visibility: this.visibility() });
+          } else this.evidenceChunksDropped++;
+        }
+        this.previousChunkAtMs = this.chunkReceivedAtMs;
         // Capture receipt metadata before touching the decoder or delivering data.
         this.record(`chunk bytes=${length}`);
         if (!length || !value) continue;
@@ -305,22 +447,31 @@ export class ChunkSerialTransport {
   }
 
   private decodeByte(byte: number): void {
+    if (this.inFrame && !this.bootResync) this.captureFrameByte(byte);
     if (this.bootResync) {
       if (byte === 0xc0) this.bootResync = false;
       else this.bootNoiseBytes++;
       return;
     }
     if (!this.inFrame) {
-      if (byte === 0xc0) this.inFrame = true;
+      if (byte === 0xc0) {
+        this.inFrame = true;
+        if (this.options.captureFrames) {
+          this.currentFrameCapture = { sequence: ++this.captureSequence, startedAtMs: this.chunkReceivedAtMs,
+            rawLength: 0, rawBytes: [], chunkLengths: [], lastChunk: -1, chunkSpansDropped: 0,
+            escapedDelimiters: 0, escapedEscapes: 0, invalidEscapes: 0 };
+          this.captureFrameByte(byte);
+        }
+      }
       else if (this.strict) this.fail(new Error('Invalid SLIP head outside a frame'), 'invalid-head');
       else this.bootNoiseBytes++;
       return;
     }
     if (this.escaped) {
       this.escaped = false;
-      if (byte === 0xdc) this.appendByte(0xc0);
-      else if (byte === 0xdd) this.appendByte(0xdb);
-      else this.framingError('Invalid SLIP escape', 'invalid-escape', byte !== 0xc0);
+      if (byte === 0xdc) { if (this.currentFrameCapture) this.currentFrameCapture.escapedDelimiters++; this.appendByte(0xc0); }
+      else if (byte === 0xdd) { if (this.currentFrameCapture) this.currentFrameCapture.escapedEscapes++; this.appendByte(0xdb); }
+      else { if (this.currentFrameCapture) this.currentFrameCapture.invalidEscapes++; this.framingError('Invalid SLIP escape', 'invalid-escape', byte !== 0xc0); }
       return;
     }
     if (byte === 0xc0) {
@@ -332,6 +483,12 @@ export class ChunkSerialTransport {
         this.frames++;
         this.queuedBytes += this.frame.length;
         this.packets.push(this.frame);
+        const capture = this.snapshotFrame(true);
+        this.packetCaptures.push(capture);
+        if (capture) {
+          if (this.evidenceFrames.length < CHUNK_SERIAL_LIMITS.evidenceFrames) this.evidenceFrames.push({ ...capture.metadata });
+          else this.evidenceFramesDropped++;
+        }
         this.record(`frame bytes=${this.frame.length} queuedFrames=${this.packets.length}`);
       } else this.emptyFrames++;
       this.resetFrame();
@@ -362,6 +519,7 @@ export class ChunkSerialTransport {
     this.frame = [];
     this.inFrame = false;
     this.escaped = false;
+    this.currentFrameCapture = undefined;
   }
 
   private deliverPacket(): void {
@@ -370,6 +528,7 @@ export class ChunkSerialTransport {
     this.waiter = undefined;
     clearTimeout(waiter.timer);
     const packet = this.packets.shift()!;
+    this.lastPacketCapture = this.packetCaptures.shift();
     this.queuedBytes -= packet.length;
     waiter.resolve(packet);
   }
@@ -398,6 +557,8 @@ export class ChunkSerialTransport {
   private fail(error: Error, event: string): void {
     if (this.terminalError) return;
     this.terminalSnapshot = this.liveSnapshot();
+    this.firstFailure ??= { event, elapsedMs: this.elapsedMs(), snapshot: { ...this.terminalSnapshot } };
+    if (this.options.captureFrames) this.firstFailureFrame ??= this.snapshotFrame(false);
     this.terminalError = error;
     this.record(event);
     this.record(`terminal rxBytes=${this.rxBytes} rxChunks=${this.rxChunks} frames=${this.frames} queuedFrames=${this.packets.length} queuedBytes=${this.queuedBytes} partialBytes=${this.frame.length} inFrame=${Number(this.inFrame)} escaped=${Number(this.escaped)}`);
@@ -405,7 +566,7 @@ export class ChunkSerialTransport {
     this.cancelReader();
   }
 
-  private writeOnce(bytes: Uint8Array): Promise<void> {
+  private writeOnce(bytes: Uint8Array, timing?: ChunkSerialWriteTiming): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       let settled = false;
       const finish = (error?: Error) => {
@@ -424,8 +585,13 @@ export class ChunkSerialTransport {
       this.interruptWrite = error => finish(error);
       this.activeWrites++;
       try {
+        try { timing?.started(); } catch { /* Metadata must not affect I/O. */ }
         void this.writer!.write(bytes).then(
-          () => { this.activeWrites--; finish(); },
+          () => {
+            this.activeWrites--;
+            if (!settled) { try { timing?.completed(); } catch { /* Metadata must not affect I/O. */ } }
+            finish();
+          },
           () => { this.activeWrites--; finish(new Error('Serial write failed')); },
         );
       } catch {
@@ -476,6 +642,7 @@ export class ChunkSerialTransport {
       this.writableStream = undefined;
     }
     this.packets = [];
+    this.packetCaptures = [];
     this.queuedBytes = 0;
     this.resetFrame();
     if (releaseFailed) {

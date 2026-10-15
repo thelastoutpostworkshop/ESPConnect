@@ -1,5 +1,9 @@
 # Issue #180: isolated chunk-reader diagnostic
 
+This is the historical preview-6 A/B/C guide. The diagnostic page now presents
+the [guided, resumable suite](issue-180-guided-suite.md); use that guide for the
+current candidate.
+
 Candidate version: `1.1.25-preview-6`.
 Base: `diagnostic/issue-180-flash-read-timeout` at
 `9fad3759fdfc9cf8860d61ed2e300b9e7a331bdf` (preview5).

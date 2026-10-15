@@ -7,6 +7,7 @@ const slip = (payload: number[]) => [0xc0, ...payload.flatMap(byte => byte === 0
 
 function fixture(options: {
   signal?: AbortSignal; visibility?: () => string;
+  captureFrames?: boolean;
   write?: (bytes: Uint8Array) => Promise<void> | void;
   cancel?: () => Promise<void> | void;
 } = {}) {
@@ -527,5 +528,189 @@ describe('independent chunk Web Serial transport', () => {
     expect(() => f.transport.assertIdle()).toThrow(/partial frames/);
     await f.enqueue([0xc0]);
     expect(() => f.transport.assertIdle()).not.toThrow();
+  });
+
+  it('keeps local frame capture explicitly opt-in and report metadata payload-free', async () => {
+    const f = fixture();
+    f.transport.start();
+    await f.enqueue(slip([...new TextEncoder().encode('PRIVATE-FLASH-DATA')]));
+    await f.transport.readPacket(1000);
+    expect(f.transport.getLastPacketCapture()).toBeUndefined();
+    expect(f.transport.captureFirstFailureFrame()).toBeUndefined();
+    expect(f.transport.getEvidence()).toEqual({ enabled: false, chunks: [], frames: [], loss: { traceEntries: 0, chunkEntries: 0, frameEntries: 0 } });
+    expect(JSON.stringify(f.transport.getEvidence())).not.toContain('PRIVATE');
+  });
+
+  it('associates raw captures with each returned packet when browser chunks coalesce frames', async () => {
+    const f = fixture({ captureFrames: true, visibility: () => 'visible' });
+    f.transport.start();
+    f.transport.setStrictMode();
+    const payload = [1, 0xc0, 0xdb, 2];
+    const encoded = slip(payload);
+    await f.enqueue(encoded.slice(0, 3));
+    await f.enqueue(encoded.slice(3, 5));
+    await f.enqueue([...encoded.slice(5), ...slip([9, 8]), 0xc0, 6]);
+    expect(await f.transport.readPacket(1000)).toEqual(payload);
+    const first = f.transport.getLastPacketCapture()!;
+    expect([...first.rawBytes]).toEqual(encoded);
+    expect([...first.decodedBytes]).toEqual(payload);
+    expect(first.chunkLengths).toEqual([3, 2, 3]);
+    expect(first.metadata).toMatchObject({ sequence: 1, rawLength: 8, decodedLength: 4,
+      complete: true, rawTruncated: false, escapedDelimiters: 1, escapedEscapes: 1, invalidEscapes: 0, chunkSpansDropped: 0 });
+    // A following partial frame must not replace the protocol caller's bad packet.
+    expect(f.transport.captureFirstFailureFrame()!.metadata.sequence).toBe(1);
+    first.rawBytes.fill(99);
+    first.decodedBytes.fill(99);
+    first.metadata.rawLength = 999;
+    first.chunkLengths[0] = 999;
+    expect([...f.transport.getLastPacketCapture()!.rawBytes]).toEqual(encoded);
+    expect(await f.transport.readPacket(1000)).toEqual([9, 8]);
+    expect(f.transport.getLastPacketCapture()!.metadata.sequence).toBe(2);
+    expect(f.transport.captureFirstFailureFrame()!.metadata.sequence).toBe(1);
+    const evidence = f.transport.getEvidence();
+    expect(evidence.chunks.map(chunk => chunk.length)).toEqual([3, 2, 9]);
+    expect(evidence.chunks[0]).toMatchObject({ sequence: 1, gapMs: null, visibility: 'visible' });
+    expect(evidence.chunks.slice(1).every(chunk => chunk.gapMs! >= 0)).toBe(true);
+    expect(evidence.frames.map(frame => frame.decodedLength)).toEqual([4, 2]);
+    expect(JSON.stringify(evidence)).not.toMatch(/rawBytes|decodedBytes|chunkLengths/);
+    evidence.frames[0]!.decodedLength = 999;
+    evidence.chunks[0]!.length = 999;
+    expect(f.transport.getEvidence().frames[0]!.decodedLength).toBe(4);
+    await f.transport.close();
+    expect([...f.transport.captureFirstFailureFrame()!.rawBytes]).toEqual(encoded);
+  });
+
+  it('freezes the first terminal partial-frame failure and counts escape errors without exporting bytes', async () => {
+    const f = fixture({ captureFrames: true });
+    f.transport.start();
+    f.transport.setStrictMode();
+    await f.enqueue([...slip([7]), 0xc0, 1, 0xdb]);
+    expect(await f.transport.readPacket(1000)).toEqual([7]);
+    const rejected = expect(f.transport.readPacket(1000)).rejects.toThrow(/Invalid SLIP escape/);
+    await f.enqueue([0x44]);
+    await rejected;
+    const failure = f.transport.captureFirstFailureFrame()!;
+    expect([...failure.rawBytes]).toEqual([0xc0, 1, 0xdb, 0x44]);
+    expect(failure.chunkLengths).toEqual([3, 1]);
+    expect(failure.metadata).toMatchObject({ sequence: 2, rawLength: 4, decodedLength: 1, complete: false, invalidEscapes: 1 });
+    const evidence = f.transport.getEvidence();
+    expect(evidence.firstFailure).toMatchObject({ event: 'invalid-escape', snapshot: { partialBytes: 1, queuedFrames: 0 } });
+    await f.transport.close();
+    expect(f.transport.getEvidence().firstFailure).toEqual(evidence.firstFailure);
+    expect(f.transport.captureFirstFailureFrame()!.metadata).toEqual(failure.metadata);
+    expect(JSON.stringify(evidence)).not.toMatch(/rawBytes|decodedBytes/);
+  });
+
+  it('retains cancellation evidence before cleanup without allowing repeated start', async () => {
+    const abort = new AbortController();
+    const f = fixture({ captureFrames: true, signal: abort.signal });
+    f.transport.start();
+    f.transport.start();
+    await f.enqueue([0xc0, 4, 0xdb]);
+    abort.abort();
+    await f.transport.close();
+    expect(f.transport.captureFirstFailureFrame()!.metadata).toMatchObject({ rawLength: 3, decodedLength: 1, complete: false });
+    expect(f.transport.getEvidence().firstFailure?.event).toBe('cancelled');
+    expect(() => f.transport.start()).toThrow(/cancelled/);
+    expect(f.readerAcquired).toHaveBeenCalledOnce();
+  });
+
+  it.each(['timeout', 'eof', 'cancel'] as const)('keeps a no-frame %s separate from the previous successful packet', async mode => {
+    vi.useFakeTimers();
+    const abort = new AbortController();
+    const f = fixture({ captureFrames: true, signal: abort.signal });
+    f.transport.start();
+    f.transport.setStrictMode();
+    await f.enqueue(slip([1, 2, 3]));
+    expect(await f.transport.readPacket(100)).toEqual([1, 2, 3]);
+    expect(f.transport.getLastPacketCapture()!.metadata.complete).toBe(true);
+    const rejected = expect(f.transport.readPacket(100)).rejects.toThrow();
+    if (mode === 'timeout') await vi.advanceTimersByTimeAsync(100);
+    else if (mode === 'eof') f.controller.close();
+    else abort.abort();
+    await rejected;
+    expect(f.transport.captureFirstFailureFrame()).toBeUndefined();
+    await f.transport.close();
+    expect(f.transport.captureFirstFailureFrame()).toBeUndefined();
+    expect(f.transport.getEvidence().firstFailure?.snapshot).toMatchObject({ partialBytes: 0, inFrame: false });
+  });
+
+  it('timestamps actual serialized write dispatch and completion independently of queueing', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    const events: string[] = [];
+    const f = fixture({ write: async () => { events.push(`sink${f.sent.length}`); if (f.sent.length === 1) await gate; } });
+    f.transport.start();
+    const first = f.transport.write([1], { started: () => events.push('start1'), completed: () => events.push('complete1') });
+    const second = f.transport.write([2], { started: () => events.push('start2'), completed: () => events.push('complete2') });
+    expect(events).toEqual([]);
+    await microtasks();
+    expect(events).toEqual(['start1', 'sink1']);
+    release();
+    await Promise.all([first, second]);
+    expect(events).toEqual(['start1', 'sink1', 'complete1', 'start2', 'sink2', 'complete2']);
+  });
+
+  it('never reports completion for a failed or timed-out write and ignores timing callback errors', async () => {
+    const f = fixture({ write: () => { throw new Error('private error'); } });
+    f.transport.start();
+    const completed = vi.fn();
+    await expect(f.transport.write([1], { started: () => { throw new Error('private callback'); }, completed }))
+      .rejects.toThrow(/Serial write failed/);
+    expect(completed).not.toHaveBeenCalled();
+    expect(f.transport.getTrace().join('\n')).not.toContain('private');
+
+    vi.useFakeTimers();
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    const timed = fixture({ write: () => gate });
+    timed.transport.start();
+    const timedCompleted = vi.fn();
+    const rejected = expect(timed.transport.write([1], { started: () => {}, completed: timedCompleted }))
+      .rejects.toThrow(/write timed out/);
+    await vi.advanceTimersByTimeAsync(CHUNK_SERIAL_LIMITS.writeTimeoutMs);
+    await rejected;
+    release();
+    await microtasks();
+    expect(timedCompleted).not.toHaveBeenCalled();
+    await timed.transport.close();
+  });
+
+  it('bounds chunk spans and local raw bytes while reporting every lost evidence entry', async () => {
+    const f = fixture({ captureFrames: true });
+    f.transport.start();
+    f.transport.setStrictMode();
+    await f.enqueue([0xc0]);
+    for (let i = 0; i < CHUNK_SERIAL_LIMITS.capturedFrameChunkSpans + 3; i++) await f.enqueue([1]);
+    await f.enqueue([0xc0]);
+    await f.transport.readPacket(1000);
+    expect(f.transport.getLastPacketCapture()!.chunkLengths).toHaveLength(CHUNK_SERIAL_LIMITS.capturedFrameChunkSpans);
+    expect(f.transport.getLastPacketCapture()!.metadata.chunkSpansDropped).toBe(5);
+    const rejected = expect(f.transport.readPacket(1000)).rejects.toThrow(/4096-byte/);
+    await f.enqueue(slip(Array(4097).fill(0xc0)));
+    await rejected;
+    const failed = f.transport.captureFirstFailureFrame()!;
+    expect(failed.rawBytes).toHaveLength(CHUNK_SERIAL_LIMITS.capturedRawFrameBytes);
+    expect(failed.metadata.rawLength).toBe(CHUNK_SERIAL_LIMITS.capturedRawFrameBytes + 1);
+    expect(failed.metadata.rawTruncated).toBe(true);
+    expect(failed.decodedBytes).toHaveLength(CHUNK_SERIAL_LIMITS.maxPacketBytes);
+  });
+
+  it('bounds structured metadata independently and preserves earliest frame evidence with explicit loss counts', async () => {
+    const f = fixture({ captureFrames: true });
+    f.transport.start();
+    for (let i = 0; i < CHUNK_SERIAL_LIMITS.evidenceFrames + 3; i++) {
+      await f.enqueue(slip([1]));
+      await f.transport.readPacket(1000);
+    }
+    for (let i = 0; i < CHUNK_SERIAL_LIMITS.evidenceChunks; i++) await f.enqueue([0x41]);
+    const evidence = f.transport.getEvidence();
+    expect(evidence.frames).toHaveLength(CHUNK_SERIAL_LIMITS.evidenceFrames);
+    expect(evidence.frames[0]!.sequence).toBe(1);
+    expect(evidence.frames.at(-1)!.sequence).toBe(CHUNK_SERIAL_LIMITS.evidenceFrames);
+    expect(evidence.chunks).toHaveLength(CHUNK_SERIAL_LIMITS.evidenceChunks);
+    expect(evidence.loss.frameEntries).toBe(3);
+    expect(evidence.loss.chunkEntries).toBe(CHUNK_SERIAL_LIMITS.evidenceFrames + 3);
+    expect(evidence.loss.traceEntries).toBeGreaterThan(0);
   });
 });
