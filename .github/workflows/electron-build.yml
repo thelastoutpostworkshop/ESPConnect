@@ -34,8 +34,8 @@ jobs:
             platform: win32
             arch: x64
             artifact_name: windows
-          # Linux
-          - os: ubuntu-latest
+          # electron-installer-redhat 4.0.0 expects the RPM 4.18 build directory layout.
+          - os: ubuntu-24.04
             platform: linux
             arch: x64
             artifact_name: linux
