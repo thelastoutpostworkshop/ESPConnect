@@ -1,6 +1,13 @@
 # Changelog
 
-## 1.1.25
+## 1.1.24
+### Improvement
+- Added ESPImageServer to Maker Tools with a preview, a link to its repository, and a video tutorial.
+
+### Fixed
+- Extended ESP synchronization errors now show manual boot-mode guidance during connection and return to maintenance mode ([issue #178](https://github.com/thelastoutpostworkshop/ESPConnect/issues/178)).
+- Verify device communication before reporting "Connected" or "Ready to flash", preventing false success after communication or recovery failures while allowing responsive boards with blank flash or partition-read errors to connect ([issue #178](https://github.com/thelastoutpostworkshop/ESPConnect/issues/178)).
+
 ### Internal runtime
 - Updated Electron to 43.8.12, Vue to 3.5.46, vue-i18n to 11.4.23, and Vuetify to 4.3.4.
 - Declared the browser `buffer` dependency used by partition CSV exports.
@@ -11,11 +18,6 @@
 
 ### Documentation
 - Updated the troubleshooting guide to recommend selecting 115200 baud before connecting when connections or flash reads time out, with manual BOOT/RESET steps if needed.
-
-## 1.1.24
-### Fixed
-- Extended ESP synchronization errors now show manual boot-mode guidance during connection and return to maintenance mode ([issue #178](https://github.com/thelastoutpostworkshop/ESPConnect/issues/178)).
-- Verify device communication before reporting "Connected" or "Ready to flash", preventing false success after communication or recovery failures while allowing responsive boards with blank flash or partition-read errors to connect ([issue #178](https://github.com/thelastoutpostworkshop/ESPConnect/issues/178)).
 
 ## 1.1.23
 ### Fixed
