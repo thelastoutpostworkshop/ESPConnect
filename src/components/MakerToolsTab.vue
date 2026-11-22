@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useTheme } from 'vuetify';
 import arduinoMakerWorkshopThumbnail from '../assets/tool-thumbnails/arduino-maker-workshop.jpg';
 import espBoardVaultThumbnail from '../assets/tool-thumbnails/esp-board-vault.jpg';
+import espImageServerThumbnail from '../assets/tool-thumbnails/esp-image-server.png';
 import espPinoutExplorerThumbnail from '../assets/tool-thumbnails/esp-pinout-explorer.png';
 import gpioViewerThumbnail from '../assets/tool-thumbnails/gpio-viewer.jpg';
 import partitionBuilderThumbnail from '../assets/tool-thumbnails/partition-builder.jpg';
@@ -38,6 +39,16 @@ const isDarkTheme = computed(() => theme.global.current.value.dark);
 const coffeeUrl = 'https://buymeacoffee.com/thelastoutpostworkshop';
 
 const toolItems: ToolItem[] = [
+  {
+    key: 'esp-image-server',
+    titleKey: 'makerTools.items.espImageServer.title',
+    icon: 'mdi-image-multiple-outline',
+    descriptionKey: 'makerTools.items.espImageServer.description',
+    thumbnailSrc: espImageServerThumbnail,
+    sourceUrl: 'https://github.com/thelastoutpostworkshop/ESPImageServer',
+    sourceLabelKey: 'makerTools.items.espImageServer.sourceLabel',
+    tutorialUrl: 'https://youtu.be/4_eT38NmxBw',
+  },
   {
     key: 'esp-pinout-explorer',
     titleKey: 'makerTools.items.espPinoutExplorer.title',

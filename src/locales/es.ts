@@ -41,6 +41,12 @@ const es = {
       watchSpecific: 'Ver tutorial de {title}',
     },
     items: {
+      espImageServer: {
+        title: 'ESPImageServer',
+        description:
+          'Una aplicación gratuita para generar imágenes y vídeos con IA en tu PC, sin claves de API, suscripciones ni costes de generación. Crea contenido a partir de indicaciones de texto, anima imágenes y reproduce tus creaciones en muchas pantallas ESP32.',
+        sourceLabel: 'thelastoutpostworkshop/ESPImageServer',
+      },
       espPinoutExplorer: {
         title: 'ESP Pinout Explorer',
         description:

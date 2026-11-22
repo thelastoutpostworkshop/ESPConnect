@@ -40,6 +40,12 @@ const en = {
       watchSpecific: 'Watch {title} tutorial',
     },
     items: {
+      espImageServer: {
+        title: 'ESPImageServer',
+        description:
+          'A free app to generate AI images and videos locally on your PC—no API keys, subscriptions, or generation fees. Create from text prompts, animate images, and play your creations on many ESP32 displays.',
+        sourceLabel: 'thelastoutpostworkshop/ESPImageServer',
+      },
       espPinoutExplorer: {
         title: 'ESP Pinout Explorer',
         description:

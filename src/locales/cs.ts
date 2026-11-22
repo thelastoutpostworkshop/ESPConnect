@@ -40,6 +40,12 @@ const cs = {
       watchSpecific: 'Zobrazit návod {title}',
     },
     items: {
+      espImageServer: {
+        title: 'ESPImageServer',
+        description:
+          'Bezplatná aplikace pro generování obrázků a videí pomocí AI přímo na vašem počítači, bez klíčů API, předplatného či poplatků za generování. Tvořte podle textového zadání, animujte obrázky a přehrávejte své výtvory na mnoha displejích pro ESP32.',
+        sourceLabel: 'thelastoutpostworkshop/ESPImageServer',
+      },
       espPinoutExplorer: {
         title: 'ESP Pinout Explorer',
         description:

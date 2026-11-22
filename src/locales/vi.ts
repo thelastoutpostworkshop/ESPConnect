@@ -40,6 +40,12 @@ const vi = {
       watchSpecific: 'Xem hướng dẫn {title}',
     },
     items: {
+      espImageServer: {
+        title: 'ESPImageServer',
+        description:
+          'Ứng dụng miễn phí cho phép bạn dùng AI để tạo hình ảnh và video ngay trên máy tính, không cần khóa API, mua gói đăng ký hay trả phí cho mỗi lần tạo. Tạo nội dung từ mô tả bằng văn bản, biến ảnh tĩnh thành ảnh động và phát tác phẩm trên nhiều loại màn hình ESP32.',
+        sourceLabel: 'thelastoutpostworkshop/ESPImageServer',
+      },
       espPinoutExplorer: {
         title: 'ESP Pinout Explorer',
         description:

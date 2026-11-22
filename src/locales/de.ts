@@ -40,6 +40,12 @@ const de = {
       watchSpecific: '{title}-Tutorial ansehen',
     },
     items: {
+      espImageServer: {
+        title: 'ESPImageServer',
+        description:
+          'Mit dieser kostenlosen App erzeugst du KI-Bilder und -Videos direkt auf deinem PC, ohne API-Schlüssel, Abos oder Gebühren für die Generierung. Erstelle Inhalte aus Texteingaben, animiere Bilder und spiele deine Werke auf vielen ESP32-Displays ab.',
+        sourceLabel: 'thelastoutpostworkshop/ESPImageServer',
+      },
       espPinoutExplorer: {
         title: 'ESP Pinout Explorer',
         description:

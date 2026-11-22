@@ -40,6 +40,12 @@ const zh = {
       watchSpecific: '观看 {title} 教程',
     },
     items: {
+      espImageServer: {
+        title: 'ESPImageServer',
+        description:
+          '这款免费应用可在你的电脑上本地使用 AI 生成图像和视频，无需 API 密钥或订阅，也不收取生成费用。你可以通过文字提示创作，让静态图像动起来，并在多种 ESP32 显示屏上播放作品。',
+        sourceLabel: 'thelastoutpostworkshop/ESPImageServer',
+      },
       espPinoutExplorer: {
         title: 'ESP Pinout Explorer',
         description:

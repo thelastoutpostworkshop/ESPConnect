@@ -40,6 +40,12 @@ const tr = {
       watchSpecific: '{title} eğitimini izle',
     },
     items: {
+      espImageServer: {
+        title: 'ESPImageServer',
+        description:
+          'Bilgisayarınızda yapay zekâyla görsel ve video oluşturabileceğiniz ücretsiz bir uygulama. API anahtarı veya abonelik gerekmez, içerik üretimi ücretsizdir. Metin istemlerinden içerik oluşturun, görselleri canlandırın ve çalışmalarınızı birçok ESP32 ekranında oynatın.',
+        sourceLabel: 'thelastoutpostworkshop/ESPImageServer',
+      },
       espPinoutExplorer: {
         title: 'ESP Pinout Explorer',
         description:
