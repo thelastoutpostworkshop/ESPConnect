@@ -30,7 +30,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v6.4.0
         with:
-          node-version: 22.12.0
+          node-version: 22.17.0
           cache: npm
 
       - name: Install

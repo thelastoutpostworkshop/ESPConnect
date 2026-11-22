@@ -8,7 +8,7 @@ Thank you for your interest in contributing to ESPConnect!
 - Make sure typecheck, unit tests, and E2E tests pass.
 
 ## Development
->Prerequisite: Node.js **>= 22.12.0**.
+>Prerequisite: Node.js **>= 22.17.0**.
 ```bash
 git clone https://github.com/thelastoutpostworkshop/ESPConnect.git
 cd ESPConnect

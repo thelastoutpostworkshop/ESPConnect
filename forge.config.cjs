@@ -1,17 +1,4 @@
-const { FusesPlugin } = require('./tools/forge-fuses-plugin.cjs');
-
-// @electron/fuses@2 is ESM-only; keep Forge config in CJS by inlining the enum values.
-const FuseVersion = { V1: '1' };
-const FuseV1Options = {
-  RunAsNode: 0,
-  EnableCookieEncryption: 1,
-  EnableNodeOptionsEnvironmentVariable: 2,
-  EnableNodeCliInspectArguments: 3,
-  EnableEmbeddedAsarIntegrityValidation: 4,
-  OnlyLoadAppFromAsar: 5,
-  LoadBrowserProcessSpecificV8Snapshot: 6,
-  GrantFileProtocolExtraPrivileges: 7,
-};
+const { FuseVersion, FuseV1Options } = require('@electron/fuses');
 
 module.exports = {
   packagerConfig: {
@@ -90,16 +77,18 @@ module.exports = {
       name: '@electron-forge/plugin-auto-unpack-natives',
       config: {},
     },
-    // Fuses are used to enable/disable various Electron functionality
-    new FusesPlugin({
-      version: FuseVersion.V1,
-      [FuseV1Options.RunAsNode]: false,
-      [FuseV1Options.EnableCookieEncryption]: true,
-      [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
-      [FuseV1Options.EnableNodeCliInspectArguments]: false,
-      [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
-      [FuseV1Options.OnlyLoadAppFromAsar]: true,
-    }),
+    {
+      name: '@electron-forge/plugin-fuses',
+      config: {
+        version: FuseVersion.V1,
+        [FuseV1Options.RunAsNode]: false,
+        [FuseV1Options.EnableCookieEncryption]: true,
+        [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
+        [FuseV1Options.EnableNodeCliInspectArguments]: false,
+        [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
+        [FuseV1Options.OnlyLoadAppFromAsar]: true,
+      },
+    },
   ],
   publishers: [
     {
